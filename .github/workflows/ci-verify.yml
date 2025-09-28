@@ -1,0 +1,28 @@
+name: CI - Verify
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Make scripts executable
+        run: chmod +x scripts/*.sh
+
+      - name: Repo verify
+        run: scripts/verify.repo.sh
+
+      - name: Plugin verify
+        run: scripts/verify.plugin.sh
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Assets verify
+        run: scripts/verify.assets.sh

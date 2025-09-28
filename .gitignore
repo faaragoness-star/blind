@@ -1,0 +1,19 @@
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Node / PHP
+node_modules/
+vendor/
+composer.lock
+
+# Builds / caches
+dist/
+coverage/
+.cache/
+
+# Env / secrets (no subir)
+.env
+.env.*

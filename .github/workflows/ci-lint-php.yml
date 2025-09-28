@@ -1,0 +1,26 @@
+name: CI - PHP Lint
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  phpcs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Skip if no PHP files
+        id: has_php
+        run: |
+          if git ls-files '*.php' | grep -q .; then echo "has=1" >> $GITHUB_OUTPUT; else echo "has=0" >> $GITHUB_OUTPUT; fi
+      - name: Install PHPCS
+        if: steps.has_php.outputs.has == '1'
+        run: |
+          composer global require squizlabs/php_codesniffer
+          echo "${HOME}/.composer/vendor/bin" >> $GITHUB_PATH
+      - name: Run PHPCS
+        if: steps.has_php.outputs.has == '1'
+        run: phpcs -q --standard=PSR12 plugins || (echo "PHPCS found issues"; exit 1)
