@@ -1,2 +1,3 @@
-# Esqueleto del plugin
-Este directorio corresponde al plugin. Aún sin código: se añadirá en fases.
+# G3D Models Manager
+
+Ver documento fuente en: docs/Plugin 1 — G3d Models Manager (ingesta Glb Y Binding Técnico) — Informe.md
