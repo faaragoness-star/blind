@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Plugin Name: G3D Admin & Ops
  * Description: Esqueleto inicial (sin lógica). Ver docs/ para funciones y contratos.

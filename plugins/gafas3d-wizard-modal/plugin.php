@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Plugin Name: Gafas3D Wizard Modal
  * Description: Esqueleto inicial (sin lógica). Ver docs/ para funciones y contratos.
