@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Plugin Name: G3D Models Manager
  * Description: Esqueleto inicial (sin lógica). Ver docs/ para funciones y contratos.
@@ -18,10 +17,8 @@ if (!defined('ABSPATH')) {
 register_activation_hook(__FILE__, function () {
     // Placeholder de activación (nop).
 });
+
 register_deactivation_hook(__FILE__, function () {
     // Placeholder de desactivación (nop).
 });
 
-add_action('init', function () {
-    load_plugin_textdomain('g3d-models-manager', false, dirname(plugin_basename(__FILE__)) . '/languages');
-});
