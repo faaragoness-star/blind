@@ -10,7 +10,9 @@
  * Text Domain: g3d-catalog-rules
  */
 
-if (!defined('ABSPATH')) { exit; }
+if (!defined('ABSPATH')) {
+    exit;
+}
 
 register_activation_hook(__FILE__, function () {
     // Placeholder de activación (nop).
