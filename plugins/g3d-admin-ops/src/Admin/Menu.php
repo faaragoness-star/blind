@@ -197,9 +197,9 @@ final class Menu
         printf(
             '<p>%s</p>',
             esc_html__(
-'TODO: persistir 90 días en almacenamiento aprobado '
-. '(docs/Capa 5 — Admin & Operaciones — Addenda Aplicada 2025-09-27.md '
-. '§Auditoría y logs).',
+                'TODO: persistir 90 días en almacenamiento aprobado '
+                . '(docs/Capa 5 — Admin & Operaciones — Addenda Aplicada 2025-09-27.md '
+                . '§Auditoría y logs).',
                 'g3d-admin-ops'
             )
         );
