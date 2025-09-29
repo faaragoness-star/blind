@@ -98,6 +98,24 @@ class Verifier
             );
         }
 
+        if (!array_key_exists('locale', $decoded) || !array_key_exists('ab_variant', $decoded)) {
+            return $this->error(
+                'E_SIGN_INVALID',
+                'sign_invalid',
+                'Campos obligatorios ausentes en firma (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
+                . '(slots Abiertos) — V2 (urls).md, sección SKU, firma y caducidad).'
+            );
+        }
+
+        if (!is_string($decoded['locale']) || !is_string($decoded['ab_variant'])) {
+            return $this->error(
+                'E_SIGN_INVALID',
+                'sign_invalid',
+                'Tipos inválidos en firma (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
+                . '(slots Abiertos) — V2 (urls).md, sección SKU, firma y caducidad).'
+            );
+        }
+
         $expiresAt = null;
 
         if (isset($decoded['expires_at']) && is_string($decoded['expires_at'])) {

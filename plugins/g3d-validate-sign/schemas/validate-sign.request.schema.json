@@ -32,7 +32,9 @@
       "$comment": "Locale de la petición. TODO: Definir lista permitida según docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md."
     },
     "flags": {
-      "$comment": "Campo opcional (flags?) indicado en docs/plugin-3-g3d-validate-sign.md §6.1. TODO: Definir estructura."
+      "type": "object",
+      "$comment": "Campo opcional (flags?) indicado en docs/plugin-3-g3d-validate-sign.md §6.1. TODO: Definir estructura exacta de flags/ab_variant.",
+      "additionalProperties": true
     }
   },
   "additionalProperties": true

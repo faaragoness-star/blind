@@ -135,6 +135,42 @@ final class VerifierTest extends TestCase
         self::assertSame('sign_invalid', $result['reason_key']);
     }
 
+    public function testVerifyRequiresLocaleAndAbVariantKeys(): void
+    {
+        $verifier = new Verifier(['sig.v1']);
+        $keyPair = sodium_crypto_sign_keypair();
+        $privateKey = sodium_crypto_sign_secretkey($keyPair);
+        $publicKey = sodium_crypto_sign_publickey($keyPair);
+
+        $messagePayload = [
+            'sku_hash' => hash('sha256', 'state'),
+            'snapshot_id' => 'snap:2025-09-01',
+            'expires_at' => '2025-10-29T00:00:00+00:00',
+        ];
+
+        $message = json_encode($messagePayload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        if (!is_string($message)) {
+            throw new RuntimeException('No se pudo generar payload de prueba.');
+        }
+
+        $signature = sodium_crypto_sign_detached($message, $privateKey);
+        $signaturePacked = sprintf(
+            'sig.v1.%s.%s',
+            $this->base64UrlEncode($message),
+            $this->base64UrlEncode($signature)
+        );
+
+        $result = $verifier->verify([
+            'sku_hash' => $messagePayload['sku_hash'],
+            'snapshot_id' => 'snap:2025-09-01',
+        ], $signaturePacked, $publicKey);
+
+        self::assertFalse($result['ok']);
+        self::assertSame('E_SIGN_INVALID', $result['code']);
+        self::assertSame('sign_invalid', $result['reason_key']);
+    }
+
     private function base64UrlEncode(string $value): string
     {
         return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');

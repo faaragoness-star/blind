@@ -94,6 +94,7 @@ final class VerifyRouteTest extends TestCase
         $data = $response->get_data();
         self::assertSame('E_SIGN_EXPIRED', $data['code']);
         self::assertSame('sign_expired', $data['reason_key']);
+        self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $data['request_id']);
     }
 
     public function testHandleReturnsSnapshotMismatchErrorFromVerifier(): void
@@ -131,6 +132,84 @@ final class VerifyRouteTest extends TestCase
         $data = $response->get_data();
         self::assertSame('E_SIGN_SNAPSHOT_MISMATCH', $data['code']);
         self::assertSame('sign_snapshot_mismatch', $data['reason_key']);
+        self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $data['request_id']);
+    }
+
+    public function testHandleReturnsErrorWhenSignaturePrefixUnsupported(): void
+    {
+        $schemaPath = __DIR__ . '/../../schemas/verify.request.schema.json';
+        $validator = new RequestValidator($schemaPath);
+        $verifier = new Verifier(['sig.v1']);
+        $expiry = $this->createExpiry(new DateTimeImmutable('2025-09-29T00:00:00+00:00'), 30, false);
+        $signer = new Signer('sig.v1');
+        $keyPair = sodium_crypto_sign_keypair();
+        $privateKey = sodium_crypto_sign_secretkey($keyPair);
+        $publicKey = sodium_crypto_sign_publickey($keyPair);
+
+        $signingPayload = [
+            'snapshot_id' => 'snap:2025-09-01',
+            'state' => [],
+        ];
+
+        $expiresAt = new DateTimeImmutable('2025-10-29T00:00:00+00:00');
+        $signed = $signer->sign($signingPayload, $privateKey, $expiresAt);
+        $manipulatedSignature = (string) preg_replace('/^sig\\.v1/', 'sig.v2', $signed['signature']);
+
+        $controller = new VerifyController($validator, $verifier, $expiry, $publicKey);
+        $request = new WP_REST_Request('POST', '/g3d/v1/verify');
+        $request->set_header('Content-Type', 'application/json');
+        $request->set_body((string) json_encode([
+            'sku_hash' => $signed['sku_hash'],
+            'sku_signature' => $manipulatedSignature,
+            'snapshot_id' => 'snap:2025-09-01',
+        ]));
+
+        $response = $controller->handle($request);
+
+        self::assertInstanceOf(WP_REST_Response::class, $response);
+        self::assertSame(400, $response->get_status());
+        $data = $response->get_data();
+        self::assertSame('E_SIGN_INVALID', $data['code']);
+        self::assertSame('sign_invalid', $data['reason_key']);
+        self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $data['request_id']);
+    }
+
+    public function testHandleReturnsErrorWhenSkuHashTampered(): void
+    {
+        $schemaPath = __DIR__ . '/../../schemas/verify.request.schema.json';
+        $validator = new RequestValidator($schemaPath);
+        $verifier = new Verifier(['sig.v1']);
+        $expiry = $this->createExpiry(new DateTimeImmutable('2025-09-29T00:00:00+00:00'), 30, false);
+        $signer = new Signer('sig.v1');
+        $keyPair = sodium_crypto_sign_keypair();
+        $privateKey = sodium_crypto_sign_secretkey($keyPair);
+        $publicKey = sodium_crypto_sign_publickey($keyPair);
+
+        $signingPayload = [
+            'snapshot_id' => 'snap:2025-09-01',
+            'state' => [],
+        ];
+
+        $expiresAt = new DateTimeImmutable('2025-10-29T00:00:00+00:00');
+        $signed = $signer->sign($signingPayload, $privateKey, $expiresAt);
+
+        $controller = new VerifyController($validator, $verifier, $expiry, $publicKey);
+        $request = new WP_REST_Request('POST', '/g3d/v1/verify');
+        $request->set_header('Content-Type', 'application/json');
+        $request->set_body((string) json_encode([
+            'sku_hash' => 'sku:corrompido',
+            'sku_signature' => $signed['signature'],
+            'snapshot_id' => 'snap:2025-09-01',
+        ]));
+
+        $response = $controller->handle($request);
+
+        self::assertInstanceOf(WP_REST_Response::class, $response);
+        self::assertSame(400, $response->get_status());
+        $data = $response->get_data();
+        self::assertSame('E_SIGN_INVALID', $data['code']);
+        self::assertSame('sign_invalid', $data['reason_key']);
+        self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $data['request_id']);
     }
 
     private function createExpiry(DateTimeImmutable $now, int $ttlDays, bool $forceExpired): Expiry
