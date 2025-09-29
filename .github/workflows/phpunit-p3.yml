@@ -1,0 +1,32 @@
+name: PHPUnit P3 Validate & Sign
+
+on:
+  push:
+    branches:
+      - main
+      - test/p3-validate-sign-phpunit-20250929
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  phpunit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+          extensions: sodium
+
+      - name: Install dependencies
+        working-directory: plugins/g3d-validate-sign
+        run: composer install --prefer-dist --no-progress
+
+      - name: Run PHPUnit
+        working-directory: plugins/g3d-validate-sign
+        run: vendor/bin/phpunit

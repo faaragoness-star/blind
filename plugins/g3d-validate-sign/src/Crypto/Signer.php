@@ -13,7 +13,7 @@ class Signer
 
     public function __construct(string $signaturePrefix = 'sig.v1')
     {
-        if (!extension_loaded('sodium')) {
+        if (!function_exists('sodium_crypto_sign_detached')) {
             throw new RuntimeException(
                 'ext-sodium requerida (ver docs/plugin-3-g3d-validate-sign.md §4.1 y docs/Capa 3 — Validación, Firma '
                 . 'Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md).'
