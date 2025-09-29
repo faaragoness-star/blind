@@ -13,10 +13,29 @@
 
 declare(strict_types=1);
 
+use G3D\AdminOps\Plugin;
+
 if (!defined('ABSPATH')) {
     exit;
 }
 
+spl_autoload_register(static function (string $class): void {
+    if (!str_starts_with($class, 'G3D\\AdminOps\\')) {
+        return;
+    }
+
+    $relative = substr($class, strlen('G3D\\AdminOps\\'));
+    $relativePath = str_replace('\\', '/', $relative);
+    $file = __DIR__ . '/src/' . $relativePath . '.php';
+
+    if (is_file($file)) {
+        require_once $file;
+    }
+});
+
 add_action('init', static function (): void {
     load_plugin_textdomain('g3d-admin-ops', false, dirname(plugin_basename(__FILE__)) . '/languages');
 });
+
+$plugin = new Plugin();
+$plugin->register();
