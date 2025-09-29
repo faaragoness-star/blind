@@ -37,12 +37,17 @@ if (!class_exists('WP_REST_Request')) {
          */
         public function __construct(array|string $arg1 = [], ?string $route = null)
         {
+            // Leer $route para evitar "unused parameter" en PHPStan y mantener compatibilidad de firma.
+            if ($route !== null) {
+                // no-op
+            }
+
             if (is_array($arg1)) {
                 $this->params = $arg1;
                 return;
             }
-            // Forma WP: método + ruta. Para nuestros tests no necesitamos almacenarlos.
-            // Aceptamos la firma para compatibilidad y no hacemos nada más aquí.
+
+            // Forma WP: método + ruta; aceptamos la firma por compatibilidad sin almacenar valores.
         }
 
         // --- Headers ---------------------------------------------------------
