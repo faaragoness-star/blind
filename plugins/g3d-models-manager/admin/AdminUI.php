@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace G3D\ModelsManager\Admin;
 
 use G3D\ModelsManager\Service\GlbIngestionService;
-use G3D\ModelsManager\Validation\GlbValidationError;
 
 final class AdminUI
 {
@@ -36,8 +35,17 @@ final class AdminUI
             $result = $this->service->ingest($_FILES['g3d_glb_file']);
         }
 
-        $binding = $result['binding'] ?? [];
-        $errors = $result['errors'] ?? [];
+        $binding = [];
+        $validationErrors = [];
+
+        if ($result !== null) {
+            $binding = $result['binding'];
+
+            $validation = $result['validation'];
+            foreach ($validation['errors'] as $rawError) {
+                $validationErrors[] = sprintf('%s: %s', $rawError['code'], $rawError['message']);
+            }
+        }
 
         $slotsValue = '';
         if (!empty($binding['slots_detectados']) && is_array($binding['slots_detectados'])) {
@@ -84,14 +92,12 @@ final class AdminUI
         ?>
         <div class="wrap">
             <h1>Ingesta GLB</h1>
-            <?php if (!empty($errors)) : ?>
+            <?php if (!empty($validationErrors)) : ?>
                 <div class="notice notice-error">
                     <p><strong>Errores</strong></p>
                     <ul>
-                        <?php foreach ($errors as $error) : ?>
-                            <?php if ($error instanceof GlbValidationError) : ?>
-                                <li><?php echo esc_html($error->getCode() . ': ' . $error->getMessage()); ?></li>
-                            <?php endif; ?>
+                        <?php foreach ($validationErrors as $error) : ?>
+                            <li><?php echo esc_html($error); ?></li>
                         <?php endforeach; ?>
                     </ul>
                 </div>
