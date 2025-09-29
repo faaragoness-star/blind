@@ -8,19 +8,19 @@ use InvalidArgumentException;
 
 final class InMemoryEditorialActionLogger implements AuditLogReader, EditorialActionLogger
 {
-/**
- * @var list<
- *   array{
- *     actor_id:string,
- *     action:string,
- *     what:string,
- *     occurred_at:string,
- *     context:array<string,mixed>
- *   }
- * >
- * Registro de acciones "quién/cuándo/qué" en memoria
- * (docs/plugin-5-g3d-admin-ops.md §13).
- */
+    /**
+     * @var list<
+     *   array{
+     *     actor_id:string,
+     *     action:string,
+     *     what:string,
+     *     occurred_at:string,
+     *     context:array<string,mixed>
+     *   }
+     * >
+     * Registro de acciones "quién/cuándo/qué" en memoria
+     * (docs/plugin-5-g3d-admin-ops.md §13).
+     */
     private array $events = [];
 
     public function logAction(string $actorId, string $action, array $context = []): void
@@ -57,7 +57,15 @@ final class InMemoryEditorialActionLogger implements AuditLogReader, EditorialAc
     }
 
     /**
-     * @return list<array{actor_id:string, action:string, what:string, occurred_at:string, context:array<string,mixed>}>
+     * @return list<
+     *   array{
+     *     actor_id:string,
+     *     action:string,
+     *     what:string,
+     *     occurred_at:string,
+     *     context:array<string,mixed>
+     *   }
+     * >
      */
     public function getEvents(): array
     {
