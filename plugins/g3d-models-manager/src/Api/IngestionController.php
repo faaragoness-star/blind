@@ -27,13 +27,21 @@ final class IngestionController
                 'methods' => 'POST',
                 'callback' => [$this, 'handle'],
                 // TODO: RBAC real (docs §4). Por ahora, admins.
-                'permission_callback' => static fn() => current_user_can('manage_options'),
+                'permission_callback' => static fn () => current_user_can('manage_options'),
             ]
         );
     }
 
     public function handle(WP_REST_Request $request): WP_REST_Response|WP_Error
     {
+        if (! current_user_can('manage_options')) {
+            return new WP_Error(
+                'rest_forbidden',
+                'Forbidden',
+                ['status' => 403]
+            );
+        }
+
         $tmp = tempnam(sys_get_temp_dir(), 'g3d_glb_');
         if ($tmp === false) {
             return new WP_Error(
