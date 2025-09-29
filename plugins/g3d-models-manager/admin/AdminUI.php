@@ -6,6 +6,9 @@ namespace G3D\ModelsManager\Admin;
 
 use G3D\ModelsManager\Service\GlbIngestionService;
 
+/**
+ * @phpstan-import-type IngestionResult from \G3D\ModelsManager\Service\GlbIngestionService
+ */
 final class AdminUI
 {
     private GlbIngestionService $service;
@@ -30,6 +33,7 @@ final class AdminUI
 
     public function renderIngestionPage(): void
     {
+        /** @var IngestionResult|null $result */
         $result = null;
 
         if (
@@ -40,17 +44,13 @@ final class AdminUI
             $result = $this->service->ingest($_FILES['g3d_glb_file']);
         }
 
-        // Valores por defecto cuando no se ha enviado nada todavía.
+        /** @var array<string,mixed> $binding */
         $binding = [];
         /** @var list<string> $errors */
         $errors = [];
 
-        if (is_array($result)) {
-            // Aquí PHPStan sabe que existen estas claves en $result.
-            /** @var array<string,mixed> $binding */
-            $binding = $result['binding'];
-
-            /** @var array{missing:string[], type: array<int, array{field:string, expected:string}>, ok:bool} $validation */
+        if ($result !== null) {
+            $binding    = $result['binding'];
             $validation = $result['validation'];
 
             if ($validation['missing'] !== []) {
@@ -66,47 +66,44 @@ final class AdminUI
             }
         }
 
-        $slotsValue = '';
-        if (!empty($binding['slots_detectados']) && is_array($binding['slots_detectados'])) {
-            $slotsValue = implode("\n", array_map('strval', $binding['slots_detectados']));
-        }
+        // ------- Derivados seguros para UI (sin checks redundantes) -------
 
-        $anchorsValue = '';
-        if (!empty($binding['anchors_present']) && is_array($binding['anchors_present'])) {
-            $anchorsValue = implode("\n", array_map('strval', $binding['anchors_present']));
-        }
+        /** @var list<string> $slots */
+        $slots = (array) ($binding['slots_detectados'] ?? []);
+        $slotsValue = $slots === [] ? '' : implode("\n", array_map('strval', $slots));
 
-        $propsValue = '';
-        if (!empty($binding['props']) && is_array($binding['props'])) {
-            $lines = [];
-            foreach ($binding['props'] as $key => $value) {
-                $lines[] = sprintf('%s=%s', (string) $key, (string) $value);
-            }
-            $propsValue = implode("\n", $lines);
-        }
+        /** @var list<string> $anchors */
+        $anchors = (array) ($binding['anchors_present'] ?? []);
+        $anchorsValue = $anchors === [] ? '' : implode("\n", array_map('strval', $anchors));
 
+        /** @var array<string,scalar|array|null> $propsArr */
+        $propsArr = (array) ($binding['props'] ?? []);
+        $propLines = [];
+        foreach ($propsArr as $key => $value) {
+            $propLines[] = sprintf('%s=%s', (string) $key, (string) $value);
+        }
+        $propsValue = $propLines === [] ? '' : implode("\n", $propLines);
+
+        $objName  = isset($binding['object_name']) ? (string) $binding['object_name'] : '';
+        $pattern  = isset($binding['object_name_pattern']) ? (string) $binding['object_name_pattern'] : '';
+        $modelCode = isset($binding['model_code']) ? (string) $binding['model_code'] : '';
+
+        $hasObjectBinding = ($objName !== '' || $pattern !== '' || $modelCode !== '');
         $objectValue = '';
-        $hasObjectBinding = (
-            !empty($binding['object_name'])
-            || !empty($binding['object_name_pattern'])
-            || !empty($binding['model_code'])
-        );
         if ($hasObjectBinding) {
-            $objectValue = (string) ($binding['object_name'] ?? '');
-            if (!empty($binding['object_name_pattern'])) {
-                $objectValue .= $objectValue !== '' ? "\n" : '';
-                $objectValue .= (string) $binding['object_name_pattern'];
+            $objectValue = $objName;
+            if ($pattern !== '') {
+                $objectValue .= ($objectValue !== '' ? "\n" : '') . $pattern;
             }
-            if (!empty($binding['model_code'])) {
-                $objectValue .= $objectValue !== '' ? "\n" : '';
-                $objectValue .= (string) $binding['model_code'];
+            if ($modelCode !== '') {
+                $objectValue .= ($objectValue !== '' ? "\n" : '') . $modelCode;
             }
         }
 
-        $hash = isset($binding['file_hash']) ? (string) $binding['file_hash'] : '';
-        $size = isset($binding['filesize_bytes']) ? (string) $binding['filesize_bytes'] : '';
-        $draco = isset($binding['draco_enabled']) ? (string) $binding['draco_enabled'] : '';
-        $bounding = isset($binding['bounding_box'])
+        $hash     = isset($binding['file_hash']) ? (string) $binding['file_hash'] : '';
+        $size     = isset($binding['filesize_bytes']) ? (string) $binding['filesize_bytes'] : '';
+        $draco    = isset($binding['draco_enabled']) ? (string) $binding['draco_enabled'] : '';
+        $bounding = is_array($binding['bounding_box'] ?? null)
             ? json_encode($binding['bounding_box'], JSON_PRETTY_PRINT)
             : '';
 
