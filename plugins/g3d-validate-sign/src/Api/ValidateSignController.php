@@ -25,8 +25,7 @@ class ValidateSignController
         Signer $signer,
         Expiry $expiry,
         string $privateKey
-    )
-    {
+    ) {
         $this->validator = $validator;
         $this->signer = $signer;
         $this->expiry = $expiry;
