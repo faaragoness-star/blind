@@ -129,7 +129,7 @@ final class VerifyRouteTest extends TestCase
 
     private function createExpiry(DateTimeImmutable $now, int $ttlDays, bool $forceExpired): Expiry
     {
-        return new class($now, $ttlDays, $forceExpired) extends Expiry
+        return new class ($now, $ttlDays, $forceExpired) extends Expiry
         {
             private DateTimeImmutable $fixedNow;
             private int $fixedTtl;
