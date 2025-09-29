@@ -17,7 +17,7 @@ class Verifier
 
     public function __construct(array $allowedPrefixes = ['sig.v1'])
     {
-        if (!extension_loaded('sodium')) {
+        if (!function_exists('sodium_crypto_sign_verify_detached')) {
             throw new RuntimeException(
                 'ext-sodium requerida (ver docs/plugin-3-g3d-validate-sign.md §4.1 y docs/Capa 3 — Validación, Firma '
                 . 'Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md).'
@@ -43,7 +43,7 @@ class Verifier
     {
         $parts = explode('.', $signature);
 
-        if (count($parts) !== 3) {
+        if (count($parts) !== 4) {
             return $this->error(
                 'E_SIGN_INVALID',
                 'sign_invalid',
@@ -52,7 +52,9 @@ class Verifier
             );
         }
 
-        [$prefix, $messageEncoded, $signatureEncoded] = $parts;
+        $prefix = $parts[0] . '.' . $parts[1];
+        $messageEncoded = $parts[2];
+        $signatureEncoded = $parts[3];
 
         if (!in_array($prefix, $this->allowedPrefixes, true)) {
             return $this->error(

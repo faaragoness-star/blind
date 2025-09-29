@@ -25,7 +25,7 @@ class VerifyController
         Verifier $verifier,
         Expiry $expiry,
         string $publicKey
-    ): void {
+    ) {
         $this->validator = $validator;
         $this->verifier = $verifier;
         $this->expiry = $expiry;
