@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+// phpcs:disable PSR1.Files.SideEffects,PSR1.Classes.ClassDeclaration,PSR1.Classes.ClassNameNotCamelCaps,PSR1.Methods.CamelCapsMethodName
+
 require __DIR__ . '/../vendor/autoload.php';
 
 if (!function_exists('register_rest_route')) {
@@ -105,3 +107,6 @@ if (!class_exists('WP_Error')) {
         }
     }
 }
+
+// phpcs:enable
+
