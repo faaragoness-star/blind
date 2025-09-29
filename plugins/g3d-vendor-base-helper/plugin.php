@@ -17,6 +17,28 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+spl_autoload_register(static function (string $class): void {
+    if (!str_starts_with($class, 'G3D\\VendorBase\\')) {
+        return;
+    }
+
+    $relative = substr($class, strlen('G3D\\VendorBase\\'));
+    $relativePath = str_replace('\\', '/', $relative);
+    $file = __DIR__ . '/src/' . $relativePath . '.php';
+
+    if (is_file($file)) {
+        require_once $file;
+    }
+});
+
 add_action('init', static function (): void {
     load_plugin_textdomain('g3d-vendor-base-helper', false, dirname(plugin_basename(__FILE__)) . '/languages');
+});
+
+register_activation_hook(__FILE__, static function (): void {
+    \G3D\VendorBase\Security\VendorGuard::assertReady();
+});
+
+register_deactivation_hook(__FILE__, static function (): void {
+    // No-op: placeholder para simetría.
 });
