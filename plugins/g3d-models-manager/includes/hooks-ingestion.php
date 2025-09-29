@@ -17,7 +17,7 @@ require_once __DIR__ . '/../admin/AdminUI.php';
 
 add_action('plugins_loaded', static function (): void {
     $validator = new GlbIngestionValidator();
-$service = new GlbIngestionService();
+    $service = new GlbIngestionService();
     $ui = new AdminUI($service);
 
     add_action('admin_menu', static function () use ($ui): void {
