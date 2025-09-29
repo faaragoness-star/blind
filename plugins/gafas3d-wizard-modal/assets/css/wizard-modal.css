@@ -1,2 +1,9 @@
 /* Stub inicial; TODO(doc §estilos accesibles) */
-.g3d-wizard-modal__overlay[hidden] { display: none; }
+[hidden] {
+  display: none;
+}
+
+.g3d-wizard-modal :focus {
+  outline: 2px solid;
+  outline-offset: 2px;
+}
