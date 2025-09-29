@@ -56,7 +56,7 @@ final class GlbIngestionValidator
             return;
         }
 
-        $errors[] = new GlbValidationError('E_ASSET_MISSING', 'GLB asset is required.');
+        $errors[] = new GlbValidationError('E_ASSET_MISSING', 'Asset missing.');
     }
 
     /**
@@ -74,10 +74,7 @@ final class GlbIngestionValidator
             return;
         }
 
-        $errors[] = new GlbValidationError(
-            'E_FILE_TOO_LARGE',
-            sprintf('GLB exceeds the maximum allowed size of %d bytes.', $this->maxFileSizeBytes)
-        );
+        $errors[] = new GlbValidationError('E_FILE_TOO_LARGE', 'File too large.');
     }
 
     /**
@@ -103,7 +100,7 @@ final class GlbIngestionValidator
             return;
         }
 
-        $errors[] = new GlbValidationError('E_SCALE_INVALID', 'Scene scale must use millimeters.');
+        $errors[] = new GlbValidationError('E_SCALE_INVALID', 'Scale invalid.');
     }
 
     /**
@@ -117,12 +114,12 @@ final class GlbIngestionValidator
 
         $isUpAxisValid = is_string($upAxis) && strtoupper(trim($upAxis)) === 'Z';
         if (!$isUpAxisValid) {
-            $errors[] = new GlbValidationError('E_AXES_INVALID', 'Scene up axis must be Z+ (Z↑).');
+            $errors[] = new GlbValidationError('E_AXES_INVALID', 'Axes invalid.');
         }
 
         $isPivotAligned = is_bool($pivotAligned) ? $pivotAligned : ($pivotAligned === 1 || $pivotAligned === '1');
         if (!$isPivotAligned) {
-            $errors[] = new GlbValidationError('E_AXES_INVALID', 'Pivot must be aligned to the origin.');
+            $errors[] = new GlbValidationError('E_AXES_INVALID', 'Pivot invalid.');
         }
     }
 
@@ -156,10 +153,7 @@ final class GlbIngestionValidator
 
         foreach ($requiredProps as $prop) {
             if (!$this->isFilled($props, $prop)) {
-                $errors[] = new GlbValidationError(
-                    'E_PROP_MISSING',
-                    sprintf('Missing required prop: %s.', $prop)
-                );
+                $errors[] = new GlbValidationError('E_PROP_MISSING', sprintf('Prop missing: %s.', $prop));
             }
         }
     }
@@ -188,10 +182,7 @@ final class GlbIngestionValidator
 
         foreach ($requiredAnchors as $anchor) {
             if (!in_array($anchor, $anchors, true)) {
-                $errors[] = new GlbValidationError(
-                    'E_ANCHOR_MISSING',
-                    sprintf('Missing required anchor: %s.', $anchor)
-                );
+                $errors[] = new GlbValidationError('E_ANCHOR_MISSING', sprintf('Anchor missing: %s.', $anchor));
             }
         }
     }
@@ -203,7 +194,7 @@ final class GlbIngestionValidator
     private function validateSlots(array $metadata, array &$errors): void
     {
         if (!isset($metadata['slots_detectados']) || !is_array($metadata['slots_detectados'])) {
-            $errors[] = new GlbValidationError('E_SLOTS_EMPTY', 'slots_detectados must include at least one slot.');
+            $errors[] = new GlbValidationError('E_SLOTS_EMPTY', 'Slots empty.');
             return;
         }
 
@@ -219,7 +210,7 @@ final class GlbIngestionValidator
             return;
         }
 
-        $errors[] = new GlbValidationError('E_SLOTS_EMPTY', 'slots_detectados must include at least one slot.');
+        $errors[] = new GlbValidationError('E_SLOTS_EMPTY', 'Slots empty.');
     }
 
     /**

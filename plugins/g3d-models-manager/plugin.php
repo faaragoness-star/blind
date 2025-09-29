@@ -23,3 +23,5 @@ register_activation_hook(__FILE__, static function (): void {
 register_deactivation_hook(__FILE__, static function (): void {
     // Placeholder de desactivación (nop).
 });
+
+require_once __DIR__ . '/includes/hooks-ingestion.php';
