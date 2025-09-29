@@ -19,7 +19,6 @@ if (!defined('ABSPATH')) {
 register_activation_hook(__FILE__, static function (): void {
     // Placeholder de activación (nop).
 });
-
 register_deactivation_hook(__FILE__, static function (): void {
     // Placeholder de desactivación (nop).
 });
