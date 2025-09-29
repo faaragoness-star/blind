@@ -30,25 +30,19 @@ if (!class_exists('WP_REST_Request')) {
         private array $headers = [];
 
         private ?string $body = null;
-        private string $method = 'POST';
-        private string $route  = '';
 
         /**
          * @param array<string,mixed>|string $arg1  Array de params, o método HTTP (p.ej. 'POST')
-         * @param ?string                    $route Ruta (p.ej. '/g3d/v1/verify') si $arg1 es string
+         * @param ?string                    $route Ruta (p.ej. '/g3d/v1/verify') si $arg1 es string (ignorada)
          */
         public function __construct(array|string $arg1 = [], ?string $route = null)
         {
             if (is_array($arg1)) {
                 $this->params = $arg1;
-                $this->method = 'POST';
-                $this->route  = $route ?? '';
                 return;
             }
-
-            // Forma WP: método + ruta
-            $this->method = strtoupper($arg1);
-            $this->route  = $route ?? '';
+            // Forma WP: método + ruta. Para nuestros tests no necesitamos almacenarlos.
+            // Aceptamos la firma para compatibilidad y no hacemos nada más aquí.
         }
 
         // --- Headers ---------------------------------------------------------
@@ -61,7 +55,6 @@ if (!class_exists('WP_REST_Request')) {
         public function get_header(string $name): ?string
         {
             $key = strtolower($name);
-
             return $this->headers[$key] ?? null;
         }
 
