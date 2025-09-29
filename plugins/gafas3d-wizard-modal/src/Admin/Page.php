@@ -1,6 +1,4 @@
 <?php
-
-
 declare(strict_types=1);
 
 namespace Gafas3d\WizardModal\Admin;
@@ -34,7 +32,7 @@ final class Page
     {
         echo '<div id="gafas3d-wizard-modal-root" class="gafas3d-wizard-modal-root">';
         echo '<!-- TODO: Definir IDs y clases exactos del contenedor raíz. Ver docs/plugin-4-gafas3d-wizard-modal.md §5.1. -->';
-        Modal::render();
-        echo '</div>';
+ Modal::render();
+ echo '</div>';
     }
 }
