@@ -4,122 +4,59 @@ declare(strict_types=1);
 
 namespace G3D\ModelsManager\Service;
 
-use G3D\ModelsManager\Validation\GlbIngestionValidator;
-use G3D\ModelsManager\Validation\GlbValidationError;
-
 final class GlbIngestionService
 {
-    private GlbIngestionValidator $validator;
-
-    public function __construct(?GlbIngestionValidator $validator = null)
-    {
-        $this->validator = $validator ?? new GlbIngestionValidator();
-    }
-
     /**
-     * @param array<string, mixed> $file
-     * @param array<string, mixed> $options
+     * @param array{tmp_name:string,name?:string,size?:int,type?:string,error?:int} $uploaded
      * @return array{
-     *     binding: array<string, mixed>,
-     *     validation: array{
-     *         is_valid: bool,
-     *         errors: list<array{code: string, message: string}>
-     *     }
+     *   binding: array<string,mixed>,
+     *   validation: array{
+     *     missing: string[],
+     *     type: array<int, array{field:string, expected:string}>,
+     *     ok: bool
+     *   }
      * }
      */
-    public function ingest(array $file, array $options = []): array
+    public function ingest(array $uploaded): array
     {
-        $metadata = $this->receiveFile($file);
-        $metadata = array_merge($metadata, $this->extractBasicMetadata($file));
+        $binding = [
+            'file_hash' => '',
+            'filesize_bytes' => 0,
+            'draco_enabled' => false,
+            'bounding_box' => null,
+            'slots_detectados' => [],
+            'anchors_present' => [],
+            'props' => [],
+            'object_name' => null,
+            'object_name_pattern' => null,
+            'model_code' => null,
+        ];
 
-        if (isset($options['piece_type'])) {
-            $metadata['piece_type'] = $options['piece_type'];
-        }
+        $validation = [
+            'missing' => [],
+            'type' => [],
+            'ok' => true,
+        ];
 
-        // TODO: docs/Plugin 1 — G3d Models Manager (ingesta Glb Y Binding Técnico)
-        //       — Informe.md §4.2 — extraer slots_detectados.
-        // TODO: docs/Plugin 1 — G3d Models Manager (ingesta Glb Y Binding Técnico)
-        //       — Informe.md §4.2 — extraer anchors_present.
-        // TODO: docs/Capa T — 3d Assets & Export — Actualizada V2 (revisada Con Controles Por Slot).md
-        //       — mapear props completos.
+        // Validación mínima del "upload".
+        if (!is_file($uploaded['tmp_name'])) {
+            $validation['missing'][] = 'g3d_glb_file';
+            $validation['ok'] = false;
 
-        $errors = $this->validator->validate($metadata);
-
-        $validationErrors = [];
-        foreach ($errors as $error) {
-            $validationErrors[] = [
-                'code' => $error->getCode(),
-                'message' => $error->getMessage(),
+            return [
+                'binding' => $binding,
+                'validation' => $validation,
             ];
         }
 
+        // Metadatos básicos
+        $binding['filesize_bytes'] = (int) (filesize($uploaded['tmp_name']) ?: 0);
+        $hash = @hash_file('sha256', $uploaded['tmp_name']);
+        $binding['file_hash'] = is_string($hash) ? $hash : '';
+
         return [
-            'binding' => $metadata,
-            'validation' => [
-                'is_valid' => $validationErrors === [],
-                'errors' => $validationErrors,
-            ],
+            'binding' => $binding,
+            'validation' => $validation,
         ];
-    }
-
-    /**
-     * @param array<string, mixed> $file
-     * @return array<string, mixed>
-     */
-    private function receiveFile(array $file): array
-    {
-        $metadata = [];
-
-        $fileName = $file['name'] ?? null;
-        if (is_string($fileName) && $fileName !== '') {
-            $metadata['file_name'] = $fileName;
-        }
-
-        $temporaryPath = $file['tmp_name'] ?? null;
-        if (is_string($temporaryPath) && $temporaryPath !== '' && is_readable($temporaryPath)) {
-            $metadata['file_contents'] = $temporaryPath;
-        }
-
-        return $metadata;
-    }
-
-    /**
-     * @param array<string, mixed> $file
-     * @return array<string, mixed>
-     */
-    private function extractBasicMetadata(array $file): array
-    {
-        $metadata = [];
-
-        if (isset($file['size'])) {
-            $metadata['filesize_bytes'] = (int) $file['size'];
-        }
-
-        $hash = $this->computeChecksum($file);
-        if ($hash !== null) {
-            $metadata['file_hash'] = $hash;
-        }
-
-        // TODO: docs/Plugin 1 — G3d Models Manager (ingesta Glb Y Binding Técnico) — Informe.md §4.1.
-        $metadata['draco_enabled'] = null;
-        // TODO: docs/Plugin 1 — G3d Models Manager (ingesta Glb Y Binding Técnico) — Informe.md §4.1.
-        $metadata['bounding_box'] = null;
-
-        return $metadata;
-    }
-
-    /**
-     * @param array<string, mixed> $file
-     */
-    private function computeChecksum(array $file): ?string
-    {
-        $tmpName = $file['tmp_name'] ?? null;
-        if (!is_string($tmpName) || $tmpName === '' || !is_readable($tmpName)) {
-            return null;
-        }
-
-        // TODO: docs/Plugin 1 — G3d Models Manager (ingesta Glb Y Binding Técnico)
-        //       — Informe.md §4.1 — confirmar algoritmo de checksum.
-        return hash_file('sha256', $tmpName);
     }
 }

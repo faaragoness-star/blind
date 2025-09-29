@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://blind.local/plugins/g3d-models-manager/schemas/glb-ingest.request.schema.json",
+  "title": "G3D Models Manager – GLB ingest request",
+  "type": "object",
+  "$comment": "TODO: docs/Plugin 1 — G3d Models Manager (ingesta GLB y binding técnico) — Informe.md §§4.1-4.2",
+  "properties": {
+    "piece_type": {
+      "type": "string",
+      "enum": ["FRAME", "TEMPLE", "RIMLESS"],
+      "$comment": "docs/Plugin 1 — … Informe.md §5"
+    },
+    "file_hash": {
+      "type": "string",
+      "$comment": "docs/Plugin 1 — … Informe.md §4.1"
+    },
+    "filesize_bytes": {
+      "type": "integer",
+      "$comment": "docs/Plugin 1 — … Informe.md §4.1"
+    },
+    "draco_enabled": {
+      "type": "boolean",
+      "$comment": "docs/Plugin 1 — … Informe.md §4.1"
+    },
+    "bounding_box": {
+      "type": "object",
+      "$comment": "TODO: docs/Plugin 1 — … Informe.md §4.1",
+      "additionalProperties": true
+    },
+    "object_name": {
+      "type": "string",
+      "$comment": "docs/Plugin 1 — … Informe.md §4.2"
+    },
+    "object_name_pattern": {
+      "type": "string",
+      "$comment": "docs/Plugin 1 — … Informe.md §4.2"
+    },
+    "model_code": {
+      "type": "string",
+      "$comment": "docs/Capa T — 3d Assets & Export — Actualizada V2 … Propiedades"
+    },
+    "props": {
+      "type": "object",
+      "$comment": "docs/Plugin 1 — … Informe.md §4.2 + docs/Capa T … Propiedades",
+      "properties": {
+        "socket_width_mm": {
+          "type": "number",
+          "$comment": "docs/Capa T … Montura FRAMED"
+        },
+        "socket_height_mm": {
+          "type": "number",
+          "$comment": "docs/Capa T … Montura FRAMED"
+        },
+        "variant": {
+          "type": "string",
+          "$comment": "docs/Capa T … Variant R/U"
+        },
+        "mount_type": {
+          "type": "string",
+          "$comment": "docs/Capa T … Mount type"
+        },
+        "lug_width_mm": {
+          "type": "number",
+          "$comment": "docs/Capa T … Patilla FRAMED"
+        },
+        "lug_height_mm": {
+          "type": "number",
+          "$comment": "docs/Capa T … Patilla FRAMED"
+        },
+        "side": {
+          "type": "string",
+          "$comment": "docs/Capa T … Patilla FRAMED"
+        },
+        "tol_w_mm": {
+          "type": "number",
+          "$comment": "docs/Capa T … Tol_w_mm"
+        },
+        "tol_h_mm": {
+          "type": "number",
+          "$comment": "docs/Capa T … Tol_h_mm"
+        },
+        "fit": {
+          "type": "string",
+          "$comment": "docs/Capa T … Patilla Rimless"
+        },
+        "rimless_family": {
+          "type": "string",
+          "$comment": "docs/Capa T … Rimless opcional"
+        }
+      },
+      "additionalProperties": true
+    },
+    "anchors_present": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "$comment": "docs/Plugin 1 — … Informe.md §4.2"
+    },
+    "slots_detectados": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "$comment": "docs/Plugin 1 — … Informe.md §4.2 + docs/Capa 1 … Slots"
+    },
+    "file_url": {
+      "type": "string",
+      "$comment": "docs/Plugin 1 — … Informe.md §5"
+    },
+    "analysis_report": {
+      "type": "object",
+      "$comment": "TODO: docs/Plugin 1 — … Informe.md §5",
+      "additionalProperties": true
+    },
+    "status": {
+      "type": "string",
+      "$comment": "docs/Plugin 1 — … Informe.md §5"
+    }
+  },
+  "required": [
+    "piece_type",
+    "file_hash",
+    "filesize_bytes",
+    "draco_enabled",
+    "object_name",
+    "model_code",
+    "props",
+    "anchors_present",
+    "slots_detectados"
+  ],
+  "additionalProperties": true
+}
