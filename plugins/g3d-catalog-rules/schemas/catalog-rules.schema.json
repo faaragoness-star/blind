@@ -1,0 +1,759 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.g3d.dev/plugins/g3d-catalog-rules/catalog-rules.schema.json",
+  "title": "G3D Catalog Draft",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "producto_id",
+    "piezas",
+    "modelos",
+    "materiales",
+    "colores",
+    "texturas",
+    "acabados",
+    "reglas"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "#/$defs/semver"
+    },
+    "producto_id": {
+      "$ref": "#/$defs/productId"
+    },
+    "piezas": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/pieza"
+      }
+    },
+    "modelos": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/modelo"
+      }
+    },
+    "materiales": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/material"
+      }
+    },
+    "colores": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/color"
+      }
+    },
+    "texturas": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/textura"
+      }
+    },
+    "acabados": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/acabado"
+      }
+    },
+    "morphs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/morph"
+      }
+    },
+    "i18n": {
+      "type": "object",
+      "patternProperties": {
+        "^[a-z]{2}-[A-Z]{2}$": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "reglas": {
+      "$ref": "#/$defs/reglas"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "$defs": {
+    "semver": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "editorialId": {
+      "type": "string",
+      "pattern": "^(prod|pieza|modelo|mat|col|tex|fin|morph|sku):[a-z0-9-]{3,48}$"
+    },
+    "productId": {
+      "type": "string",
+      "pattern": "^prod:[a-z0-9-]{3,48}$"
+    },
+    "piezaId": {
+      "type": "string",
+      "pattern": "^pieza:[a-z0-9-]{3,48}$"
+    },
+    "modeloId": {
+      "type": "string",
+      "pattern": "^modelo:[a-z0-9-]{3,48}$"
+    },
+    "materialId": {
+      "type": "string",
+      "pattern": "^mat:[a-z0-9-]{3,48}$"
+    },
+    "colorId": {
+      "type": "string",
+      "pattern": "^col:[a-z0-9-]{3,48}$"
+    },
+    "texturaId": {
+      "type": "string",
+      "pattern": "^tex:[a-z0-9-]{3,48}$"
+    },
+    "acabadoId": {
+      "type": "string",
+      "pattern": "^fin:[a-z0-9-]{3,48}$"
+    },
+    "morphId": {
+      "type": "string",
+      "pattern": "^morph:[a-z0-9-]{3,48}$"
+    },
+    "labelKey": {
+      "type": "string",
+      "minLength": 3
+    },
+    "slotName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "pieza": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label_key",
+        "order",
+        "visible"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/piezaId"
+        },
+        "label_key": {
+          "$ref": "#/$defs/labelKey"
+        },
+        "order": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "visible": {
+          "type": "boolean"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "modelo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "pieza_id",
+        "label_key",
+        "variant",
+        "side",
+        "g3d_model_id",
+        "slots_detectados"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/modeloId"
+        },
+        "pieza_id": {
+          "$ref": "#/$defs/piezaId"
+        },
+        "label_key": {
+          "$ref": "#/$defs/labelKey"
+        },
+        "variant": {
+          "type": "string",
+          "enum": [
+            "R",
+            "U"
+          ]
+        },
+        "side": {
+          "type": "string",
+          "enum": [
+            "l",
+            "r",
+            "n"
+          ]
+        },
+        "g3d_model_id": {
+          "type": "string",
+          "minLength": 3
+        },
+        "slots_detectados": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "binding": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source",
+            "object_name_pattern"
+          ],
+          "properties": {
+            "source": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "file_name"
+              ],
+              "properties": {
+                "file_name": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "object_name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "object_name_pattern": {
+              "type": "string",
+              "minLength": 1
+            },
+            "model_code": {
+              "type": "string",
+              "minLength": 1
+            },
+            "props": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "morph_capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "morph_aliases": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "material": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label_key",
+        "defaults"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/materialId"
+        },
+        "label_key": {
+          "$ref": "#/$defs/labelKey"
+        },
+        "defaults": {
+          "$ref": "#/$defs/materialDefaults"
+        },
+        "safety": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "espesor_min_mm": {
+              "type": "number",
+              "minimum": 0
+            },
+            "radio_min_mm": {
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "materialDefaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "material": {
+          "$ref": "#/$defs/materialId"
+        },
+        "color": {
+          "$ref": "#/$defs/colorId"
+        },
+        "textura": {
+          "$ref": "#/$defs/texturaId"
+        },
+        "acabado": {
+          "$ref": "#/$defs/acabadoId"
+        },
+        "shader_params": {
+          "$ref": "#/$defs/shaderParams"
+        }
+      }
+    },
+    "shaderParams": {
+      "type": "object",
+      "additionalProperties": {
+        "type": [
+          "string",
+          "number",
+          "boolean"
+        ]
+      }
+    },
+    "color": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label_key",
+        "hex",
+        "source"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/colorId"
+        },
+        "label_key": {
+          "$ref": "#/$defs/labelKey"
+        },
+        "hex": {
+          "type": "string",
+          "pattern": "^#[A-F0-9]{6}$"
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "embedded",
+            "tintable"
+          ]
+        },
+        "tint_rules": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        }
+      }
+    },
+    "textura": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label_key",
+        "slot",
+        "defines_color"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/texturaId"
+        },
+        "label_key": {
+          "$ref": "#/$defs/labelKey"
+        },
+        "slot": {
+          "$ref": "#/$defs/slotName"
+        },
+        "defines_color": {
+          "type": "boolean"
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "embedded",
+            "generated"
+          ]
+        },
+        "maps": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "generator_type": {
+          "type": "string"
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        "appearance": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "color_mode": {
+              "type": "string"
+            },
+            "tintable": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "acabado": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label_key"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/acabadoId"
+        },
+        "label_key": {
+          "$ref": "#/$defs/labelKey"
+        }
+      }
+    },
+    "morph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/morphId"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "geometrico",
+            "correctivo"
+          ]
+        },
+        "analytics_key": {
+          "type": "string"
+        }
+      }
+    },
+    "slotControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "affects_sku"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "material",
+            "color",
+            "textura",
+            "acabado",
+            "shader_params"
+          ]
+        },
+        "affects_sku": {
+          "type": "boolean"
+        }
+      }
+    },
+    "slotDefaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "material": {
+          "$ref": "#/$defs/materialId"
+        },
+        "color": {
+          "$ref": "#/$defs/colorId"
+        },
+        "textura": {
+          "$ref": "#/$defs/texturaId"
+        },
+        "acabado": {
+          "$ref": "#/$defs/acabadoId"
+        },
+        "shader_params": {
+          "$ref": "#/$defs/shaderParams"
+        }
+      }
+    },
+    "slotPairing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pair_id"
+      ],
+      "properties": {
+        "pair_id": {
+          "type": "string",
+          "minLength": 3
+        },
+        "sync_controls": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "material",
+              "color",
+              "textura"
+            ]
+          }
+        },
+        "unsynced_controls": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "acabado"
+            ]
+          }
+        }
+      }
+    },
+    "slotMapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": {
+        "^.+$": {
+          "type": "object",
+          "additionalProperties": false,
+          "patternProperties": {
+            "^.+$": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "controles",
+                "defaults",
+                "visible",
+                "order"
+              ],
+              "properties": {
+                "controles": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "$ref": "#/$defs/slotControl"
+                  }
+                },
+                "defaults": {
+                  "$ref": "#/$defs/slotDefaults"
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "order": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "pairing": {
+                  "$ref": "#/$defs/slotPairing"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "reglas": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "material_to_modelos",
+        "material_to_colores",
+        "material_to_texturas",
+        "defaults",
+        "encaje",
+        "slot_mapping_editorial"
+      ],
+      "properties": {
+        "material_to_modelos": {
+          "type": "object",
+          "additionalProperties": false,
+          "patternProperties": {
+            "^pieza:[a-z0-9-]{3,48}$": {
+              "type": "object",
+              "additionalProperties": false,
+              "patternProperties": {
+                "^mat:[a-z0-9-]{3,48}$": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "$ref": "#/$defs/modeloId"
+                  },
+                  "uniqueItems": true
+                }
+              }
+            }
+          }
+        },
+        "material_to_colores": {
+          "type": "object",
+          "additionalProperties": false,
+          "patternProperties": {
+            "^mat:[a-z0-9-]{3,48}$": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/colorId"
+              },
+              "uniqueItems": true
+            }
+          }
+        },
+        "material_to_texturas": {
+          "type": "object",
+          "additionalProperties": false,
+          "patternProperties": {
+            "^mat:[a-z0-9-]{3,48}$": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/texturaId"
+              },
+              "uniqueItems": true
+            }
+          }
+        },
+        "defaults": {
+          "type": "object",
+          "additionalProperties": false,
+          "patternProperties": {
+            "^mat:[a-z0-9-]{3,48}$": {
+              "$ref": "#/$defs/materialDefaults"
+            }
+          }
+        },
+        "encaje": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "clearance_por_material_mm": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "number"
+              }
+            },
+            "encaje_policy": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "driver",
+                "target",
+                "clearance_por_material_mm"
+              ],
+              "properties": {
+                "driver": {
+                  "$ref": "#/$defs/piezaId"
+                },
+                "target": {
+                  "type": "string",
+                  "enum": [
+                    "lug",
+                    "socket"
+                  ]
+                },
+                "clearance_por_material_mm": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "number"
+                  }
+                },
+                "max_k": {
+                  "type": "number"
+                },
+                "safety": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "espesor_min_mm": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "radio_min_mm": {
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "morph_rules": {
+          "type": "object",
+          "additionalProperties": false,
+          "patternProperties": {
+            "^modelo:[a-z0-9-]{3,48}$": {
+              "type": "object",
+              "additionalProperties": false,
+              "patternProperties": {
+                "^morph:[a-z0-9-]{3,48}$": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "range_norm",
+                    "maps_to"
+                  ],
+                  "properties": {
+                    "range_norm": {
+                      "type": "array",
+                      "minItems": 2,
+                      "maxItems": 2,
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "maps_to": {
+                      "$ref": "#/$defs/morphId"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "slot_mapping_editorial": {
+          "$ref": "#/$defs/slotMapping"
+        }
+      }
+    }
+  }
+}
