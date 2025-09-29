@@ -6,6 +6,9 @@ namespace G3D\ModelsManager\Admin;
 
 use G3D\ModelsManager\Service\GlbIngestionService;
 
+/**
+ * @phpstan-import-type IngestionResult from \G3D\ModelsManager\Service\GlbIngestionService
+ */
 final class AdminUI
 {
     private GlbIngestionService $service;
@@ -30,6 +33,7 @@ final class AdminUI
 
     public function renderIngestionPage(): void
     {
+        /** @var IngestionResult|null $result */
         $result = null;
 
         if (
@@ -45,12 +49,8 @@ final class AdminUI
         /** @var list<string> $errors */
         $errors = [];
 
-        if (is_array($result)) {
-            // Aquí PHPStan sabe que existen estas claves en $result.
-            /** @var array<string,mixed> $binding */
+        if ($result !== null) {
             $binding = $result['binding'];
-
-            /** @var array{missing:string[], type: array<int, array{field:string, expected:string}>, ok:bool} $validation */
             $validation = $result['validation'];
 
             if ($validation['missing'] !== []) {
