@@ -17,19 +17,6 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-register_activation_hook(__FILE__, static function (): void {
-    // Placeholder de activación (nop).
-});
-
-register_deactivation_hook(__FILE__, static function (): void {
-    // Placeholder de desactivación (nop).
-});
-
 add_action('init', static function (): void {
-    // Cargar traducciones desde plugins/g3d-catalog-rules/languages
-    load_plugin_textdomain(
-        'g3d-catalog-rules',
-        false,
-        dirname(plugin_basename(__FILE__)) . '/languages'
-    );
+    load_plugin_textdomain('g3d-catalog-rules', false, dirname(plugin_basename(__FILE__)) . '/languages');
 });
