@@ -1,59 +1,57 @@
 <?php
 // phpcs:ignoreFile
-
 declare(strict_types=1);
 
 require __DIR__ . '/../vendor/autoload.php';
 
+/**
+ * Stub mínimo de register_rest_route (no se prueba el router en sí).
+ */
 if (!function_exists('register_rest_route')) {
     function register_rest_route(string $namespace, string $route, array $args): void
     {
-        // Stub: routing is validated via controller tests.
+        // No-op: las rutas se validan a través de los tests del controlador.
     }
 }
 
+/**
+ * Stub de WP_REST_Request compatible con:
+ *   new WP_REST_Request('POST', '/ns/route')
+ *   new WP_REST_Request(['foo' => 'bar'])
+ * Soporta headers + body JSON para get_json_params().
+ */
 if (!class_exists('WP_REST_Request')) {
     class WP_REST_Request
     {
-        /**
-         * @var array<string, mixed>
-         */
+        /** @var array<string,mixed> */
         private array $params = [];
 
-        /**
-         * @var array<string, string>
-         */
+        /** @var array<string,string> */
         private array $headers = [];
 
-        private string $method = 'POST';
         private ?string $body = null;
+        private string $method = 'POST';
+        private string $route  = '';
 
         /**
-         * Admite dos firmas:
-         *  A) new WP_REST_Request([payload...])
-         *  B) new WP_REST_Request('POST', '/route', [payload...])
+         * @param array<string,mixed>|string $arg1  Array de params, o método HTTP (p.ej. 'POST')
+         * @param ?string                    $route Ruta (p.ej. '/g3d/v1/verify') si $arg1 es string
          */
-        public function __construct(mixed $methodOrParams = [], string $route = '', array $attributes = [])
+        public function __construct(array|string $arg1 = [], ?string $route = null)
         {
-            if (is_array($methodOrParams)) {
-                $this->params = $methodOrParams;
+            if (is_array($arg1)) {
+                $this->params = $arg1;
+                $this->method = 'POST';
+                $this->route  = $route ?? '';
                 return;
             }
 
-            // Firma estilo WP: ($method, $route, $attributes)
-            $this->method  = is_string($methodOrParams) ? strtoupper($methodOrParams) : 'POST';
-            $this->params  = $attributes;
+            // Forma WP: método + ruta
+            $this->method = strtoupper($arg1);
+            $this->route  = $route ?? '';
         }
 
-        /**
-         * @return array<string, mixed>
-         */
-        public function get_json_params(): array
-        {
-            return $this->params;
-        }
-
-        // --- Compat helpers usados por los tests ---
+        // --- Headers ---------------------------------------------------------
 
         public function set_header(string $name, string $value): void
         {
@@ -63,18 +61,11 @@ if (!class_exists('WP_REST_Request')) {
         public function get_header(string $name): ?string
         {
             $key = strtolower($name);
+
             return $this->headers[$key] ?? null;
         }
 
-        public function set_method(string $method): void
-        {
-            $this->method = strtoupper($method);
-        }
-
-        public function get_method(): string
-        {
-            return $this->method;
-        }
+        // --- Body ------------------------------------------------------------
 
         public function set_body(?string $body): void
         {
@@ -85,15 +76,36 @@ if (!class_exists('WP_REST_Request')) {
         {
             return $this->body;
         }
+
+        /**
+         * Devuelve el payload JSON si:
+         *  - Content-Type incluye "application/json", y
+         *  - hay body JSON parseable.
+         * En otro caso, devuelve los params proporcionados al constructor.
+         *
+         * @return array<string,mixed>
+         */
+        public function get_json_params(): array
+        {
+            $ct = $this->get_header('Content-Type') ?? $this->get_header('content-type') ?? '';
+
+            if ($this->body !== null && stripos($ct, 'application/json') !== false) {
+                $decoded = json_decode($this->body, true);
+                return is_array($decoded) ? $decoded : [];
+            }
+
+            return $this->params;
+        }
     }
 }
 
+/**
+ * Stub de WP_REST_Response.
+ */
 if (!class_exists('WP_REST_Response')) {
     class WP_REST_Response
     {
-        /**
-         * @var mixed
-         */
+        /** @var mixed */
         private $data;
 
         private int $status;
@@ -116,19 +128,20 @@ if (!class_exists('WP_REST_Response')) {
     }
 }
 
+/**
+ * Stub de WP_Error.
+ */
 if (!class_exists('WP_Error')) {
     class WP_Error
     {
         private string $code;
         private string $message;
 
-        /**
-         * @var array<string, mixed>
-         */
+        /** @var array<string,mixed> */
         private array $data;
 
         /**
-         * @param array<string, mixed> $data
+         * @param array<string,mixed> $data
          */
         public function __construct(string $code, string $message, array $data = [])
         {
@@ -148,7 +161,7 @@ if (!class_exists('WP_Error')) {
         }
 
         /**
-         * @return array<string, mixed>
+         * @return array<string,mixed>
          */
         public function get_error_data(): array
         {
