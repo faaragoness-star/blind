@@ -8,7 +8,6 @@ use G3D\AdminOps\Api\AuditWriteController;
 use G3D\AdminOps\Audit\InMemoryEditorialActionLogger;
 use PHPUnit\Framework\TestCase;
 use Test_Env\Perms;
-use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
 
@@ -29,8 +28,12 @@ final class AuditWriteRouteTest extends TestCase
             'context' => ['what' => 'modelo:rx-classic'],
         ]));
 
-        self::assertInstanceOf(WP_Error::class, $response);
-        self::assertSame(403, $response->get_error_data()['status'] ?? null);
+        self::assertInstanceOf(WP_REST_Response::class, $response);
+        self::assertSame(403, $response->get_status());
+        $data = $response->get_data();
+        self::assertIsArray($data);
+        self::assertFalse($data['ok']);
+        self::assertSame('rest_forbidden', $data['code']);
     }
 
     public function testBadRequestWhenMissingRequired(): void
@@ -43,9 +46,13 @@ final class AuditWriteRouteTest extends TestCase
             'context' => [],
         ]));
 
-        self::assertInstanceOf(WP_Error::class, $response);
-        self::assertSame(400, $response->get_error_data()['status'] ?? null);
-        $missing = $response->get_error_data()['missing_fields'] ?? [];
+        self::assertInstanceOf(WP_REST_Response::class, $response);
+        self::assertSame(400, $response->get_status());
+        $data = $response->get_data();
+        self::assertIsArray($data);
+        self::assertFalse($data['ok']);
+        self::assertSame('rest_missing_required_params', $data['code']);
+        $missing = $data['missing_fields'] ?? [];
         self::assertContains('context.what', $missing);
     }
 

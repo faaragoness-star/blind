@@ -8,7 +8,6 @@ use G3D\AdminOps\Api\AuditReadController;
 use G3D\AdminOps\Audit\InMemoryEditorialActionLogger;
 use PHPUnit\Framework\TestCase;
 use Test_Env\Perms;
-use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
 
@@ -25,8 +24,12 @@ final class AuditReadRouteTest extends TestCase
         $controller = new AuditReadController(new InMemoryEditorialActionLogger());
         $response = $controller->handle(new WP_REST_Request('GET', '/g3d/v1/admin-ops/audit'));
 
-        self::assertInstanceOf(WP_Error::class, $response);
-        self::assertSame(403, $response->get_error_data()['status'] ?? null);
+        self::assertInstanceOf(WP_REST_Response::class, $response);
+        self::assertSame(403, $response->get_status());
+        $data = $response->get_data();
+        self::assertIsArray($data);
+        self::assertFalse($data['ok']);
+        self::assertSame('rest_forbidden', $data['code']);
     }
 
     public function testOkReturnsEventsList(): void

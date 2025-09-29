@@ -7,6 +7,8 @@ namespace G3D\AdminOps\Api;
 use DateTimeImmutable;
 use G3D\AdminOps\Audit\EditorialActionLogger;
 use G3D\AdminOps\Rbac\Capabilities;
+use G3D\VendorBase\Rest\Responses;
+use G3D\VendorBase\Rest\Security;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -48,8 +50,16 @@ final class AuditWriteController
 
     public function handle(WP_REST_Request $req): WP_REST_Response|WP_Error
     {
+        $nonceCheck = Security::checkOptionalNonce($req);
+        if ($nonceCheck instanceof WP_Error) {
+            // TODO(doc §auth): si el doc requiere nonce, return $nonceCheck;
+        }
+
         if (!current_user_can(Capabilities::CAP_MANAGE_PUBLICATION)) {
-            return new WP_Error('rest_forbidden', 'Forbidden', ['status' => 403]);
+            return new WP_REST_Response(
+                Responses::error('rest_forbidden', 'rest_forbidden', 'Forbidden', ['status' => 403]),
+                403
+            );
         }
 
         /** @var array<string,mixed> $payload */
@@ -113,24 +123,32 @@ final class AuditWriteController
         }
 
         if ($missingFields !== []) {
-            return new WP_Error(
-                'rest_missing_required_params',
-                'Faltan campos requeridos.',
-                [
-                    'status' => 400,
-                    'missing_fields' => $missingFields,
-                ]
+            return new WP_REST_Response(
+                Responses::error(
+                    'rest_missing_required_params',
+                    'rest_missing_required_params',
+                    'Faltan campos requeridos.',
+                    [
+                        'status' => 400,
+                        'missing_fields' => $missingFields,
+                    ]
+                ),
+                400
             );
         }
 
         if ($typeErrors !== []) {
-            return new WP_Error(
-                'rest_invalid_param',
-                'Tipos inválidos detectados.',
-                [
-                    'status' => 400,
-                    'type_errors' => $typeErrors,
-                ]
+            return new WP_REST_Response(
+                Responses::error(
+                    'rest_invalid_param',
+                    'rest_invalid_param',
+                    'Tipos inválidos detectados.',
+                    [
+                        'status' => 400,
+                        'type_errors' => $typeErrors,
+                    ]
+                ),
+                400
             );
         }
 

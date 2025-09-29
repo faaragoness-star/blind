@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace G3D\CatalogRules\Api;
 
+use G3D\VendorBase\Rest\Responses;
+use G3D\VendorBase\Rest\Security;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -66,7 +68,7 @@ final class RulesReadController
             [
                 'methods' => 'GET',
                 'callback' => [$this, 'handle'],
-                'permission_callback' => '__return_true',
+                'permission_callback' => '__return_true', // público según docs/plugin-2-g3d-catalog-rules.md §2.
                 'args' => [
                     'producto_id' => [
                         'required' => true,
@@ -86,14 +88,23 @@ final class RulesReadController
      */
     public function handle(WP_REST_Request $request)
     {
+        $nonceCheck = Security::checkOptionalNonce($request);
+        if ($nonceCheck instanceof WP_Error) {
+            // TODO(doc §auth): si el doc requiere nonce, return $nonceCheck;
+        }
+
         $params = $this->getRequestParams($request);
         $productoId = isset($params['producto_id']) ? (string) $params['producto_id'] : '';
 
         if ($productoId === '') {
-            return new WP_Error(
-                'g3d_catalog_rules_missing_producto_id',
-                'Missing required query parameter: producto_id.',
-                ['status' => 400]
+            return new WP_REST_Response(
+                Responses::error(
+                    'g3d_catalog_rules_missing_producto_id',
+                    'g3d_catalog_rules_missing_producto_id',
+                    'Missing required query parameter: producto_id.',
+                    ['status' => 400]
+                ),
+                400
             );
         }
 

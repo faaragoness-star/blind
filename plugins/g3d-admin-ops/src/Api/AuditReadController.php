@@ -6,6 +6,8 @@ namespace G3D\AdminOps\Api;
 
 use G3D\AdminOps\Audit\AuditLogReader;
 use G3D\AdminOps\Rbac\Capabilities;
+use G3D\VendorBase\Rest\Responses;
+use G3D\VendorBase\Rest\Security;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -43,8 +45,16 @@ final class AuditReadController
 
     public function handle(WP_REST_Request $request): WP_REST_Response|WP_Error
     {
+        $nonceCheck = Security::checkOptionalNonce($request);
+        if ($nonceCheck instanceof WP_Error) {
+            // TODO(doc §auth): si el doc requiere nonce, return $nonceCheck;
+        }
+
         if (!current_user_can(Capabilities::CAP_MANAGE_PUBLICATION)) {
-            return new WP_Error('rest_forbidden', 'Forbidden', ['status' => 403]);
+            return new WP_REST_Response(
+                Responses::error('rest_forbidden', 'rest_forbidden', 'Forbidden', ['status' => 403]),
+                403
+            );
         }
 
         $events = $this->reader->getEvents();

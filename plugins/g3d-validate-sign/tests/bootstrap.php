@@ -4,6 +4,20 @@ declare(strict_types=1);
 
 require __DIR__ . '/../vendor/autoload.php';
 
+spl_autoload_register(static function (string $class): void {
+    if (!str_starts_with($class, 'G3D\\VendorBase\\')) {
+        return;
+    }
+
+    $relative = substr($class, strlen('G3D\\VendorBase\\'));
+    $relativePath = str_replace('\\', '/', $relative);
+    $file = __DIR__ . '/../../g3d-vendor-base-helper/src/' . $relativePath . '.php';
+
+    if (is_file($file)) {
+        require_once $file;
+    }
+});
+
 /**
  * Stub mínimo de register_rest_route (no se prueba el router en sí).
  */
@@ -73,6 +87,25 @@ if (!class_exists('WP_REST_Request')) {
         public function get_body(): ?string
         {
             return $this->body;
+        }
+
+        /**
+         * @return array<string,mixed>
+         */
+        public function get_params(): array
+        {
+            if ($this->params !== []) {
+                return $this->params;
+            }
+
+            return $this->get_json_params();
+        }
+
+        public function get_param(string $key): mixed
+        {
+            $params = $this->get_params();
+
+            return $params[$key] ?? null;
         }
 
         /**
