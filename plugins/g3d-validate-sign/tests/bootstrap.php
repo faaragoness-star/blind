@@ -21,20 +21,28 @@ if (!class_exists('WP_REST_Request')) {
         private array $params = [];
 
         /**
+         * @var array<string, string>
+         */
+        private array $headers = [];
+
+        private string $method = 'POST';
+        private ?string $body = null;
+
+        /**
          * Admite dos firmas:
          *  A) new WP_REST_Request([payload...])
-         *  B) new WP_REST_Request('POST', '/route', [payload...])  // estilo WordPress
+         *  B) new WP_REST_Request('POST', '/route', [payload...])
          */
         public function __construct(mixed $methodOrParams = [], string $route = '', array $attributes = [])
         {
             if (is_array($methodOrParams)) {
-                // Firma A: recibimos directamente el payload
                 $this->params = $methodOrParams;
                 return;
             }
 
-            // Firma B: ($method, $route, $attributes)
-            $this->params = $attributes;
+            // Firma estilo WP: ($method, $route, $attributes)
+            $this->method  = is_string($methodOrParams) ? strtoupper($methodOrParams) : 'POST';
+            $this->params  = $attributes;
         }
 
         /**
@@ -43,6 +51,39 @@ if (!class_exists('WP_REST_Request')) {
         public function get_json_params(): array
         {
             return $this->params;
+        }
+
+        // --- Compat helpers usados por los tests ---
+
+        public function set_header(string $name, string $value): void
+        {
+            $this->headers[strtolower($name)] = $value;
+        }
+
+        public function get_header(string $name): ?string
+        {
+            $key = strtolower($name);
+            return $this->headers[$key] ?? null;
+        }
+
+        public function set_method(string $method): void
+        {
+            $this->method = strtoupper($method);
+        }
+
+        public function get_method(): string
+        {
+            return $this->method;
+        }
+
+        public function set_body(?string $body): void
+        {
+            $this->body = $body;
+        }
+
+        public function get_body(): ?string
+        {
+            return $this->body;
         }
     }
 }
@@ -59,7 +100,7 @@ if (!class_exists('WP_REST_Response')) {
 
         public function __construct(mixed $data = null, int $status = 200)
         {
-            $this->data = $data;
+            $this->data   = $data;
             $this->status = $status;
         }
 
@@ -91,9 +132,9 @@ if (!class_exists('WP_Error')) {
          */
         public function __construct(string $code, string $message, array $data = [])
         {
-            $this->code = $code;
+            $this->code    = $code;
             $this->message = $message;
-            $this->data = $data;
+            $this->data    = $data;
         }
 
         public function get_error_code(): string
