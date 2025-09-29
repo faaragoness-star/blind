@@ -1,7 +1,4 @@
 <?php
-
-declare(strict_types=1);
-
 /**
  * Plugin Name: G3D Models Manager
  * Description: Esqueleto inicial (sin lógica). Ver docs/ para funciones y contratos.
@@ -13,17 +10,16 @@ declare(strict_types=1);
  * Text Domain: g3d-models-manager
  */
 
+declare(strict_types=1);
+
 if (!defined('ABSPATH')) {
     exit;
 }
 
-require_once __DIR__ . '/src/Validation/GlbValidationError.php';
-require_once __DIR__ . '/src/Validation/GlbIngestionValidator.php';
-
-register_activation_hook(__FILE__, function () {
+register_activation_hook(__FILE__, static function (): void {
     // Placeholder de activación (nop).
 });
 
-register_deactivation_hook(__FILE__, function () {
+register_deactivation_hook(__FILE__, static function (): void {
     // Placeholder de desactivación (nop).
 });
