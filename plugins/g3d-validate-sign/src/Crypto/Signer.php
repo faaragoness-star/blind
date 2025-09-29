@@ -25,7 +25,8 @@ class Signer
 
     /**
      * @param array<string, mixed> $payload
-     * @param string               $privateKey Raw o Base64 Ed25519 (64 bytes) según bóveda (ver docs/plugin-3-g3d-validate-sign.md §4.1).
+     * @param string               $privateKey Raw o Base64 Ed25519 (64 bytes) 
+     según bóveda (ver docs/plugin-3-g3d-validate-sign.md §4.1).
      *
      * @return array{sku_hash: string, signature: string, message: string}
      */
