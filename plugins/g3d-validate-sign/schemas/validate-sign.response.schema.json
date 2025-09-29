@@ -38,13 +38,25 @@
       "$comment": "Resumen textual siguiendo naming de docs/Capa 1 Identificadores Y Naming — Actualizada (slots Abiertos).md."
     },
     "price": {
-      "$comment": "Campo opcional price? (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md, API 2.1). TODO: Definir tipo."
+      "type": [
+        "number",
+        "null"
+      ],
+      "$comment": "Campo opcional price? (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md, API 2.1)."
     },
     "stock": {
-      "$comment": "Campo opcional stock? (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md, API 2.1). TODO: Definir tipo."
+      "type": [
+        "number",
+        "null"
+      ],
+      "$comment": "Campo opcional stock? (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md, API 2.1)."
     },
     "photo_url": {
-      "$comment": "Campo opcional photo_url? TTL 90 días (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md, sección SKU, firma y caducidad). TODO: Definir tipo."
+      "type": [
+        "string",
+        "null"
+      ],
+      "$comment": "Campo opcional photo_url? TTL 90 días (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md, sección SKU, firma y caducidad)."
     },
     "request_id": {
       "type": "string",

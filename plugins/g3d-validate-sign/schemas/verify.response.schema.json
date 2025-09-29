@@ -21,8 +21,11 @@
       "$comment": "reason_key snake_case para analítica (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md)."
     },
     "detail": {
-      "type": "string",
-      "$comment": "Descripción opcional. TODO: Definir formato exacto según docs/plugin-3-g3d-validate-sign.md §6.2."
+      "type": [
+        "string",
+        "null"
+      ],
+      "$comment": "Descripción opcional alineada con docs/plugin-3-g3d-validate-sign.md §6.2."
     },
     "request_id": {
       "type": "string",

@@ -30,6 +30,9 @@ add_action('rest_api_init', function () {
     $basePath = plugin_dir_path(__FILE__);
 
     require_once $basePath . 'src/Validation/RequestValidator.php';
+    require_once $basePath . 'src/Domain/Expiry.php';
+    require_once $basePath . 'src/Crypto/Signer.php';
+    require_once $basePath . 'src/Crypto/Verifier.php';
     require_once $basePath . 'src/Api/ValidateSignController.php';
     require_once $basePath . 'src/Api/VerifyController.php';
 
@@ -41,6 +44,25 @@ add_action('rest_api_init', function () {
         $basePath . 'schemas/verify.request.schema.json'
     );
 
-    (new \G3D\ValidateSign\Api\ValidateSignController($validateRequestValidator))->registerRoutes();
-    (new \G3D\ValidateSign\Api\VerifyController($verifyRequestValidator))->registerRoutes();
+    $expiry = new \G3D\ValidateSign\Domain\Expiry();
+    $signaturePrefix = apply_filters('g3d_validate_sign_signature_prefix', 'sig.v1');
+    $privateKey = apply_filters('g3d_validate_sign_private_key', '');
+    $publicKey = apply_filters('g3d_validate_sign_public_key', '');
+
+    $signer = new \G3D\ValidateSign\Crypto\Signer($signaturePrefix);
+    $verifier = new \G3D\ValidateSign\Crypto\Verifier([$signaturePrefix]);
+
+    (new \G3D\ValidateSign\Api\ValidateSignController(
+        $validateRequestValidator,
+        $signer,
+        $expiry,
+        $privateKey
+    ))->registerRoutes();
+
+    (new \G3D\ValidateSign\Api\VerifyController(
+        $verifyRequestValidator,
+        $verifier,
+        $expiry,
+        $publicKey
+    ))->registerRoutes();
 });
