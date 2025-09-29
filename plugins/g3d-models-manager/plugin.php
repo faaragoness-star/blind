@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Plugin Name: G3D Models Manager
  * Description: Esqueleto inicial (sin lógica). Ver docs/ para funciones y contratos.
