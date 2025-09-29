@@ -45,7 +45,11 @@ final class GlbIngestionValidator
     private function validateAssetPresence(array $metadata, array &$errors): void
     {
         $hasFileUrl = isset($metadata['file_url']) && is_string($metadata['file_url']) && $metadata['file_url'] !== '';
-        $hasFileHash = isset($metadata['file_hash']) && is_string($metadata['file_hash']) && $metadata['file_hash'] !== '';
+        $hasFileHash = (
+            isset($metadata['file_hash'])
+            && is_string($metadata['file_hash'])
+            && $metadata['file_hash'] !== ''
+        );
         $hasFileContents = isset($metadata['file_contents']) && $metadata['file_contents'] !== null;
 
         if ($hasFileUrl || $hasFileHash || $hasFileContents) {
