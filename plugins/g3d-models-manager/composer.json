@@ -1,0 +1,21 @@
+{
+    "name": "g3d/models-manager",
+    "description": "Development dependencies for the G3D Models Manager plugin tests.",
+    "type": "project",
+    "require": {},
+    "require-dev": {
+        "phpunit/phpunit": "^10.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "G3D\\ModelsManager\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "G3D\\ModelsManager\\Tests\\": "tests/"
+        }
+    },
+    "minimum-stability": "stable",
+    "license": "proprietary"
+}
