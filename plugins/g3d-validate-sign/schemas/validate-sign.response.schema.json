@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://blind.local/plugins/g3d-validate-sign/schemas/validate-sign.response.schema.json",
+  "title": "POST /validate-sign response",
+  "type": "object",
+  "required": [
+    "ok",
+    "sku_hash",
+    "sku_signature",
+    "expires_at",
+    "snapshot_id",
+    "summary",
+    "request_id"
+  ],
+  "properties": {
+    "ok": {
+      "type": "boolean",
+      "$comment": "Debe ser true en caso de éxito según docs/plugin-3-g3d-validate-sign.md §6.1."
+    },
+    "sku_hash": {
+      "type": "string",
+      "$comment": "SHA-256 del estado canónico (ver docs/plugin-3-g3d-validate-sign.md §6.1)."
+    },
+    "sku_signature": {
+      "type": "string",
+      "$comment": "Firma sig.vN Ed25519 (ver docs/plugin-3-g3d-validate-sign.md §6.1)."
+    },
+    "expires_at": {
+      "type": "string",
+      "$comment": "Fecha en ISO8601 con TTL configurado (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md, sección SKU, firma y caducidad)."
+    },
+    "snapshot_id": {
+      "type": "string",
+      "$comment": "ID del snapshot usado en la validación (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md)."
+    },
+    "summary": {
+      "type": "string",
+      "$comment": "Resumen textual siguiendo naming de docs/Capa 1 Identificadores Y Naming — Actualizada (slots Abiertos).md."
+    },
+    "price": {
+      "$comment": "Campo opcional price? (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md, API 2.1). TODO: Definir tipo."
+    },
+    "stock": {
+      "$comment": "Campo opcional stock? (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md, API 2.1). TODO: Definir tipo."
+    },
+    "photo_url": {
+      "$comment": "Campo opcional photo_url? TTL 90 días (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md, sección SKU, firma y caducidad). TODO: Definir tipo."
+    },
+    "request_id": {
+      "type": "string",
+      "$comment": "Identificador para auditoría y observabilidad (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md)."
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://blind.local/plugins/g3d-validate-sign/schemas/verify.request.schema.json",
+  "title": "POST /verify request",
+  "type": "object",
+  "required": [
+    "sku_hash",
+    "sku_signature",
+    "snapshot_id"
+  ],
+  "properties": {
+    "sku_hash": {
+      "type": "string",
+      "$comment": "Hash determinista de SKU según docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md, sección SKU, firma y caducidad."
+    },
+    "sku_signature": {
+      "type": "string",
+      "$comment": "Firma Ed25519 sig.vN según docs/plugin-3-g3d-validate-sign.md §6.2."
+    },
+    "snapshot_id": {
+      "type": "string",
+      "$comment": "Snapshot a verificar (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md)."
+    }
+  },
+  "additionalProperties": true
+}

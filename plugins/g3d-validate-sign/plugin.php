@@ -25,3 +25,22 @@ register_deactivation_hook(__FILE__, function () {
 add_action('init', function () {
     load_plugin_textdomain('g3d-validate-sign', false, dirname(plugin_basename(__FILE__)) . '/languages');
 });
+
+add_action('rest_api_init', function () {
+    $basePath = plugin_dir_path(__FILE__);
+
+    require_once $basePath . 'src/Validation/RequestValidator.php';
+    require_once $basePath . 'src/Api/ValidateSignController.php';
+    require_once $basePath . 'src/Api/VerifyController.php';
+
+    $validateRequestValidator = new \G3D\ValidateSign\Validation\RequestValidator(
+        $basePath . 'schemas/validate-sign.request.schema.json'
+    );
+
+    $verifyRequestValidator = new \G3D\ValidateSign\Validation\RequestValidator(
+        $basePath . 'schemas/verify.request.schema.json'
+    );
+
+    (new \G3D\ValidateSign\Api\ValidateSignController($validateRequestValidator))->registerRoutes();
+    (new \G3D\ValidateSign\Api\VerifyController($verifyRequestValidator))->registerRoutes();
+});
