@@ -37,40 +37,31 @@ final class AdminUI
             && $_SERVER['REQUEST_METHOD'] === 'POST'
             && isset($_FILES['g3d_glb_file'])
         ) {
-            // Nota: confiar en GlbIngestionService para la validación real.
             $result = $this->service->ingest($_FILES['g3d_glb_file']);
         }
 
-        // Estructura esperada por typing:
-        // array{
-        //   binding: array<string,mixed>,
-        //   validation: array{
-        //     missing: array<string>,
-        //     type: array<int, array{field:string, expected:string}>,
-        //     ok: bool
-        //   }
-        // }|null
-        $binding = is_array($result) ? ($result['binding'] ?? []) : [];
-
-        // Construye lista de errores como strings a partir de 'validation'.
+        // Valores por defecto cuando no se ha enviado nada todavía.
+        $binding = [];
         /** @var list<string> $errors */
         $errors = [];
-        $validation = is_array($result) ? ($result['validation'] ?? null) : null;
 
-        if (is_array($validation)) {
-            $missing = $validation['missing'] ?? [];
-            if (is_array($missing) && $missing !== []) {
-                foreach ($missing as $field) {
-                    $errors[] = 'E_MISSING: ' . (string) $field;
+        if (is_array($result)) {
+            // Aquí PHPStan sabe que existen estas claves en $result.
+            /** @var array<string,mixed> $binding */
+            $binding = $result['binding'];
+
+            /** @var array{missing:string[], type: array<int, array{field:string, expected:string}>, ok:bool} $validation */
+            $validation = $result['validation'];
+
+            if ($validation['missing'] !== []) {
+                foreach ($validation['missing'] as $field) {
+                    $errors[] = 'E_MISSING: ' . $field;
                 }
             }
 
-            $typeErrors = $validation['type'] ?? [];
-            if (is_array($typeErrors) && $typeErrors !== []) {
-                foreach ($typeErrors as $tErr) {
-                    $field = isset($tErr['field']) ? (string) $tErr['field'] : '?';
-                    $expected = isset($tErr['expected']) ? (string) $tErr['expected'] : '?';
-                    $errors[] = sprintf('E_TYPE: %s expected %s', $field, $expected);
+            if ($validation['type'] !== []) {
+                foreach ($validation['type'] as $tErr) {
+                    $errors[] = sprintf('E_TYPE: %s expected %s', $tErr['field'], $tErr['expected']);
                 }
             }
         }
@@ -128,7 +119,7 @@ final class AdminUI
                     <p><strong>Errores</strong></p>
                     <ul>
                         <?php foreach ($errors as $error) : ?>
-                            <li><?php echo esc_html((string) $error); ?></li>
+                            <li><?php echo esc_html($error); ?></li>
                         <?php endforeach; ?>
                     </ul>
                 </div>
@@ -146,49 +137,34 @@ final class AdminUI
                     <label for="g3d_slots_detectados">
                         Slots detectados (lista de nombres tal cual vienen del GLB).
                     </label><br>
-                    <textarea
-                        id="g3d_slots_detectados"
-                        name="g3d_slots_detectados"
-                        rows="4"
-                        readonly
-                    ><?php echo esc_textarea($slotsValue); ?></textarea>
+                    <textarea id="g3d_slots_detectados" name="g3d_slots_detectados" rows="4" readonly><?php
+                        echo esc_textarea($slotsValue);
+                    ?></textarea>
                 </p>
 
                 <p>
                     <label for="g3d_anchors">
-                        Anchors obligatorios: Frame_Anchor, Temple_L_Anchor, Temple_R_Anchor,
-                        Socket_Cage (si aplica).
+                        Anchors obligatorios: Frame_Anchor, Temple_L_Anchor, Temple_R_Anchor, Socket_Cage (si aplica).
                     </label><br>
-                    <textarea
-                        id="g3d_anchors"
-                        name="g3d_anchors"
-                        rows="4"
-                        readonly
-                    ><?php echo esc_textarea($anchorsValue); ?></textarea>
+                    <textarea id="g3d_anchors" name="g3d_anchors" rows="4" readonly><?php
+                        echo esc_textarea($anchorsValue);
+                    ?></textarea>
                 </p>
 
                 <p>
                     <label for="g3d_props">
                         Props leídas del objeto: socket_*_mm, lug_*_mm, side, variant, mount_type, tolerancias.
                     </label><br>
-                    <textarea
-                        id="g3d_props"
-                        name="g3d_props"
-                        rows="4"
-                        readonly
-                    ><?php echo esc_textarea($propsValue); ?></textarea>
+                    <textarea id="g3d_props" name="g3d_props" rows="4" readonly><?php
+                        echo esc_textarea($propsValue);
+                    ?></textarea>
                 </p>
 
                 <p>
-                    <label for="g3d_object">
-                        Object name / pattern y model_code.
-                    </label><br>
-                    <textarea
-                        id="g3d_object"
-                        name="g3d_object"
-                        rows="3"
-                        readonly
-                    ><?php echo esc_textarea($objectValue); ?></textarea>
+                    <label for="g3d_object">Object name / pattern y model_code.</label><br>
+                    <textarea id="g3d_object" name="g3d_object" rows="3" readonly><?php
+                        echo esc_textarea($objectValue);
+                    ?></textarea>
                 </p>
 
                 <fieldset>
@@ -196,10 +172,7 @@ final class AdminUI
                     <p><strong>filesize_bytes</strong>: <?php echo esc_html($size); ?></p>
                     <p><strong>file_hash</strong>: <?php echo esc_html($hash); ?></p>
                     <p><strong>draco_enabled</strong>: <?php echo esc_html($draco); ?></p>
-                    <p>
-                        <strong>bounding_box</strong>:
-                        <pre><?php echo esc_html($bounding); ?></pre>
-                    </p>
+                    <p><strong>bounding_box</strong>: <pre><?php echo esc_html($bounding); ?></pre></p>
                 </fieldset>
 
                 <p class="submit">
