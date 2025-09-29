@@ -14,10 +14,10 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-register_activation_hook(__FILE__, function () {
-    // Placeholder de activación (nop).
+register_activation_hook(__FILE__, static function (): void {
+    // Placeholder de activación (no-op).
 });
 
-register_deactivation_hook(__FILE__, function () {
-    // Placeholder de desactivación (nop).
+register_deactivation_hook(__FILE__, static function (): void {
+    // Placeholder de desactivación (no-op).
 });
