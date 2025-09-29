@@ -47,18 +47,26 @@ add_action('admin_enqueue_scripts', static function (string $hook): void {
         return;
     }
 
+    $basePath = plugin_dir_path(__FILE__);
+
+    $cssFile = $basePath . 'assets/css/wizard.css';
+    $jsFile = $basePath . 'assets/js/wizard.js';
+
+    $cssVersion = file_exists($cssFile) ? (string) filemtime($cssFile) : '0';
+    $jsVersion = file_exists($jsFile) ? (string) filemtime($jsFile) : '0';
+
     wp_enqueue_style(
         'gafas3d-wizard-modal',
         plugins_url('assets/css/wizard.css', __FILE__),
         [],
-        '0.1.0'
+        $cssVersion
     );
 
     wp_enqueue_script(
         'gafas3d-wizard-modal',
         plugins_url('assets/js/wizard.js', __FILE__),
         [],
-        '0.1.0',
+        $jsVersion,
         true
     );
 });

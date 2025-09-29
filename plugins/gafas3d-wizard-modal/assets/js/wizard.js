@@ -9,34 +9,62 @@
         '[tabindex]:not([tabindex="-1"])'
     ];
 
-    const docRef = 'docs/plugin-4-gafas3d-wizard-modal.md §5';
+    const docSection = 'docs/plugin-4-gafas3d-wizard-modal.md §5';
 
     const overlay = document.querySelector('[data-g3d-wizard-modal-overlay]');
-    const dialog = overlay ? overlay.querySelector('[role="dialog"]') : null;
-    const openButton = document.querySelector('[data-g3d-wizard-modal-open]');
+    const dialog = overlay ? overlay.querySelector('.g3d-wizard-modal') : null;
     const closeButton = overlay ? overlay.querySelector('[data-g3d-wizard-modal-close]') : null;
-    let lastFocusedElement = null;
+    const focusGuards = overlay
+        ? Array.from(overlay.querySelectorAll('[data-g3d-wizard-focus-guard]'))
+        : [];
+    const openTriggers = Array.from(
+        document.querySelectorAll('[data-g3d-wizard-modal-open]')
+    );
 
-    if (!overlay || !dialog || !openButton || !closeButton) {
-        console.warn('TODO: Completar markup para el modal. Ver ' + docRef);
+    let lastFocusedElement = null;
+    let isOpen = false;
+
+    if (!overlay || !dialog || !closeButton) {
+        console.warn(
+            'TODO ' + docSection + ': completar estructura accesible del modal.'
+        );
         return;
+    }
+
+    if (!openTriggers.length) {
+        console.warn('TODO ' + docSection + ': definir disparadores para abrir el modal.');
+    }
+
+    if (!dialog.hasAttribute('tabindex')) {
+        dialog.setAttribute('tabindex', '-1');
     }
 
     function getFocusableElements() {
         return Array.from(
             dialog.querySelectorAll(focusableSelectors.join(','))
         ).filter(function (element) {
-            return element.offsetParent !== null || element === closeButton;
+            return !element.hasAttribute('disabled') && element.tabIndex !== -1;
         });
     }
 
+    function focusFirstElement() {
+        const focusable = getFocusableElements();
+
+        if (focusable.length > 0) {
+            focusable[0].focus({ preventScroll: true });
+        } else {
+            dialog.focus({ preventScroll: true });
+        }
+    }
+
     function trapFocus(event) {
-        if (overlay.hasAttribute('hidden') || event.key !== 'Tab') {
+        if (!isOpen || event.key !== 'Tab') {
             return;
         }
 
         const focusable = getFocusableElements();
-        if (!focusable.length) {
+
+        if (focusable.length === 0) {
             event.preventDefault();
             dialog.focus({ preventScroll: true });
             return;
@@ -47,46 +75,96 @@
 
         if (event.shiftKey && document.activeElement === firstElement) {
             event.preventDefault();
-            lastElement.focus();
+            lastElement.focus({ preventScroll: true });
         } else if (!event.shiftKey && document.activeElement === lastElement) {
             event.preventDefault();
-            firstElement.focus();
+            firstElement.focus({ preventScroll: true });
         }
     }
 
-    function onKeyDown(event) {
+    function handleFocusGuard(event) {
+        if (!isOpen) {
+            return;
+        }
+
+        const focusable = getFocusableElements();
+
+        if (!focusable.length) {
+            dialog.focus({ preventScroll: true });
+            return;
+        }
+
+        if (focusGuards[0] === event.target) {
+            focusable[focusable.length - 1].focus({ preventScroll: true });
+        } else {
+            focusable[0].focus({ preventScroll: true });
+        }
+    }
+
+    function onKeydown(event) {
+        if (!isOpen) {
+            return;
+        }
+
         if (event.key === 'Escape') {
             event.preventDefault();
-            closeModal();
+            close();
             return;
         }
 
         trapFocus(event);
     }
 
-    function openModal() {
-        overlay.removeAttribute('hidden');
-        lastFocusedElement = document.activeElement;
-
-        const focusable = getFocusableElements();
-        if (focusable.length) {
-            focusable[0].focus();
-        } else {
-            dialog.focus({ preventScroll: true });
+    function onOverlayClick(event) {
+        if (event.target === overlay) {
+            close();
         }
-
-        document.addEventListener('keydown', onKeyDown);
     }
 
-    function closeModal() {
+    function open(event) {
+        if (event && typeof event.preventDefault === 'function') {
+            event.preventDefault();
+        }
+
+        if (isOpen) {
+            return;
+        }
+
+        isOpen = true;
+        lastFocusedElement = document.activeElement;
+        overlay.removeAttribute('hidden');
+
+        focusFirstElement();
+
+        document.addEventListener('keydown', onKeydown);
+        overlay.addEventListener('click', onOverlayClick);
+        focusGuards.forEach(function (guard) {
+            guard.addEventListener('focus', handleFocusGuard);
+        });
+    }
+
+    function close() {
+        if (!isOpen) {
+            return;
+        }
+
+        isOpen = false;
         overlay.setAttribute('hidden', '');
-        document.removeEventListener('keydown', onKeyDown);
+
+        document.removeEventListener('keydown', onKeydown);
+        overlay.removeEventListener('click', onOverlayClick);
+        focusGuards.forEach(function (guard) {
+            guard.removeEventListener('focus', handleFocusGuard);
+        });
 
         if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
-            lastFocusedElement.focus();
+            lastFocusedElement.focus({ preventScroll: true });
         }
     }
 
-    openButton.addEventListener('click', openModal);
-    closeButton.addEventListener('click', closeModal);
+    openTriggers.forEach(function (trigger) {
+        trigger.addEventListener('click', open);
+    });
+
+    closeButton.addEventListener('click', close);
 })();
