@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace G3D\ModelsManager\Service;
 
 use G3D\ModelsManager\Validation\GlbIngestionValidator;
-use G3D\ModelsManager\Validation\GlbValidationError;
 
 final class GlbIngestionService
 {
@@ -19,7 +18,14 @@ final class GlbIngestionService
     /**
      * @param array<string, mixed> $file
      * @param array<string, mixed> $options
-     * @return array{binding: array<string, mixed>, errors: GlbValidationError[]}
+     * @return array{
+     *     binding: array<string, mixed>,
+     *     validation: array{
+     *         missing: string[],
+     *         type: array<int, array{field: string, expected: string}>,
+     *         ok: bool
+     *     }
+     * }
      */
     public function ingest(array $file, array $options = []): array
     {
@@ -37,11 +43,11 @@ final class GlbIngestionService
         // TODO: docs/Capa T — 3d Assets & Export — Actualizada V2 (revisada Con Controles Por Slot).md
         //       — mapear props completos.
 
-        $errors = $this->validator->validate($metadata);
+        $validation = $this->validator->validate($metadata);
 
         return [
             'binding' => $metadata,
-            'errors' => $errors,
+            'validation' => $validation,
         ];
     }
 

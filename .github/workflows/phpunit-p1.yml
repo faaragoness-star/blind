@@ -1,0 +1,31 @@
+name: PHPUnit P1 Models Manager
+
+on:
+  push:
+    branches:
+      - main
+      - feat/p1-glb-ingest-20250929
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  phpunit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+
+      - name: Install dependencies
+        working-directory: plugins/g3d-models-manager
+        run: composer install --prefer-dist --no-progress
+
+      - name: Run PHPUnit
+        working-directory: plugins/g3d-models-manager
+        run: vendor/bin/phpunit
