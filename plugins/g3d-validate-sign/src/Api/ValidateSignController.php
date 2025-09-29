@@ -87,7 +87,7 @@ class ValidateSignController
             'expires_at' => $this->expiry->format($expiresAt),
             'snapshot_id' => (string) ($payload['snapshot_id'] ?? ''),
             'summary' => '{{pieza}} · {{material}} — {{color}} · {{textura}} · {{acabado}}',
-            'price' => $payload['price'] ?? null,
+            'price' => (float) ($payload['price'] ?? 0.0),
             'stock' => $payload['stock'] ?? null,
             'photo_url' => $payload['photo_url'] ?? null,
             'request_id' => $this->generateRequestId(),
