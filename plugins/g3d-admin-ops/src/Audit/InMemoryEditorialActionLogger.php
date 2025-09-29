@@ -9,8 +9,8 @@ use InvalidArgumentException;
 final class InMemoryEditorialActionLogger implements AuditLogReader, EditorialActionLogger
 {
     /**
-     * @var list<array{actor_id:string, action:string, what:string, occurred_at:string, context:array<string,mixed>}> Registro
-     *      de acciones "quién/cuándo/qué" en memoria (docs/plugin-5-g3d-admin-ops.md §13).
+     * @var list<array{actor_id:string, action:string, what:string, occurred_at:string, context:array<string,mixed>}>
+     * Registro de acciones "quién/cuándo/qué" en memoria (docs/plugin-5-g3d-admin-ops.md §13).
      */
     private array $events = [];
 
@@ -18,12 +18,19 @@ final class InMemoryEditorialActionLogger implements AuditLogReader, EditorialAc
     {
         $what = $context['what'] ?? null;
         if (!is_string($what) || $what === '') {
-            throw new InvalidArgumentException('Missing context["what"] to registrar "qué" (docs/plugin-5-g3d-admin-ops.md §13).');
+            throw new InvalidArgumentException(
+                'Missing context["what"] to registrar "qué" '
+                . '(docs/plugin-5-g3d-admin-ops.md §13).'
+            );
         }
 
         $occurredAt = $context['occurred_at'] ?? gmdate('c');
         if (!is_string($occurredAt) || $occurredAt === '') {
-            throw new InvalidArgumentException('Invalid occurred_at context (docs/Capa 5 — Admin & Operaciones — Addenda Aplicada 2025-09-27.md §Auditoría y logs).');
+            throw new InvalidArgumentException(
+                'Invalid occurred_at context '
+                . '(docs/Capa 5 — Admin & Operaciones — Addenda Aplicada 2025-09-27.md '
+                . '§Auditoría y logs).'
+            );
         }
 
         unset($context['what'], $context['occurred_at']);
@@ -36,9 +43,13 @@ final class InMemoryEditorialActionLogger implements AuditLogReader, EditorialAc
             'context' => $context,
         ];
 
-        // TODO: persistir 90 días (docs/Capa 5 — Admin & Operaciones — Addenda Aplicada 2025-09-27.md §Auditoría y logs).
+        // TODO: persistir 90 días (docs/Capa 5 — Admin & Operaciones —
+        // Addenda Aplicada 2025-09-27.md §Auditoría y logs).
     }
 
+    /**
+     * @return list<array{actor_id:string, action:string, what:string, occurred_at:string, context:array<string,mixed>}>
+     */
     public function getEvents(): array
     {
         return $this->events;
