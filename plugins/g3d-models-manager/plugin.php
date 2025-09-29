@@ -20,3 +20,8 @@ if (!defined('ABSPATH')) {
 add_action('init', static function (): void {
     load_plugin_textdomain('g3d-models-manager', false, dirname(plugin_basename(__FILE__)) . '/languages');
 });
+
+add_action('rest_api_init', static function (): void {
+    $service = new \G3D\ModelsManager\Service\GlbIngestionService();
+    (new \G3D\ModelsManager\Api\IngestionController($service))->registerRoutes();
+});
