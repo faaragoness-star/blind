@@ -40,6 +40,18 @@ add_action('init', static function (): void {
 $plugin = new Plugin();
 $plugin->register();
 
+register_activation_hook(__FILE__, static function (): void {
+    // TODO(doc §RBAC roles->caps): asignar capacidades a roles según doc.
+    // Ejemplo (comentar si el doc no lo fija):
+    // $admin = get_role('administrator');
+    // if ($admin) {
+    //     $admin->add_cap(\G3D\AdminOps\Rbac\Capabilities::CAP_MANAGE_DRAFTS);
+    //     $admin->add_cap(\G3D\AdminOps\Rbac\Capabilities::CAP_RUN_VALIDATOR);
+    //     $admin->add_cap(\G3D\AdminOps\Rbac\Capabilities::CAP_MANAGE_PUBLICATION);
+    //     $admin->add_cap(\G3D\AdminOps\Rbac\Capabilities::CAP_MANAGE_CONFIGURATION);
+    // }
+});
+
 add_action('rest_api_init', static function (): void {
     $reader = new \G3D\AdminOps\Audit\InMemoryEditorialActionLogger();
     // TODO(doc §persistencia): sustituir por almacenamiento persistente cuando esté definido.
