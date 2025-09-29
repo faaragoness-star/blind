@@ -6,9 +6,12 @@
         "phpstan/phpstan": "^1.11",
         "php-stubs/wordpress-globals": "^0.2",
         "php-stubs/wordpress-stubs": "^6.4",
-        "phpunit/phpunit": "^11.2"
+        "phpunit/phpunit": "^11.2",
+        "squizlabs/php_codesniffer": "^4.0"
     },
     "scripts": {
-        "phpstan": "vendor/bin/phpstan analyse --memory-limit=512M"
+        "phpcs": "vendor/bin/phpcs --standard=PSR12 plugins/g3d-catalog-rules",
+        "phpstan": "vendor/bin/phpstan analyse --memory-limit=512M",
+        "test": "vendor/bin/phpunit --configuration plugins/g3d-catalog-rules/phpunit.xml.dist"
     }
 }
