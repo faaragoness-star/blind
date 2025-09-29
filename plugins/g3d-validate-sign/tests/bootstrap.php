@@ -18,14 +18,23 @@ if (!class_exists('WP_REST_Request')) {
         /**
          * @var array<string, mixed>
          */
-        private array $params;
+        private array $params = [];
 
         /**
-         * @param array<string, mixed> $params
+         * Admite dos firmas:
+         *  A) new WP_REST_Request([payload...])
+         *  B) new WP_REST_Request('POST', '/route', [payload...])  // estilo WordPress
          */
-        public function __construct(array $params = [])
+        public function __construct(mixed $methodOrParams = [], string $route = '', array $attributes = [])
         {
-            $this->params = $params;
+            if (is_array($methodOrParams)) {
+                // Firma A: recibimos directamente el payload
+                $this->params = $methodOrParams;
+                return;
+            }
+
+            // Firma B: ($method, $route, $attributes)
+            $this->params = $attributes;
         }
 
         /**
