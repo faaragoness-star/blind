@@ -47,7 +47,9 @@ final class ValidateSignRouteTest extends TestCase
             'photo_url' => 'https://cdn.example/snap.png',
         ];
 
-        $request = new WP_REST_Request($payload);
+        $request = new WP_REST_Request('POST', '/g3d/v1/validate-sign');
+        $request->set_header('Content-Type', 'application/json');
+        $request->set_body((string) json_encode($payload));
         $response = $controller->handle($request);
 
         self::assertInstanceOf(WP_REST_Response::class, $response);
@@ -85,7 +87,9 @@ final class ValidateSignRouteTest extends TestCase
             'state' => [],
         ];
 
-        $request = new WP_REST_Request($payload);
+        $request = new WP_REST_Request('POST', '/g3d/v1/validate-sign');
+        $request->set_header('Content-Type', 'application/json');
+        $request->set_body((string) json_encode($payload));
         $response = $controller->handle($request);
 
         self::assertInstanceOf(WP_Error::class, $response);

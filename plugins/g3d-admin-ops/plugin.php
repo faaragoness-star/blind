@@ -19,4 +19,4 @@ if (!defined('ABSPATH')) {
 
 add_action('init', static function (): void {
     load_plugin_textdomain('g3d-admin-ops', false, dirname(plugin_basename(__FILE__)) . '/languages');
-};
+});
