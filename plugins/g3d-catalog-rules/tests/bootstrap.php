@@ -4,16 +4,23 @@
 declare(strict_types=1);
 
 spl_autoload_register(static function (string $class): void {
-    if (!str_starts_with($class, 'G3dCatalogRules\\')) {
-        return;
-    }
+    $prefixes = [
+        'G3D\\CatalogRules\\',
+        'G3dCatalogRules\\',
+    ];
 
-    $relative = substr($class, strlen('G3dCatalogRules\\'));
-    $relativePath = str_replace('\\', '/', $relative);
-    $file = __DIR__ . '/../src/' . $relativePath . '.php';
+    foreach ($prefixes as $prefix) {
+        if (!str_starts_with($class, $prefix)) {
+            continue;
+        }
 
-    if (is_file($file)) {
-        require_once $file;
+        $relative = substr($class, strlen($prefix));
+        $relativePath = str_replace('\\', '/', $relative);
+        $file = __DIR__ . '/../src/' . $relativePath . '.php';
+
+        if (is_file($file)) {
+            require_once $file;
+        }
     }
 });
 
@@ -111,6 +118,34 @@ if (!class_exists('WP_REST_Response')) {
         public function get_status(): int
         {
             return $this->status;
+        }
+    }
+}
+
+if (!class_exists('WP_Error')) {
+    class WP_Error
+    {
+        /** @param array<string, mixed> $data */
+        public function __construct(private string $code, private string $message, private array $data = [])
+        {
+        }
+
+        public function get_error_code(): string
+        {
+            return $this->code;
+        }
+
+        public function get_error_message(): string
+        {
+            return $this->message;
+        }
+
+        /**
+         * @return array<string, mixed>
+         */
+        public function get_error_data(): array
+        {
+            return $this->data;
         }
     }
 }

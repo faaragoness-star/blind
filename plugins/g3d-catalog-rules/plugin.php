@@ -13,15 +13,24 @@
 
 declare(strict_types=1);
 
-use G3dCatalogRules\Api\CatalogRulesController;
+use G3D\CatalogRules\Api\RulesReadController;
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
 spl_autoload_register(static function (string $class): void {
-    if (str_starts_with($class, 'G3dCatalogRules\\')) {
-        $relative = substr($class, strlen('G3dCatalogRules\\'));
+    $prefixes = [
+        'G3D\\CatalogRules\\',
+        'G3dCatalogRules\\',
+    ];
+
+    foreach ($prefixes as $prefix) {
+        if (!str_starts_with($class, $prefix)) {
+            continue;
+        }
+
+        $relative = substr($class, strlen($prefix));
         $relativePath = str_replace('\\', '/', $relative);
         $file = __DIR__ . '/src/' . $relativePath . '.php';
 
@@ -36,6 +45,5 @@ add_action('init', static function (): void {
 });
 
 add_action('rest_api_init', static function (): void {
-    $controller = new CatalogRulesController();
-    $controller->registerRoutes();
+    (new RulesReadController())->registerRoutes();
 });
