@@ -11,7 +11,6 @@ use G3D\ValidateSign\Crypto\Signer;
 use G3D\ValidateSign\Domain\Expiry;
 use G3D\ValidateSign\Validation\RequestValidator;
 use PHPUnit\Framework\TestCase;
-use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
 
@@ -92,12 +91,15 @@ final class ValidateSignRouteTest extends TestCase
         $request->set_body((string) json_encode($payload));
         $response = $controller->handle($request);
 
-        self::assertInstanceOf(WP_Error::class, $response);
-        self::assertSame('rest_missing_required_params', $response->get_error_code());
-        self::assertSame('Faltan campos requeridos.', $response->get_error_message());
-        $errorData = $response->get_error_data();
-        self::assertArrayHasKey('request_id', $errorData);
-        self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $errorData['request_id']);
+        self::assertInstanceOf(WP_REST_Response::class, $response);
+        self::assertSame(400, $response->get_status());
+        $data = $response->get_data();
+        self::assertIsArray($data);
+        self::assertFalse($data['ok']);
+        self::assertSame('rest_missing_required_params', $data['code']);
+        self::assertSame('Faltan campos requeridos.', $data['detail']);
+        self::assertArrayHasKey('request_id', $data);
+        self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $data['request_id']);
     }
 
     public function testHandleReturnsWpErrorWhenTypeInvalid(): void
@@ -125,12 +127,15 @@ final class ValidateSignRouteTest extends TestCase
         $request->set_body((string) json_encode($payload));
         $response = $controller->handle($request);
 
-        self::assertInstanceOf(WP_Error::class, $response);
-        self::assertSame('rest_invalid_param', $response->get_error_code());
-        $errorData = $response->get_error_data();
-        self::assertArrayHasKey('type_errors', $errorData);
-        self::assertArrayHasKey('request_id', $errorData);
-        self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $errorData['request_id']);
+        self::assertInstanceOf(WP_REST_Response::class, $response);
+        self::assertSame(400, $response->get_status());
+        $data = $response->get_data();
+        self::assertIsArray($data);
+        self::assertFalse($data['ok']);
+        self::assertSame('rest_invalid_param', $data['code']);
+        self::assertArrayHasKey('type_errors', $data);
+        self::assertArrayHasKey('request_id', $data);
+        self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $data['request_id']);
     }
 
     private function createExpiry(DateTimeImmutable $now, int $ttlDays, bool $forceExpired): Expiry

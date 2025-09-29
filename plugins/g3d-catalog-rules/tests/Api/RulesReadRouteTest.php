@@ -6,7 +6,6 @@ namespace G3D\CatalogRules\Tests\Api;
 
 use G3D\CatalogRules\Api\RulesReadController;
 use PHPUnit\Framework\TestCase;
-use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
 
@@ -69,9 +68,13 @@ final class RulesReadRouteTest extends TestCase
 
         $response = $controller->handle($request);
 
-        self::assertInstanceOf(WP_Error::class, $response);
-        self::assertSame('g3d_catalog_rules_missing_producto_id', $response->get_error_code());
-        $errorData = $response->get_error_data();
-        self::assertSame(400, $errorData['status'] ?? null);
+        self::assertInstanceOf(WP_REST_Response::class, $response);
+        self::assertSame(400, $response->get_status());
+
+        $data = $response->get_data();
+        self::assertIsArray($data);
+        self::assertFalse($data['ok']);
+        self::assertSame('g3d_catalog_rules_missing_producto_id', $data['code']);
+        self::assertSame(400, $data['status'] ?? null);
     }
 }
