@@ -46,7 +46,9 @@ final class VerifyRouteTest extends TestCase
             'snapshot_id' => 'snap:2025-09-01',
         ];
 
-        $request = new WP_REST_Request($requestPayload);
+        $request = new WP_REST_Request('POST', '/g3d/v1/verify');
+        $request->set_header('Content-Type', 'application/json');
+        $request->set_body((string) json_encode($requestPayload));
         $response = $controller->handle($request);
 
         self::assertInstanceOf(WP_REST_Response::class, $response);
@@ -77,11 +79,13 @@ final class VerifyRouteTest extends TestCase
         $signed = $signer->sign($signingPayload, $privateKey, $expiresAt);
 
         $controller = new VerifyController($validator, $verifier, $expiry, $publicKey);
-        $request = new WP_REST_Request([
+        $request = new WP_REST_Request('POST', '/g3d/v1/verify');
+        $request->set_header('Content-Type', 'application/json');
+        $request->set_body((string) json_encode([
             'sku_hash' => $signed['sku_hash'],
             'sku_signature' => $signed['signature'],
             'snapshot_id' => 'snap:2025-09-01',
-        ]);
+        ]));
 
         $response = $controller->handle($request);
 
@@ -112,11 +116,13 @@ final class VerifyRouteTest extends TestCase
         $signed = $signer->sign($signingPayload, $privateKey, $expiresAt);
 
         $controller = new VerifyController($validator, $verifier, $expiry, $publicKey);
-        $request = new WP_REST_Request([
+        $request = new WP_REST_Request('POST', '/g3d/v1/verify');
+        $request->set_header('Content-Type', 'application/json');
+        $request->set_body((string) json_encode([
             'sku_hash' => $signed['sku_hash'],
             'sku_signature' => $signed['signature'],
             'snapshot_id' => 'snap:2025-08-01',
-        ]);
+        ]));
 
         $response = $controller->handle($request);
 

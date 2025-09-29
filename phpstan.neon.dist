@@ -1,0 +1,14 @@
+parameters:
+  level: 5
+  paths:
+    - plugins
+  scanFiles:
+    - vendor/php-stubs/wordpress-stubs/wordpress-stubs.php
+    - vendor/php-stubs/wordpress-globals/wordpress-globals.php
+  checkGenericClassInNonGenericObjectType: true
+  checkMissingIterableValueType: true
+  reportUnmatchedIgnoredErrors: true
+  ignoreErrors:
+    # TEMP: allow long HTML echo lines in UI skeletons
+    - message: '#Line exceeds 120 characters#'
+      reportUnmatched: false
