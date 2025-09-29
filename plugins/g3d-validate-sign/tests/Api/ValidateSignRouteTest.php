@@ -95,6 +95,42 @@ final class ValidateSignRouteTest extends TestCase
         self::assertInstanceOf(WP_Error::class, $response);
         self::assertSame('rest_missing_required_params', $response->get_error_code());
         self::assertSame('Faltan campos requeridos.', $response->get_error_message());
+        $errorData = $response->get_error_data();
+        self::assertArrayHasKey('request_id', $errorData);
+        self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $errorData['request_id']);
+    }
+
+    public function testHandleReturnsWpErrorWhenTypeInvalid(): void
+    {
+        $schemaPath = __DIR__ . '/../../schemas/validate-sign.request.schema.json';
+        $validator = new RequestValidator($schemaPath);
+        $expiry = $this->createExpiry(new DateTimeImmutable('2025-09-29T00:00:00+00:00'), 30, false);
+        $signer = new Signer('sig.v1');
+        $keyPair = sodium_crypto_sign_keypair();
+        $privateKey = sodium_crypto_sign_secretkey($keyPair);
+
+        $controller = new ValidateSignController($validator, $signer, $expiry, $privateKey);
+
+        $payload = [
+            'schema_version' => '1.0.0',
+            'snapshot_id' => 'snap:2025-09-01',
+            'producto_id' => 'prod:rx-classic',
+            'locale' => 'es-ES',
+            'state' => [],
+            'flags' => 'no-es-un-objeto',
+        ];
+
+        $request = new WP_REST_Request('POST', '/g3d/v1/validate-sign');
+        $request->set_header('Content-Type', 'application/json');
+        $request->set_body((string) json_encode($payload));
+        $response = $controller->handle($request);
+
+        self::assertInstanceOf(WP_Error::class, $response);
+        self::assertSame('rest_invalid_param', $response->get_error_code());
+        $errorData = $response->get_error_data();
+        self::assertArrayHasKey('type_errors', $errorData);
+        self::assertArrayHasKey('request_id', $errorData);
+        self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $errorData['request_id']);
     }
 
     private function createExpiry(DateTimeImmutable $now, int $ttlDays, bool $forceExpired): Expiry

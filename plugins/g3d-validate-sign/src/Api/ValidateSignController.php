@@ -47,6 +47,7 @@ class ValidateSignController
 
     public function handle(WP_REST_Request $request): WP_REST_Response|WP_Error
     {
+        $requestId = $this->generateRequestId();
         $payload = $request->get_json_params();
 
         if (!is_array($payload)) {
@@ -62,6 +63,7 @@ class ValidateSignController
                 [
                     'status' => 400,
                     'missing_fields' => $validation['missing'],
+                    'request_id' => $requestId,
                 ]
             );
         }
@@ -73,25 +75,44 @@ class ValidateSignController
                 [
                     'status' => 400,
                     'type_errors' => $validation['type'],
+                    'request_id' => $requestId,
                 ]
             );
         }
 
+        // TODO: Validar snapshot, IDs y reglas de catálogo según docs/plugin-3-g3d-validate-sign.md §6.1.
+
         $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
         $expiresAt = $this->expiry->calculate(null, $now);
         $signing = $this->signer->sign($payload, $this->privateKey, $expiresAt);
+
+        $snapshotId = isset($payload['snapshot_id']) ? (string) $payload['snapshot_id'] : '';
+
+        $summary = $payload['summary'] ?? '{{pieza}} · {{material}} — {{color}} · {{textura}} · {{acabado}}';
+// TODO: Calcular summary real (docs/Capa 1 Identificadores Y Naming —
+// Actualizada (slots Abiertos).md, plantilla resumen).
+
         $response = [
             'ok' => true,
             'sku_hash' => $signing['sku_hash'],
             'sku_signature' => $signing['signature'],
             'expires_at' => $this->expiry->format($expiresAt),
-            'snapshot_id' => (string) ($payload['snapshot_id'] ?? ''),
-            'summary' => '{{pieza}} · {{material}} — {{color}} · {{textura}} · {{acabado}}',
-            'price' => (float) ($payload['price'] ?? 0.0),
-            'stock' => $payload['stock'] ?? null,
-            'photo_url' => $payload['photo_url'] ?? null,
-            'request_id' => $this->generateRequestId(),
+            'snapshot_id' => $snapshotId,
+            'summary' => $summary,
+            'request_id' => $requestId,
         ];
+
+        if (array_key_exists('price', $payload)) {
+            $response['price'] = is_numeric($payload['price']) ? (float) $payload['price'] : $payload['price'];
+        }
+
+        if (array_key_exists('stock', $payload)) {
+            $response['stock'] = $payload['stock'];
+        }
+
+        if (array_key_exists('photo_url', $payload)) {
+            $response['photo_url'] = $payload['photo_url'];
+        }
 
         return new WP_REST_Response($response, 200);
     }

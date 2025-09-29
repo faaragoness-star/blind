@@ -47,6 +47,7 @@ class VerifyController
 
     public function handle(WP_REST_Request $request): WP_REST_Response|WP_Error
     {
+        $requestId = $this->generateRequestId();
         $payload = $request->get_json_params();
 
         if (!is_array($payload)) {
@@ -62,6 +63,7 @@ class VerifyController
                 [
                     'status' => 400,
                     'missing_fields' => $validation['missing'],
+                    'request_id' => $requestId,
                 ]
             );
         }
@@ -73,11 +75,11 @@ class VerifyController
                 [
                     'status' => 400,
                     'type_errors' => $validation['type'],
+                    'request_id' => $requestId,
                 ]
             );
         }
 
-        $requestId = $this->generateRequestId();
         $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
         $signature = (string) ($payload['sku_signature'] ?? '');
         $verification = $this->verifier->verify($payload, $signature, $this->publicKey);
