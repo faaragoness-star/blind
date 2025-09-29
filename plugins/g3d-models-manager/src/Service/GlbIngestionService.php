@@ -5,43 +5,31 @@ declare(strict_types=1);
 namespace G3D\ModelsManager\Service;
 
 /**
- * @phpstan-type IngestionProps array{
- *     socket_width_mm: float,
- *     socket_height_mm: float,
- *     variant: 'R'|'U',
- *     mount_type: 'FRAMED'|'RIMLESS',
- *     tol_w_mm: float,
- *     tol_h_mm: float
- * }
- * @phpstan-type IngestionBoundingBox array{
- *     min: array{0: float, 1: float, 2: float},
- *     max: array{0: float, 1: float, 2: float}
- * }
- * @phpstan-type IngestionBinding array{
+ * @phpstan-type Binding = array{
  *     file_hash: string,
  *     filesize_bytes: int,
  *     draco_enabled: bool,
- *     bounding_box: IngestionBoundingBox,
- *     piece_type: 'FRAME',
+ *     bounding_box: array{
+ *         min: array{float, float, float},
+ *         max: array{float, float, float}
+ *     },
+ *     piece_type: 'FRAME'|'TEMPLE'|'BRIDGE'|string,
+ *     slots_detectados: list<string>,
+ *     anchors_present: list<string>,
+ *     props: array<string, scalar|null>,
  *     object_name: string,
  *     object_name_pattern: string,
- *     model_code: string,
- *     props: IngestionProps,
- *     anchors_present: list<string>,
- *     slots_detectados: list<string>,
- *     scale_unit: string,
- *     scale_meters_per_unit: float,
- *     up_axis: string,
- *     pivot_at_origin: bool
+ *     model_code: string
  * }
- * @phpstan-type IngestionValidation array{
+ * @phpstan-type TypeError = array{field: string, expected: string}
+ * @phpstan-type Validation = array{
  *     missing: list<string>,
- *     type: list<array{field:string, expected:string}>,
+ *     type: list<TypeError>,
  *     ok: bool
  * }
- * @phpstan-type IngestionResult array{
- *     binding: IngestionBinding,
- *     validation: IngestionValidation
+ * @phpstan-type IngestionResult = array{
+ *     binding: Binding,
+ *     validation: Validation
  * }
  */
 final class GlbIngestionService
@@ -93,10 +81,6 @@ final class GlbIngestionService
             'props' => $this->buildProps($hash),
             'anchors_present' => $this->buildAnchors($hash),
             'slots_detectados' => $this->buildSlots($hash),
-            'scale_unit' => 'METER',
-            'scale_meters_per_unit' => $this->buildScale($hash),
-            'up_axis' => 'Z',
-            'pivot_at_origin' => $this->isPivotAtOrigin($hash),
         ];
 
         return [
@@ -107,7 +91,7 @@ final class GlbIngestionService
 
     /**
      * @return array<string, mixed>
-     * @phpstan-return IngestionBinding
+     * @phpstan-return Binding
      */
     private function emptyBinding(): array
     {
@@ -133,10 +117,6 @@ final class GlbIngestionService
             ],
             'anchors_present' => [],
             'slots_detectados' => [],
-            'scale_unit' => 'METER',
-            'scale_meters_per_unit' => 1.0,
-            'up_axis' => 'Z',
-            'pivot_at_origin' => true,
         ];
     }
 
@@ -146,8 +126,7 @@ final class GlbIngestionService
     }
 
     /**
-     * @return array{min: array{0: float, 1: float, 2: float}, max: array{0: float, 1: float, 2: float}}
-     * @phpstan-return IngestionBoundingBox
+     * @return array{min: array{float, float, float}, max: array{float, float, float}}
      */
     private function buildBoundingBox(string $hash): array
     {
@@ -187,8 +166,7 @@ final class GlbIngestionService
     }
 
     /**
-     * @return array<string, float|string>
-     * @phpstan-return IngestionProps
+     * @return array<string, scalar|null>
      */
     private function buildProps(string $hash): array
     {
@@ -225,16 +203,6 @@ final class GlbIngestionService
         return [
             'MAT_' . $slotBase,
         ];
-    }
-
-    private function buildScale(string $hash): float
-    {
-        return $this->normalizeHexToRange($this->getHexSegment($hash, 60, 4), 0.001, 0.01);
-    }
-
-    private function isPivotAtOrigin(string $hash): bool
-    {
-        return (hexdec($this->getHexSegment($hash, 4, 2)) % 2) === 1;
     }
 
     private function normalizeHexToRange(string $hex, float $min, float $max): float
