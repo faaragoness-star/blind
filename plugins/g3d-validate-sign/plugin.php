@@ -11,6 +11,7 @@
  * Text Domain: g3d-validate-sign
  */
 
+declare(strict_types=1);
 if (!defined('ABSPATH')) {
     exit;
 }
@@ -22,7 +23,7 @@ register_deactivation_hook(__FILE__, function () {
     // Placeholder de desactivación (nop).
 });
 
-add_action('init', function () {
+add_action('init', static function (): void {
     load_plugin_textdomain('g3d-validate-sign', false, dirname(plugin_basename(__FILE__)) . '/languages');
 });
 

@@ -12,10 +12,13 @@
  */
 
 declare(strict_types=1);
-
 if (!defined('ABSPATH')) {
     exit;
 }
+
+add_action('init', static function (): void {
+    load_plugin_textdomain('g3d-admin-ops', false, dirname(plugin_basename(__FILE__)) . '/languages');
+});
 
 require_once __DIR__ . '/src/Admin/Menu.php';
 require_once __DIR__ . '/src/Rbac/Capabilities.php';
@@ -27,10 +30,6 @@ register_activation_hook(__FILE__, static function (): void {
 
 register_deactivation_hook(__FILE__, static function (): void {
     // TODO: ver Capa5 §Checklists operativas.
-});
-
-add_action('plugins_loaded', static function (): void {
-    load_plugin_textdomain('g3d-admin-ops', false, dirname(plugin_basename(__FILE__)) . '/languages');
 });
 
 $adminOpsMenu = new \G3D\AdminOps\Admin\Menu();

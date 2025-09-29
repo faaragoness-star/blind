@@ -12,12 +12,13 @@
  */
 
 declare(strict_types=1);
-
-use Gafas3d\WizardModal\Admin\Page;
-
 if (!defined('ABSPATH')) {
     exit;
 }
+
+add_action('init', static function (): void {
+    load_plugin_textdomain('gafas3d-wizard-modal', false, dirname(plugin_basename(__FILE__)) . '/languages');
+});
 
 require_once __DIR__ . '/src/Admin/Page.php';
 require_once __DIR__ . '/src/UI/Modal.php';
@@ -30,16 +31,8 @@ register_deactivation_hook(__FILE__, static function (): void {
     // Placeholder de desactivación (nop).
 });
 
-add_action('init', static function (): void {
-    load_plugin_textdomain(
-        'gafas3d-wizard-modal',
-        false,
-        dirname(plugin_basename(__FILE__)) . '/languages'
-    );
-});
-
 add_action('admin_menu', static function (): void {
-    Page::register();
+    \Gafas3d\WizardModal\Admin\Page::register();
 });
 
 add_action('admin_enqueue_scripts', static function (string $hook): void {

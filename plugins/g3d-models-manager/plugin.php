@@ -12,10 +12,13 @@
  */
 
 declare(strict_types=1);
-
 if (!defined('ABSPATH')) {
     exit;
 }
+
+add_action('init', static function (): void {
+    load_plugin_textdomain('g3d-models-manager', false, dirname(plugin_basename(__FILE__)) . '/languages');
+});
 
 register_activation_hook(__FILE__, static function (): void {
     // Placeholder de activación (nop).

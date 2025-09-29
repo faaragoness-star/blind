@@ -11,6 +11,7 @@
  * Text Domain: g3d-vendor-base-helper
  */
 
+declare(strict_types=1);
 if (!defined('ABSPATH')) {
     exit;
 }
@@ -22,6 +23,6 @@ register_deactivation_hook(__FILE__, function () {
     // Placeholder de desactivación (nop).
 });
 
-add_action('init', function () {
+add_action('init', static function (): void {
     load_plugin_textdomain('g3d-vendor-base-helper', false, dirname(plugin_basename(__FILE__)) . '/languages');
 });

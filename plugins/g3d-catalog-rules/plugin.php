@@ -12,7 +12,6 @@
  */
 
 declare(strict_types=1);
-
 if (!defined('ABSPATH')) {
     exit;
 }
@@ -26,10 +25,5 @@ register_deactivation_hook(__FILE__, static function (): void {
 });
 
 add_action('init', static function (): void {
-    // Cargar traducciones desde plugins/g3d-catalog-rules/languages
-    load_plugin_textdomain(
-        'g3d-catalog-rules',
-        false,
-        dirname(plugin_basename(__FILE__)) . '/languages'
-    );
+    load_plugin_textdomain('g3d-catalog-rules', false, dirname(plugin_basename(__FILE__)) . '/languages');
 });
