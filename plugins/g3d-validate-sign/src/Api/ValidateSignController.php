@@ -89,8 +89,8 @@ class ValidateSignController
         $snapshotId = isset($payload['snapshot_id']) ? (string) $payload['snapshot_id'] : '';
 
         $summary = $payload['summary'] ?? '{{pieza}} · {{material}} — {{color}} · {{textura}} · {{acabado}}';
-        // TODO: Calcular summary real 
-        (docs/Capa 1 Identificadores Y Naming — Actualizada (slots Abiertos).md, plantilla resumen).
+// TODO: Calcular summary real (docs/Capa 1 Identificadores Y Naming —
+// Actualizada (slots Abiertos).md, plantilla resumen).
 
         $response = [
             'ok' => true,
