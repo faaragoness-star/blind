@@ -10,8 +10,11 @@
         "squizlabs/php_codesniffer": "^4.0"
     },
     "scripts": {
-        "phpcs": "vendor/bin/phpcs --standard=PSR12 plugins/g3d-catalog-rules",
+        "phpcs": "vendor/bin/phpcs --standard=PSR12 plugins/g3d-catalog-rules plugins/g3d-vendor-base-helper",
         "phpstan": "vendor/bin/phpstan analyse --memory-limit=512M",
-        "test": "vendor/bin/phpunit --configuration plugins/g3d-catalog-rules/phpunit.xml.dist"
+        "test": [
+            "vendor/bin/phpunit --configuration plugins/g3d-catalog-rules/phpunit.xml.dist",
+            "vendor/bin/phpunit --configuration plugins/g3d-vendor-base-helper/phpunit.xml.dist"
+        ]
     }
 }
