@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Plugin Name: G3D Models Manager
  * Description: Esqueleto inicial (sin lógica). Ver docs/ para funciones y contratos.
@@ -21,4 +22,3 @@ register_activation_hook(__FILE__, function () {
 register_deactivation_hook(__FILE__, function () {
     // Placeholder de desactivación (nop).
 });
-
