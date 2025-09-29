@@ -2,7 +2,7 @@
 
 /**
  * Plugin Name: G3D Models Manager
- * Description: Esqueleto inicial (sin lógica). Ver docs/ para funciones y contratos.
+ * Description: Esqueleto inicial (sin lógica). Ver docs/.
  * Version: 0.1.0
  * Requires at least: 6.3
  * Requires PHP: 8.2
@@ -12,6 +12,7 @@
  */
 
 declare(strict_types=1);
+
 if (!defined('ABSPATH')) {
     exit;
 }
@@ -19,12 +20,3 @@ if (!defined('ABSPATH')) {
 add_action('init', static function (): void {
     load_plugin_textdomain('g3d-models-manager', false, dirname(plugin_basename(__FILE__)) . '/languages');
 });
-
-register_activation_hook(__FILE__, static function (): void {
-    // Placeholder de activación (nop).
-});
-register_deactivation_hook(__FILE__, static function (): void {
-    // Placeholder de desactivación (nop).
-});
-
-require_once __DIR__ . '/includes/hooks-ingestion.php';
