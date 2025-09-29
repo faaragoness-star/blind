@@ -44,4 +44,5 @@ add_action('rest_api_init', static function (): void {
     $reader = new \G3D\AdminOps\Audit\InMemoryEditorialActionLogger();
     // TODO(doc §persistencia): sustituir por almacenamiento persistente cuando esté definido.
     (new \G3D\AdminOps\Api\AuditReadController($reader))->registerRoutes();
+    (new \G3D\AdminOps\Api\AuditWriteController($reader))->registerRoutes();
 });
