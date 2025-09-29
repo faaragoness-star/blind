@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace G3D\ValidateSign\Api;
 
+use DateTimeImmutable;
+use DateTimeZone;
+use G3D\ValidateSign\Crypto\Signer;
+use G3D\ValidateSign\Domain\Expiry;
 use G3D\ValidateSign\Validation\RequestValidator;
 use WP_Error;
 use WP_REST_Request;
@@ -12,10 +16,21 @@ use WP_REST_Response;
 class ValidateSignController
 {
     private RequestValidator $validator;
+    private Signer $signer;
+    private Expiry $expiry;
+    private string $privateKey;
 
-    public function __construct(RequestValidator $validator)
+    public function __construct(
+        RequestValidator $validator,
+        Signer $signer,
+        Expiry $expiry,
+        string $privateKey
+    )
     {
         $this->validator = $validator;
+        $this->signer = $signer;
+        $this->expiry = $expiry;
+        $this->privateKey = $privateKey;
     }
 
     public function registerRoutes(): void
@@ -63,20 +78,27 @@ class ValidateSignController
             );
         }
 
+        $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+        $expiresAt = $this->expiry->calculate(null, $now);
+        $signing = $this->signer->sign($payload, $this->privateKey, $expiresAt);
         $response = [
             'ok' => true,
-            'sku_hash' => 'TODO: SHA-256 canónico (ver plugin-3-g3d-validate-sign.md §6.1).',
-            'sku_signature' => 'TODO: Firma sig.vN Ed25519 (ver plugin-3-g3d-validate-sign.md §6.1).',
-            'expires_at' => 'TODO: ISO8601 + TTL (ver Capa 3 — Validación, Firma Y Caducidad — V2, API 2.1).',
-            'snapshot_id' => $payload['snapshot_id']
-                ?? 'TODO: snapshot_id eco (ver Capa 3 — Validación, Firma Y Caducidad — V2).',
-            'summary' => 'TODO: Plantilla resumen (ver Capa 1 Identificadores Y Naming).',
-            'price' => null, // TODO: Precio opcional (ver Capa 3 — Validación, Firma Y Caducidad — V2).
-            'stock' => null, // TODO: Stock opcional (ver Capa 3 — Validación, Firma Y Caducidad — V2).
-            'photo_url' => null, // TODO: URL TTL 90 días (ver Capa 3 — Validación, Firma Y Caducidad — V2).
-            'request_id' => 'TODO: request_id (ver Capa 3 — Validación, Firma Y Caducidad — V2, Observabilidad).',
+            'sku_hash' => $signing['sku_hash'],
+            'sku_signature' => $signing['signature'],
+            'expires_at' => $this->expiry->format($expiresAt),
+            'snapshot_id' => (string) ($payload['snapshot_id'] ?? ''),
+            'summary' => '{{pieza}} · {{material}} — {{color}} · {{textura}} · {{acabado}}',
+            'price' => $payload['price'] ?? null,
+            'stock' => $payload['stock'] ?? null,
+            'photo_url' => $payload['photo_url'] ?? null,
+            'request_id' => $this->generateRequestId(),
         ];
 
         return new WP_REST_Response($response, 200);
+    }
+
+    private function generateRequestId(): string
+    {
+        return bin2hex(random_bytes(16));
     }
 }
