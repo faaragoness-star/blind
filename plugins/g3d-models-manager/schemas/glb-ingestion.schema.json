@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://blind.dev/g3d-models-manager/glb-ingestion.schema.json",
+  "title": "G3D Models Manager GLB Ingestion",
+  "type": "object",
+  "properties": {
+    "file_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "file_hash": {
+      "type": "string",
+      "minLength": 1
+    },
+    "filesize_bytes": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 12582912
+    },
+    "draco_enabled": {
+      "type": ["boolean", "null"]
+    },
+    "bounding_box": {
+      "type": ["object", "null"],
+      "properties": {
+        "min": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "max": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      },
+      "required": ["min", "max"]
+    },
+    "piece_type": {
+      "type": "string",
+      "enum": ["FRAME", "TEMPLE", "RIMLESS"]
+    },
+    "object_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "object_name_pattern": {
+      "type": "string"
+    },
+    "model_code": {
+      "type": "string",
+      "minLength": 1
+    },
+    "props": {
+      "type": "object",
+      "properties": {
+        "socket_width_mm": {
+          "type": "number"
+        },
+        "socket_height_mm": {
+          "type": "number"
+        },
+        "variant": {
+          "type": "string",
+          "enum": ["R", "U"]
+        },
+        "mount_type": {
+          "type": "string",
+          "enum": ["FRAMED", "RIMLESS"]
+        },
+        "lug_width_mm": {
+          "type": "number"
+        },
+        "lug_height_mm": {
+          "type": "number"
+        },
+        "side": {
+          "type": "string",
+          "enum": ["L", "R"]
+        },
+        "tol_w_mm": {
+          "type": "number"
+        },
+        "tol_h_mm": {
+          "type": "number"
+        }
+      }
+    },
+    "anchors_present": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "slots_detectados": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "scale_unit": {
+      "type": "string"
+    },
+    "scale_meters_per_unit": {
+      "type": "number"
+    },
+    "up_axis": {
+      "type": "string",
+      "enum": ["Z", "z"]
+    },
+    "pivot_at_origin": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "file_hash",
+    "filesize_bytes",
+    "piece_type",
+    "model_code",
+    "props",
+    "anchors_present",
+    "slots_detectados"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "piece_type": {
+            "const": "FRAME"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "required": ["socket_width_mm", "socket_height_mm", "variant", "mount_type"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "piece_type": {
+            "const": "TEMPLE"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "required": ["lug_width_mm", "lug_height_mm", "side"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "piece_type": {
+            "const": "RIMLESS"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "props": {
+            "required": ["mount_type"]
+          }
+        }
+      }
+    }
+  ]
+}
