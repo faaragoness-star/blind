@@ -25,8 +25,7 @@ class VerifyController
         Verifier $verifier,
         Expiry $expiry,
         string $publicKey
-    )
-    {
+    ): void {
         $this->validator = $validator;
         $this->verifier = $verifier;
         $this->expiry = $expiry;
@@ -117,6 +116,8 @@ class VerifyController
 
         return new WP_REST_Response($response, 200);
     }
+}
+
 
     private function generateRequestId(): string
     {
