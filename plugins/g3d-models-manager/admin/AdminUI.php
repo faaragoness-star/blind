@@ -41,7 +41,7 @@ final class AdminUI
             $result = $this->service->ingest($_FILES['g3d_glb_file']);
         }
 
-        // Estructura esperada (según typing visto por PHPStan):
+        // Estructura esperada por typing:
         // array{
         //   binding: array<string,mixed>,
         //   validation: array{
@@ -52,20 +52,21 @@ final class AdminUI
         // }|null
         $binding = is_array($result) ? ($result['binding'] ?? []) : [];
 
-        // Construimos una lista de strings de error a partir de 'validation'.
+        // Construye lista de errores como strings a partir de 'validation'.
+        /** @var list<string> $errors */
         $errors = [];
         $validation = is_array($result) ? ($result['validation'] ?? null) : null;
 
         if (is_array($validation)) {
             $missing = $validation['missing'] ?? [];
-            if (is_array($missing)) {
+            if (is_array($missing) && $missing !== []) {
                 foreach ($missing as $field) {
                     $errors[] = 'E_MISSING: ' . (string) $field;
                 }
             }
 
             $typeErrors = $validation['type'] ?? [];
-            if (is_array($typeErrors)) {
+            if (is_array($typeErrors) && $typeErrors !== []) {
                 foreach ($typeErrors as $tErr) {
                     $field = isset($tErr['field']) ? (string) $tErr['field'] : '?';
                     $expected = isset($tErr['expected']) ? (string) $tErr['expected'] : '?';
@@ -122,7 +123,7 @@ final class AdminUI
         <div class="wrap">
             <h1>Ingesta GLB</h1>
 
-            <?php if (!empty($errors)) : ?>
+            <?php if ($errors !== []) : ?>
                 <div class="notice notice-error">
                     <p><strong>Errores</strong></p>
                     <ul>
