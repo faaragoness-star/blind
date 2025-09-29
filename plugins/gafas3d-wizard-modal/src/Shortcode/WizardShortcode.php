@@ -38,9 +38,16 @@ final class WizardShortcode
                 sprintf('id="%s"', esc_attr(self::ROOT_ID)),
                 sprintf(
                     'data-g3d-endpoint-rules="%s"',
-                    esc_attr('// TODO(docs/plugin-4-gafas3d-wizard-modal.md §9)')
+                    esc_attr('/wp-json/g3d/v1/catalog/rules')
                 ),
-                sprintf('data-g3d-endpoint-validate="%s"', esc_attr('/validate-sign')),
+                sprintf(
+                    'data-g3d-endpoint-validate="%s"',
+                    esc_attr('/wp-json/g3d/v1/validate-sign')
+                ),
+                sprintf(
+                    'data-g3d-endpoint-verify="%s"',
+                    esc_attr('/wp-json/g3d/v1/verify')
+                ),
             ];
 
             return sprintf(
