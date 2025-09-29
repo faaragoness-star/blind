@@ -19,7 +19,13 @@ final class GlbIngestionService
     /**
      * @param array<string, mixed> $file
      * @param array<string, mixed> $options
-     * @return array{binding: array<string, mixed>, errors: GlbValidationError[]}
+     * @return array{
+     *     binding: array<string, mixed>,
+     *     validation: array{
+     *         is_valid: bool,
+     *         errors: list<array{code: string, message: string}>
+     *     }
+     * }
      */
     public function ingest(array $file, array $options = []): array
     {
@@ -39,9 +45,20 @@ final class GlbIngestionService
 
         $errors = $this->validator->validate($metadata);
 
+        $validationErrors = [];
+        foreach ($errors as $error) {
+            $validationErrors[] = [
+                'code' => $error->getCode(),
+                'message' => $error->getMessage(),
+            ];
+        }
+
         return [
             'binding' => $metadata,
-            'errors' => $errors,
+            'validation' => [
+                'is_valid' => $validationErrors === [],
+                'errors' => $validationErrors,
+            ],
         ];
     }
 
