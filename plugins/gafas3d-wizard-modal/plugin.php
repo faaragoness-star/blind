@@ -13,7 +13,8 @@
 
 declare(strict_types=1);
 
-use Gafas3d\WizardModal\Front\Assets;
+use Gafas3d\WizardModal\PublicAssets\Assets;
+use Gafas3d\WizardModal\Shortcode\WizardShortcode;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -37,6 +38,7 @@ spl_autoload_register(static function (string $class): void {
 
 add_action('init', static function (): void {
     load_plugin_textdomain('gafas3d-wizard-modal', false, dirname(plugin_basename(__FILE__)) . '/languages');
+    WizardShortcode::register();
 });
 
-Assets::init(__FILE__);
+add_action('wp_enqueue_scripts', [Assets::class, 'register']);
