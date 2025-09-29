@@ -227,7 +227,7 @@ if (!function_exists('current_user_can')) {
     function current_user_can(string $cap): bool
     {
         // TODO(doc §auth)
-        return \Test_Env\Perms::check($cap);
+        return \Test_Env\Perms::allows($cap);
     }
 }
 
