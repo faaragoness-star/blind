@@ -52,9 +52,9 @@ class ValidateSignController
         Expiry $expiry,
         string $privateKey
     ) {
-        $this->validator = $validator;
-        $this->signer = $signer;
-        $this->expiry = $expiry;
+        $this->validator  = $validator;
+        $this->signer     = $signer;
+        $this->expiry     = $expiry;
         $this->privateKey = $privateKey;
     }
 
@@ -64,9 +64,10 @@ class ValidateSignController
             'g3d/v1',
             '/validate-sign',
             [
-                'methods' => 'POST',
+                'methods'  => 'POST',
                 'callback' => [$this, 'handle'],
-                // público según docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md §2.1.
+                // público según docs/Capa 3 — Validación, Firma y Caducidad — Actualizada
+                // (slots Abiertos) — V2 (urls).md §2.1.
                 'permission_callback' => static fn (): bool => true,
             ]
         );
@@ -80,7 +81,7 @@ class ValidateSignController
         }
 
         $requestId = $this->generateRequestId();
-        $payload = $request->get_json_params();
+        $payload   = $request->get_json_params();
 
         if (!is_array($payload)) {
             $payload = [];
@@ -89,25 +90,25 @@ class ValidateSignController
         $validation = $this->validator->validate($payload);
 
         if (!empty($validation['missing'])) {
-            $error = Responses::error(
+            $error                   = Responses::error(
                 'rest_missing_required_params',
                 'rest_missing_required_params',
                 'Faltan campos requeridos.'
             );
-            $error['status'] = 400;
+            $error['status']         = 400;
             $error['missing_fields'] = $validation['missing'];
-            $error['request_id'] = $requestId;
+            $error['request_id']     = $requestId;
 
             return new WP_REST_Response($error, 400);
         }
 
         if (!empty($validation['type'])) {
-            $error = Responses::error(
+            $error               = Responses::error(
                 'rest_invalid_param',
                 'rest_invalid_param',
                 'Tipos inválidos detectados.'
             );
-            $error['status'] = 400;
+            $error['status']     = 400;
             $error['type_errors'] = $validation['type'];
             $error['request_id'] = $requestId;
 
@@ -119,9 +120,9 @@ class ValidateSignController
 
         // TODO(plugin-3-g3d-validate-sign.md §6.1): Validar snapshot, IDs y reglas de catálogo.
 
-        $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+        $now       = new DateTimeImmutable('now', new DateTimeZone('UTC'));
         $expiresAt = $this->expiry->calculate(null, $now);
-        $signing = $this->signer->sign($sanitized, $this->privateKey, $expiresAt);
+        $signing   = $this->signer->sign($sanitized, $this->privateKey, $expiresAt);
 
         $snapshotId = isset($sanitized['snapshot_id']) ? (string) $sanitized['snapshot_id'] : '';
 
@@ -130,12 +131,12 @@ class ValidateSignController
 
         /** @var ValidateResponse $response */
         $response = Responses::ok([
-            'sku_hash' => $signing['sku_hash'],
+            'sku_hash'      => $signing['sku_hash'],
             'sku_signature' => $signing['signature'],
-            'expires_at' => $this->expiry->format($expiresAt),
-            'snapshot_id' => $snapshotId,
-            'summary' => $summary,
-            'request_id' => $requestId,
+            'expires_at'    => $this->expiry->format($expiresAt),
+            'snapshot_id'   => $snapshotId,
+            'summary'       => $summary,
+            'request_id'    => $requestId,
         ]);
 
         if (array_key_exists('price', $payload)) {
