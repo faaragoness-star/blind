@@ -7,6 +7,8 @@ namespace Gafas3d\WizardModal\Tests\UI;
 use Gafas3d\WizardModal\UI\Modal;
 use PHPUnit\Framework\TestCase;
 
+use function sprintf;
+
 final class ModalRenderTest extends TestCase
 {
     public function testRenderIncludesLiveRegionAndDataAttributes(): void
@@ -95,6 +97,34 @@ final class ModalRenderTest extends TestCase
 
             self::assertNotSame('', $controls);
             self::assertArrayHasKey($controls, $panelIds);
+            self::assertTrue($tab->hasAttribute('aria-selected'));
+            self::assertTrue($tab->hasAttribute('tabindex'));
         }
+    }
+
+    public function testRenderProvidesAtLeastOneTabPanelPair(): void
+    {
+        ob_start();
+        Modal::render();
+        $output = (string) ob_get_clean();
+
+        $previous = libxml_use_internal_errors(true);
+        $document = new \DOMDocument();
+        $document->loadHTML('<?xml encoding="utf-8" ?>' . $output);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+
+        $xpath = new \DOMXPath($document);
+
+        $tab = $xpath->query('//*[@role="tab"]')->item(0);
+        self::assertInstanceOf(\DOMElement::class, $tab);
+
+        $controls = $tab->getAttribute('aria-controls');
+        self::assertNotSame('', $controls);
+
+        $panelQuery = sprintf('//*[@role="tabpanel" and @id="%s"]', $controls);
+        $panel = $xpath->query($panelQuery)->item(0);
+        self::assertInstanceOf(\DOMElement::class, $panel);
+        self::assertTrue($panel->hasAttribute('hidden'));
     }
 }

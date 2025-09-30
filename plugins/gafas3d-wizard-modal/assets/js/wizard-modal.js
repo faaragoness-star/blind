@@ -254,11 +254,9 @@
     var message = overlay.querySelector('.g3d-wizard-modal__msg');
     var summaryContainer = overlay.querySelector('.g3d-wizard-modal__summary');
     var rulesContainer = modal ? modal.querySelector('.g3d-wizard-modal__rules') : null;
-    const tablist = root.querySelector('[role="tablist"]');
-    const tabs = tablist ? tablist.querySelectorAll('[role="tab"]') : [];
-    const panels = root.querySelectorAll('[role="tabpanel"]');
-    var tabElements = Array.prototype.slice.call(tabs);
-    var panelElements = Array.prototype.slice.call(panels);
+    var tablist = root.querySelector('[role="tablist"]');
+    var tabs = tablist ? tablist.querySelectorAll('[role="tab"]') : [];
+    var panels = root.querySelectorAll('[role="tabpanel"]');
     var panelById = {};
     var shouldAutoAudit = modal && modal.getAttribute('data-auto-audit') === '1';
     var previousFocus = null;
@@ -553,76 +551,7 @@
       return value === 'true' || value === '1';
     }
 
-    function getFirstEnabledTab() {
-      for (var i = 0; i < tabElements.length; i += 1) {
-        if (!isTabDisabled(tabElements[i])) {
-          return tabElements[i];
-        }
-      }
-
-      return null;
-    }
-
-    function getLastEnabledTab() {
-      for (var i = tabElements.length - 1; i >= 0; i -= 1) {
-        if (!isTabDisabled(tabElements[i])) {
-          return tabElements[i];
-        }
-      }
-
-      return null;
-    }
-
-    function getNextEnabledTab(current) {
-      if (!tabElements.length) {
-        return null;
-      }
-
-      var startIndex = tabElements.indexOf(current);
-
-      if (startIndex === -1) {
-        startIndex = -1;
-      }
-
-      for (var offset = 1; offset <= tabElements.length; offset += 1) {
-        var nextIndex = (startIndex + offset) % tabElements.length;
-        var candidate = tabElements[nextIndex];
-
-        if (!isTabDisabled(candidate)) {
-          return candidate;
-        }
-      }
-
-      return null;
-    }
-
-    function getPreviousEnabledTab(current) {
-      if (!tabElements.length) {
-        return null;
-      }
-
-      var startIndex = tabElements.indexOf(current);
-
-      if (startIndex === -1) {
-        startIndex = tabElements.length;
-      }
-
-      for (var offset = 1; offset <= tabElements.length; offset += 1) {
-        var nextIndex = (startIndex - offset + tabElements.length) % tabElements.length;
-        var candidate = tabElements[nextIndex];
-
-        if (!isTabDisabled(candidate)) {
-          return candidate;
-        }
-      }
-
-      return null;
-    }
-
-    var selectedTab = null;
-    var rovingTab = null;
-
-    panelElements.forEach(function (panel) {
+    Array.prototype.forEach.call(panels, function (panel) {
       if (!panel || !panel.id) {
         return;
       }
@@ -630,81 +559,114 @@
       panelById[panel.id] = panel;
     });
 
-    function setFocusableTab(target) {
-      tabElements.forEach(function (item) {
-        item.setAttribute('tabindex', item === target ? '0' : '-1');
-      });
-
-      rovingTab = target;
+    function idxOf(nodeList, el) {
+      return Array.prototype.indexOf.call(nodeList, el);
     }
 
-    function focusTab(tab) {
-      if (!tab || tabElements.indexOf(tab) === -1 || isTabDisabled(tab)) {
+    function getFirstEnabledTab() {
+      for (var i = 0; i < tabs.length; i += 1) {
+        if (!isTabDisabled(tabs[i])) {
+          return tabs[i];
+        }
+      }
+
+      return null;
+    }
+
+    function getLastEnabledTab() {
+      for (var i = tabs.length - 1; i >= 0; i -= 1) {
+        if (!isTabDisabled(tabs[i])) {
+          return tabs[i];
+        }
+      }
+
+      return null;
+    }
+
+    function activateTab(tabEl) {
+      if (!tabEl || isTabDisabled(tabEl)) {
         return;
       }
 
-      setFocusableTab(tab);
+      var target = tabEl.getAttribute('aria-controls');
 
-      if (typeof tab.focus === 'function') {
-        tab.focus();
+      if (!target || !panelById[target]) {
+        return;
+      }
+
+      Array.prototype.forEach.call(tabs, function (t) {
+        var active = t === tabEl;
+        t.setAttribute('aria-selected', active ? 'true' : 'false');
+        t.setAttribute('tabindex', active ? '0' : '-1');
+      });
+
+      Array.prototype.forEach.call(panels, function (p) {
+        p.hidden = p.id !== target;
+      });
+
+      if (typeof tabEl.focus === 'function') {
+        tabEl.focus();
       }
     }
 
-    function setActiveTab(tab) {
-      if (!tab || tabElements.indexOf(tab) === -1 || isTabDisabled(tab)) {
+    function focusNext(current, dir) {
+      var index = idxOf(tabs, current);
+
+      if (index < 0) {
         return;
       }
 
-      var controls = tab.getAttribute('aria-controls');
+      var len = tabs.length;
 
-      if (!controls || !panelById[controls]) {
+      if (!len) {
         return;
       }
 
-      tabElements.forEach(function (item) {
-        var isActive = item === tab;
-        item.setAttribute('aria-selected', isActive ? 'true' : 'false');
-      });
+      var step = dir === 1 ? 1 : -1;
+      var next = index;
 
-      selectedTab = tab;
-      focusTab(tab);
+      for (var attempt = 0; attempt < len; attempt += 1) {
+        next = (next + step + len) % len;
+        var candidate = tabs[next];
 
-      panelElements.forEach(function (panel) {
-        if (!panel || !panel.id) {
-          return;
+        if (!candidate || isTabDisabled(candidate)) {
+          continue;
         }
 
-        panel.hidden = panel.id !== controls;
-      });
+        if (typeof candidate.focus === 'function') {
+          candidate.focus();
+        }
+
+        activateTab(candidate);
+
+        return;
+      }
     }
 
-    function focusNext(direction) {
-      if (!tabElements.length) {
+    (function initTabs() {
+      if (!tabs.length || !panels.length) {
         return;
       }
 
-      var current = document.activeElement;
+      var active = Array.prototype.find
+        ? Array.prototype.find.call(tabs, function (candidate) {
+            return (
+              candidate &&
+              candidate.getAttribute &&
+              candidate.getAttribute('aria-selected') === 'true' &&
+              !isTabDisabled(candidate)
+            );
+          })
+        : null;
 
-      if (!current || tabElements.indexOf(current) === -1) {
-        current = rovingTab || selectedTab || getFirstEnabledTab();
+      if (!active) {
+        active = getFirstEnabledTab() || (tabs.length ? tabs[0] : null);
       }
 
-      if (!current) {
-        return;
+      if (active) {
+        activateTab(active);
       }
-
-      var target = null;
-
-      if (direction > 0) {
-        target = getNextEnabledTab(current) || current;
-      } else if (direction < 0) {
-        target = getPreviousEnabledTab(current) || current;
-      }
-
-      if (target && target !== current) {
-        focusTab(target);
-      }
-    }
+    })();
 
     function getModalData() {
       var snapshotId = '';
@@ -1204,28 +1166,7 @@
       // TODO(Plugin 4 §controles de recarga).
     }
 
-    if (tabElements.length && panelElements.length) {
-      var initialTab = null;
-
-      if (Array.prototype.find) {
-        initialTab = Array.prototype.find.call(tabs, function (candidate) {
-          return (
-            candidate &&
-            candidate.getAttribute &&
-            candidate.getAttribute('aria-selected') === 'true' &&
-            !isTabDisabled(candidate)
-          );
-        });
-      }
-
-      if (!initialTab) {
-        initialTab = getFirstEnabledTab() || (tabs.length ? tabs[0] : null);
-      }
-
-      if (initialTab) {
-        setActiveTab(initialTab);
-      }
-
+    if (tabs.length && panels.length) {
       Array.prototype.forEach.call(tabs, function (tab) {
         tab.addEventListener('click', function (event) {
           if (event && typeof event.preventDefault === 'function') {
@@ -1236,7 +1177,7 @@
             return;
           }
 
-          setActiveTab(tab);
+          activateTab(tab);
         });
 
         tab.addEventListener('keydown', function (event) {
@@ -1248,23 +1189,23 @@
 
           if (key === 'ArrowRight') {
             event.preventDefault();
-            focusNext(1);
+            focusNext(tab, 1);
             return;
           }
 
           if (key === 'ArrowLeft') {
             event.preventDefault();
-            focusNext(-1);
+            focusNext(tab, -1);
             return;
           }
 
           if (key === 'Home') {
             event.preventDefault();
 
-            var first = getFirstEnabledTab();
+            var first = getFirstEnabledTab() || (tabs.length ? tabs[0] : null);
 
             if (first) {
-              focusTab(first);
+              activateTab(first);
             }
 
             return;
@@ -1273,10 +1214,10 @@
           if (key === 'End') {
             event.preventDefault();
 
-            var last = getLastEnabledTab();
+            var last = getLastEnabledTab() || (tabs.length ? tabs[tabs.length - 1] : null);
 
             if (last) {
-              focusTab(last);
+              activateTab(last);
             }
 
             return;
@@ -1289,7 +1230,7 @@
               return;
             }
 
-            setActiveTab(tab);
+            activateTab(tab);
           }
         });
       });
