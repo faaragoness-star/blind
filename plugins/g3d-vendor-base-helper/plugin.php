@@ -35,6 +35,10 @@ add_action('init', static function (): void {
     load_plugin_textdomain('g3d-vendor-base-helper', false, dirname(plugin_basename(__FILE__)) . '/languages');
 });
 
+add_action('rest_api_init', static function (): void {
+    (new \G3D\VendorBase\Api\HealthController())->registerRoutes();
+});
+
 register_activation_hook(__FILE__, static function (): void {
     \G3D\VendorBase\Security\VendorGuard::assertReady();
 });
