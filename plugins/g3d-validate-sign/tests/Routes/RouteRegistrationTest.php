@@ -6,27 +6,20 @@ namespace G3D\ValidateSign\Tests\Routes;
 
 use PHPUnit\Framework\TestCase;
 
+require_once __DIR__ . '/../../../g3d-vendor-base-helper/tests/bootstrap.php';
+require_once __DIR__ . '/../../plugin.php';
+
 final class RouteRegistrationTest extends TestCase
 {
-    public static function setUpBeforeClass(): void
-    {
-        parent::setUpBeforeClass();
-
-        // Cargar bootstrap de pruebas SIN efectos laterales a nivel de archivo
-        require_once __DIR__ . '/../../../g3d-vendor-base-helper/tests/bootstrap.php';
-
-        if (!\function_exists('sodium_crypto_sign_keypair')) {
-            self::markTestSkipped(
-                'ext-sodium requerida para las pruebas (ver docs/plugin-3-g3d-validate-sign.md §4.1).'
-            );
-        }
-
-        require_once __DIR__ . '/../../plugin.php';
-    }
-
     protected function setUp(): void
     {
         parent::setUp();
+
+        if (!\function_exists('sodium_crypto_sign_detached')) {
+            $this->markTestSkipped(
+                'ext-sodium requerida para las pruebas (ver docs/plugin-3-g3d-validate-sign.md §4.1).'
+            );
+        }
 
         $GLOBALS['g3d_tests_registered_rest_routes'] = [];
     }
