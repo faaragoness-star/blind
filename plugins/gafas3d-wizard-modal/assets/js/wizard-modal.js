@@ -69,12 +69,11 @@
     var message = overlay.querySelector('.g3d-wizard-modal__msg');
     var summaryContainer = overlay.querySelector('.g3d-wizard-modal__summary');
     var rulesContainer = modal ? modal.querySelector('.g3d-wizard-modal__rules') : null;
-    var tabs = modal
-      ? Array.prototype.slice.call(modal.querySelectorAll('[role="tab"]'))
-      : [];
-    var panels = modal
-      ? Array.prototype.slice.call(modal.querySelectorAll('[role="tabpanel"]'))
-      : [];
+    const tablist = root.querySelector('[role="tablist"]');
+    const tabs = tablist ? tablist.querySelectorAll('[role="tab"]') : [];
+    const panels = root.querySelectorAll('[role="tabpanel"]');
+    var tabElements = Array.prototype.slice.call(tabs);
+    var panelElements = Array.prototype.slice.call(panels);
     var lastValidation = null;
     var shouldAutoAudit = modal && modal.getAttribute('data-auto-audit') === '1';
     var previousFocus = null;
@@ -259,20 +258,104 @@
       }
     }
 
+    function isTabDisabled(tab) {
+      if (!tab) {
+        return true;
+      }
+
+      if (tab.disabled) {
+        return true;
+      }
+
+      if (!tab.hasAttribute('aria-disabled')) {
+        return false;
+      }
+
+      var value = tab.getAttribute('aria-disabled');
+
+      return value === 'true' || value === '1';
+    }
+
+    function getFirstEnabledTab() {
+      for (var i = 0; i < tabElements.length; i += 1) {
+        if (!isTabDisabled(tabElements[i])) {
+          return tabElements[i];
+        }
+      }
+
+      return null;
+    }
+
+    function getLastEnabledTab() {
+      for (var i = tabElements.length - 1; i >= 0; i -= 1) {
+        if (!isTabDisabled(tabElements[i])) {
+          return tabElements[i];
+        }
+      }
+
+      return null;
+    }
+
+    function getNextEnabledTab(current) {
+      if (!tabElements.length) {
+        return null;
+      }
+
+      var startIndex = tabElements.indexOf(current);
+
+      if (startIndex === -1) {
+        startIndex = -1;
+      }
+
+      for (var offset = 1; offset <= tabElements.length; offset += 1) {
+        var nextIndex = (startIndex + offset) % tabElements.length;
+        var candidate = tabElements[nextIndex];
+
+        if (!isTabDisabled(candidate)) {
+          return candidate;
+        }
+      }
+
+      return null;
+    }
+
+    function getPreviousEnabledTab(current) {
+      if (!tabElements.length) {
+        return null;
+      }
+
+      var startIndex = tabElements.indexOf(current);
+
+      if (startIndex === -1) {
+        startIndex = tabElements.length;
+      }
+
+      for (var offset = 1; offset <= tabElements.length; offset += 1) {
+        var nextIndex = (startIndex - offset + tabElements.length) % tabElements.length;
+        var candidate = tabElements[nextIndex];
+
+        if (!isTabDisabled(candidate)) {
+          return candidate;
+        }
+      }
+
+      return null;
+    }
+
     function activateTab(tab) {
-      if (!tab || tabs.indexOf(tab) === -1) {
+      if (!tab || tabElements.indexOf(tab) === -1 || isTabDisabled(tab)) {
         return;
       }
 
       var controls = tab.getAttribute('aria-controls');
 
-      tabs.forEach(function (item) {
+      tabElements.forEach(function (item) {
         var isActive = item === tab;
         item.setAttribute('aria-selected', isActive ? 'true' : 'false');
         item.setAttribute('tabindex', isActive ? '0' : '-1');
       });
 
-      panels.forEach(function (panel) {
+      panelElements.forEach(function (panel) {
         if (!panel || !panel.getAttribute) {
           return;
         }
@@ -286,39 +369,6 @@
 
       if (typeof tab.focus === 'function') {
         tab.focus();
-      }
-    }
-
-    function focusNext(current) {
-      if (!tabs.length) {
-        return;
-      }
-
-      var index = tabs.indexOf(current);
-      var nextIndex = (index + 1) % tabs.length;
-      var target = tabs[nextIndex];
-
-      if (target && typeof target.focus === 'function') {
-        target.focus();
-      }
-    }
-
-    function focusPrev(current) {
-      if (!tabs.length) {
-        return;
-      }
-
-      var index = tabs.indexOf(current);
-
-      if (index === -1) {
-        index = 0;
-      }
-
-      var prevIndex = (index - 1 + tabs.length) % tabs.length;
-      var target = tabs[prevIndex];
-
-      if (target && typeof target.focus === 'function') {
-        target.focus();
       }
     }
 
@@ -654,13 +704,31 @@
       button.addEventListener('click', closeModal);
     });
 
-    if (tabs.length && panels.length) {
-      activateTab(tabs[0]);
+    if (tabElements.length && panelElements.length) {
+      var initialTab = null;
 
-      tabs.forEach(function (tab) {
+      tabElements.forEach(function (tab) {
+        if (!initialTab && tab.getAttribute('aria-selected') === 'true' && !isTabDisabled(tab)) {
+          initialTab = tab;
+        }
+      });
+
+      if (!initialTab) {
+        initialTab = getFirstEnabledTab();
+      }
+
+      if (initialTab) {
+        activateTab(initialTab);
+      }
+
+      tabElements.forEach(function (tab) {
         tab.addEventListener('click', function (event) {
           if (event && typeof event.preventDefault === 'function') {
             event.preventDefault();
+          }
+
+          if (isTabDisabled(tab)) {
+            return;
           }
 
           activateTab(tab);
@@ -675,21 +743,31 @@
 
           if (key === 'ArrowRight' || key === 'ArrowDown') {
             event.preventDefault();
-            focusNext(tab);
+            var next = getNextEnabledTab(tab);
+
+            if (next) {
+              activateTab(next);
+            }
             return;
           }
 
           if (key === 'ArrowLeft' || key === 'ArrowUp') {
             event.preventDefault();
-            focusPrev(tab);
+            var previous = getPreviousEnabledTab(tab);
+
+            if (previous) {
+              activateTab(previous);
+            }
             return;
           }
 
           if (key === 'Home') {
             event.preventDefault();
 
-            if (tabs[0] && typeof tabs[0].focus === 'function') {
-              tabs[0].focus();
+            var first = getFirstEnabledTab();
+
+            if (first) {
+              activateTab(first);
             }
 
             return;
@@ -698,10 +776,10 @@
           if (key === 'End') {
             event.preventDefault();
 
-            var last = tabs[tabs.length - 1];
+            var last = getLastEnabledTab();
 
-            if (last && typeof last.focus === 'function') {
-              last.focus();
+            if (last) {
+              activateTab(last);
             }
 
             return;
@@ -709,6 +787,11 @@
 
           if (key === 'Enter' || key === ' ') {
             event.preventDefault();
+
+            if (isTabDisabled(tab)) {
+              return;
+            }
+
             activateTab(tab);
           }
         });
