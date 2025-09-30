@@ -42,8 +42,8 @@ class VerifyController
         string $publicKey
     ) {
         $this->validator = $validator;
-        $this->verifier = $verifier;
-        $this->expiry = $expiry;
+        $this->verifier  = $verifier;
+        $this->expiry    = $expiry;
         $this->publicKey = $publicKey;
     }
 
@@ -53,9 +53,10 @@ class VerifyController
             'g3d/v1',
             '/verify',
             [
-                'methods' => 'POST',
+                'methods'  => 'POST',
                 'callback' => [$this, 'handle'],
-                // público según docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md §2.2.
+                // público según docs/Capa 3 — Validación, Firma y Caducidad — Actualizada
+                // (slots Abiertos) — V2 (urls).md §2.2.
                 'permission_callback' => static fn (): bool => true,
             ]
         );
@@ -69,7 +70,7 @@ class VerifyController
         }
 
         $requestId = $this->generateRequestId();
-        $payload = $request->get_json_params();
+        $payload   = $request->get_json_params();
 
         if (!is_array($payload)) {
             $payload = [];
@@ -78,25 +79,25 @@ class VerifyController
         $validation = $this->validator->validate($payload);
 
         if (!empty($validation['missing'])) {
-            $error = Responses::error(
+            $error                = Responses::error(
                 'rest_missing_required_params',
                 'rest_missing_required_params',
                 'Faltan campos requeridos.'
             );
-            $error['status'] = 400;
+            $error['status']      = 400;
             $error['missing_fields'] = $validation['missing'];
-            $error['request_id'] = $requestId;
+            $error['request_id']  = $requestId;
 
             return new WP_REST_Response($error, 400);
         }
 
         if (!empty($validation['type'])) {
-            $error = Responses::error(
+            $error               = Responses::error(
                 'rest_invalid_param',
                 'rest_invalid_param',
                 'Tipos inválidos detectados.'
             );
-            $error['status'] = 400;
+            $error['status']     = 400;
             $error['type_errors'] = $validation['type'];
             $error['request_id'] = $requestId;
 
@@ -107,16 +108,16 @@ class VerifyController
         /** @var VerifyRequest $sanitized */
         $sanitized = $this->sanitizePayload($payload);
 
-        $signature = (string) ($sanitized['sku_signature'] ?? '');
+        $signature    = (string) ($sanitized['sku_signature'] ?? '');
         $verification = $this->verifier->verify($sanitized, $signature, $this->publicKey);
 
         if (!$verification['ok']) {
-            $errorResponse = Responses::error(
+            $errorResponse              = Responses::error(
                 $verification['code'],
                 $verification['reason_key'],
                 $verification['detail']
             );
-            $errorResponse['status'] = 400;
+            $errorResponse['status']    = 400;
             $errorResponse['request_id'] = $requestId;
 
             return new WP_REST_Response($errorResponse, 400);
@@ -125,13 +126,13 @@ class VerifyController
         $expiresAt = $verification['expires_at'];
 
         if ($this->expiry->isExpired($expiresAt, $now)) {
-            $errorResponse = Responses::error(
+            $errorResponse               = Responses::error(
                 'E_SIGN_EXPIRED',
                 'sign_expired',
                 'Caducidad agotada (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
-                    . '(slots Abiertos) — V2 (urls).md).'
+                . '(slots Abiertos) — V2 (urls).md).'
             );
-            $errorResponse['status'] = 400;
+            $errorResponse['status']     = 400;
             $errorResponse['request_id'] = $requestId;
 
             return new WP_REST_Response($errorResponse, 400);
