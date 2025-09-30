@@ -33,8 +33,6 @@ final class RulesReadRouteTest extends TestCase
         self::assertSame('__return_true', $route['args']['permission_callback']);
         self::assertArrayHasKey('producto_id', $route['args']['args']);
         self::assertTrue($route['args']['args']['producto_id']['required']);
-        self::assertArrayHasKey('snapshot_id', $route['args']['args']);
-        self::assertFalse($route['args']['args']['snapshot_id']['required']);
         self::assertArrayHasKey('locale', $route['args']['args']);
         self::assertFalse($route['args']['args']['locale']['required']);
     }
@@ -52,20 +50,34 @@ final class RulesReadRouteTest extends TestCase
 
         $data = $response->get_data();
         self::assertIsArray($data);
+        self::assertArrayHasKey('id', $data);
+        self::assertSame('snap:2025-09-27T18:45:00Z', $data['id']);
+        self::assertArrayHasKey('schema_version', $data);
+        self::assertSame('2.0.0', $data['schema_version']);
+        self::assertArrayHasKey('producto_id', $data);
+        self::assertSame('prod:base', $data['producto_id']);
+        self::assertArrayHasKey('entities', $data);
+        self::assertIsArray($data['entities']);
         self::assertArrayHasKey('rules', $data);
         self::assertIsArray($data['rules']);
-        self::assertArrayHasKey('snapshot_id', $data);
-        self::assertArrayHasKey('version', $data);
-        self::assertArrayHasKey('producto_id', $data);
-        self::assertSame('snap:2025-09-27T18:45:00Z', $data['snapshot_id']);
-        self::assertSame('ver:2025-09-27T18:45:00Z', $data['version']);
-        self::assertSame('prod:base', $data['producto_id']);
-
-        $firstRule = $data['rules'][0] ?? null;
-        self::assertIsArray($firstRule);
-        self::assertArrayHasKey('key', $firstRule);
-        self::assertArrayHasKey('value', $firstRule);
-        self::assertSame('material_to_modelos', $firstRule['key']);
+        self::assertArrayHasKey('material_to_modelos', $data['rules']);
+        self::assertArrayHasKey('material_to_colores', $data['rules']);
+        self::assertArrayHasKey('material_to_texturas', $data['rules']);
+        self::assertArrayHasKey('defaults', $data['rules']);
+        self::assertArrayHasKey('encaje', $data['rules']);
+        self::assertArrayHasKey('slot_mapping_editorial', $data['rules']);
+        self::assertArrayHasKey('ver', $data);
+        self::assertSame('ver:2025-09-27T18:45:00Z', $data['ver']);
+        self::assertArrayHasKey('published_at', $data);
+        self::assertSame('2025-09-27T18:45:00Z', $data['published_at']);
+        self::assertArrayHasKey('published_by', $data);
+        self::assertSame('user:admin', $data['published_by']);
+        self::assertArrayHasKey('locales', $data);
+        self::assertIsArray($data['locales']);
+        self::assertContains('es-ES', $data['locales']);
+        self::assertArrayHasKey('sku_policy', $data);
+        self::assertIsArray($data['sku_policy']);
+        self::assertArrayHasKey('include_morphs_in_sku', $data['sku_policy']);
     }
 
     public function testHandleReturnsErrorWhenProductoIdMissing(): void
