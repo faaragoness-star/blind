@@ -1,6 +1,14 @@
 (function (global) {
   'use strict';
 
+  var __ =
+    global.wp && global.wp.i18n && typeof global.wp.i18n.__ === 'function'
+      ? global.wp.i18n.__
+      : function (text) {
+          return text;
+        };
+  var TEXT_DOMAIN = 'gafas3d-wizard-modal';
+
   global.G3DWIZARD = global.G3DWIZARD || {};
 
   global.G3DWIZARD.postJson = async function postJson(url, body) {
@@ -146,7 +154,10 @@
       var api = wizard.api || {};
 
       if (!api.validateSign || typeof wizard.postJson !== 'function') {
-        setText(message, 'ERROR — endpoint no disponible');
+        setText(
+          message,
+          __('ERROR — endpoint no disponible', TEXT_DOMAIN)
+        );
         return;
       }
 
@@ -179,8 +190,13 @@
 
       var defaultLabel = cta.textContent;
       cta.disabled = true;
-      setText(cta, 'Enviando…');
-      setText(message, '');
+      cta.setAttribute('aria-busy', 'true');
+      setText(cta, __('Enviando…', TEXT_DOMAIN));
+
+      if (message) {
+        message.setAttribute('aria-busy', 'true');
+        setText(message, '');
+      }
 
       try {
         var response = await wizard.postJson(api.validateSign, payload);
@@ -207,15 +223,15 @@
           }
 
           var successMessage =
-            'OK — ok: ' +
+            __('OK — ok: ', TEXT_DOMAIN) +
             String(okValue) +
-            ' | hash: ' +
+            __(' | hash: ', TEXT_DOMAIN) +
             hash +
-            ' | expira: ' +
+            __(' | expira: ', TEXT_DOMAIN) +
             expires +
-            ' | snapshot: ' +
+            __(' | snapshot: ', TEXT_DOMAIN) +
             snapshot +
-            ' | sig: ' +
+            __(' | sig: ', TEXT_DOMAIN) +
             signature;
 
           setText(message, successMessage);
@@ -251,16 +267,21 @@
           }
 
           if (code === '-' && response.status) {
-            code = 'HTTP ' + response.status;
+            code = __('HTTP ', TEXT_DOMAIN) + response.status;
           }
 
-          setText(message, 'ERROR — ' + code);
+          setText(message, __('ERROR — ', TEXT_DOMAIN) + code);
         }
       } catch (error) {
-        setText(message, 'ERROR — fallo de red');
+        setText(message, __('ERROR — fallo de red', TEXT_DOMAIN));
       } finally {
         cta.disabled = false;
+        cta.removeAttribute('aria-busy');
         setText(cta, defaultLabel);
+
+        if (message) {
+          message.removeAttribute('aria-busy');
+        }
       }
     }
 
@@ -277,7 +298,10 @@
       var api = wizard.api || {};
 
       if (!api.verify || typeof wizard.postJson !== 'function') {
-        setText(message, 'ERROR — endpoint no disponible');
+        setText(
+          message,
+          __('ERROR — endpoint no disponible', TEXT_DOMAIN)
+        );
         return;
       }
 
@@ -286,7 +310,10 @@
         !lastValidation.sku_hash ||
         !lastValidation.sku_signature
       ) {
-        setText(message, 'ERROR — Primero valida y firma');
+        setText(
+          message,
+          __('ERROR — Primero valida y firma', TEXT_DOMAIN)
+        );
         return;
       }
 
@@ -298,8 +325,13 @@
 
       var defaultLabel = verifyButton.textContent;
       verifyButton.disabled = true;
-      setText(verifyButton, 'Verificando…');
-      setText(message, '');
+      verifyButton.setAttribute('aria-busy', 'true');
+      setText(verifyButton, __('Verificando…', TEXT_DOMAIN));
+
+      if (message) {
+        message.setAttribute('aria-busy', 'true');
+        setText(message, '');
+      }
 
       try {
         var response = await wizard.postJson(api.verify, payload);
@@ -313,7 +345,10 @@
 
         if (response.ok && data && data.ok === true) {
           var requestId = data.request_id ? data.request_id : '-';
-          setText(message, 'Verificado OK — request_id: ' + requestId);
+          setText(
+            message,
+            __('Verificado OK — request_id: ', TEXT_DOMAIN) + requestId
+          );
 
           if (shouldAutoAudit) {
             audit('verify_success', {
@@ -332,20 +367,25 @@
           }
 
           if (!code && response.status) {
-            code = 'HTTP ' + response.status;
+            code = __('HTTP ', TEXT_DOMAIN) + response.status;
           }
 
           if (!code) {
-            code = 'ERROR';
+            code = __('ERROR', TEXT_DOMAIN);
           }
 
-          setText(message, 'ERROR — ' + code);
+          setText(message, __('ERROR — ', TEXT_DOMAIN) + code);
         }
       } catch (error) {
-        setText(message, 'ERROR — fallo de red');
+        setText(message, __('ERROR — fallo de red', TEXT_DOMAIN));
       } finally {
         verifyButton.disabled = false;
+        verifyButton.removeAttribute('aria-busy');
         setText(verifyButton, defaultLabel);
+
+        if (message) {
+          message.removeAttribute('aria-busy');
+        }
       }
     }
 
@@ -381,7 +421,10 @@
         if (!productoId) {
           setText(
             rulesContainer,
-            'TODO(plugin-2-g3d-catalog-rules.md §6): faltan parámetros.'
+            __(
+              'TODO(plugin-2-g3d-catalog-rules.md §6): faltan parámetros.',
+              TEXT_DOMAIN
+            )
           );
         } else {
           var params = {
@@ -410,21 +453,21 @@
               : global.G3DWIZARD.getJSON;
 
           if (typeof getJSON !== 'function') {
-            setText(rulesContainer, 'Reglas: N/D');
+            setText(rulesContainer, __('Reglas: N/D', TEXT_DOMAIN));
           } else {
-            setText(rulesContainer, 'Reglas: N/D');
+            setText(rulesContainer, __('Reglas: N/D', TEXT_DOMAIN));
 
             getJSON(rulesUrl, params)
               .then(function (data) {
                 if (data && Array.isArray(data.rules)) {
                   setText(
                     rulesContainer,
-                    'Reglas: ' + String(data.rules.length)
+                    __('Reglas: ', TEXT_DOMAIN) + String(data.rules.length)
                   );
                 }
               })
               .catch(function () {
-                setText(rulesContainer, 'Reglas: N/D');
+                setText(rulesContainer, __('Reglas: N/D', TEXT_DOMAIN));
               });
           }
         }

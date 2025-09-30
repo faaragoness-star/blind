@@ -28,7 +28,10 @@ final class ModalRenderTest extends TestCase
             '/<footer[^>]*>.*class="g3d-wizard-modal__rules"/s',
             $output
         );
-        self::assertStringContainsString('class="g3d-wizard-modal__msg"', $output);
+        self::assertStringContainsString(
+            'class="g3d-wizard-modal__msg" aria-live="polite"',
+            $output
+        );
         self::assertStringContainsString('data-g3d-wizard-modal-verify', $output);
     }
 }
