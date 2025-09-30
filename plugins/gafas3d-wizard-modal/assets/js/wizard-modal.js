@@ -353,6 +353,24 @@
       return null;
     }
 
+    function setTabFocusState(target) {
+      tabElements.forEach(function (item) {
+        item.setAttribute('tabindex', item === target ? '0' : '-1');
+      });
+    }
+
+    function focusTab(tab) {
+      if (!tab || tabElements.indexOf(tab) === -1 || isTabDisabled(tab)) {
+        return;
+      }
+
+      setTabFocusState(tab);
+
+      if (typeof tab.focus === 'function') {
+        tab.focus();
+      }
+    }
+
     function activateTab(tab) {
       if (!tab || tabElements.indexOf(tab) === -1 || isTabDisabled(tab)) {
         return;
@@ -363,25 +381,17 @@
       tabElements.forEach(function (item) {
         var isActive = item === tab;
         item.setAttribute('aria-selected', isActive ? 'true' : 'false');
-        item.setAttribute('tabindex', isActive ? '0' : '-1');
       });
+
+      focusTab(tab);
 
       panelElements.forEach(function (panel) {
         if (!panel || !panel.id) {
           return;
         }
 
-        if (panel.id === controls) {
-          panel.hidden = false;
-          panel.removeAttribute('hidden');
-        } else {
-          panel.hidden = true;
-        }
+        panel.hidden = panel.id !== controls;
       });
-
-      if (typeof tab.focus === 'function') {
-        tab.focus();
-      }
     }
 
     function collectState(scope) {
@@ -841,7 +851,7 @@
             var next = getNextEnabledTab(tab);
 
             if (next) {
-              activateTab(next);
+              focusTab(next);
             }
             return;
           }
@@ -851,7 +861,7 @@
             var previous = getPreviousEnabledTab(tab);
 
             if (previous) {
-              activateTab(previous);
+              focusTab(previous);
             }
             return;
           }
@@ -862,7 +872,7 @@
             var first = getFirstEnabledTab();
 
             if (first) {
-              activateTab(first);
+              focusTab(first);
             }
 
             return;
@@ -874,13 +884,13 @@
             var last = getLastEnabledTab();
 
             if (last) {
-              activateTab(last);
+              focusTab(last);
             }
 
             return;
           }
 
-          if (key === 'Enter' || key === ' ') {
+          if (key === 'Enter' || key === ' ' || key === 'Space') {
             event.preventDefault();
 
             if (isTabDisabled(tab)) {
