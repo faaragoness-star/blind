@@ -13,6 +13,8 @@
 
 declare(strict_types=1);
 
+use G3D\AdminOps\Audit\AuditLogReader;
+use G3D\AdminOps\Audit\EditorialActionLogger;
 use G3D\AdminOps\Plugin;
 
 if (!defined('ABSPATH')) {
@@ -40,6 +42,9 @@ add_action('init', static function (): void {
 $plugin = new Plugin();
 $plugin->register();
 
+$GLOBALS['g3d_admin_ops_audit_reader'] = $plugin->auditLogger();
+$GLOBALS['g3d_admin_ops_audit_writer'] = $plugin->auditLogger();
+
 register_activation_hook(__FILE__, static function (): void {
     // TODO(doc §RBAC roles->caps): asignar capacidades a roles según doc.
     // Ejemplo (comentar si el doc no lo fija):
@@ -53,8 +58,13 @@ register_activation_hook(__FILE__, static function (): void {
 });
 
 add_action('rest_api_init', static function (): void {
-    $reader = new \G3D\AdminOps\Audit\InMemoryEditorialActionLogger();
-    // TODO(doc §persistencia): sustituir por almacenamiento persistente cuando esté definido.
-    (new \G3D\AdminOps\Api\AuditReadController($reader))->registerRoutes();
-    (new \G3D\AdminOps\Api\AuditWriteController($reader))->registerRoutes();
+    $reader = $GLOBALS['g3d_admin_ops_audit_reader'] ?? null;
+    $writer = $GLOBALS['g3d_admin_ops_audit_writer'] ?? $reader;
+
+    if ($reader instanceof AuditLogReader && $writer instanceof EditorialActionLogger) {
+        (new \G3D\AdminOps\Api\AuditReadController($reader))->registerRoutes();
+        (new \G3D\AdminOps\Api\AuditWriteController($writer))->registerRoutes();
+    } else {
+        // TODO(doc §bootstrap): inyectar servicios reales; por ahora no-op para no romper.
+    }
 });

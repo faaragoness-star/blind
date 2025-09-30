@@ -7,13 +7,14 @@ namespace G3D\AdminOps\Tests\Rbac;
 use G3D\AdminOps\Rbac\Capabilities;
 use G3D\AdminOps\Rbac\CapabilityGuard;
 use PHPUnit\Framework\TestCase;
+use Test_Env\Perms;
 
 final class CapabilityGuardTest extends TestCase
 {
     protected function setUp(): void
     {
         parent::setUp();
-        $GLOBALS['g3d_admin_ops_allowed_caps'] = [];
+        Perms::denyAll();
     }
 
     public function testCanReturnsFalseWhenCapabilityMissing(): void
@@ -25,7 +26,7 @@ final class CapabilityGuardTest extends TestCase
 
     public function testCanReturnsTrueWhenCapabilityGranted(): void
     {
-        $GLOBALS['g3d_admin_ops_allowed_caps'][] = Capabilities::CAP_MANAGE_PUBLICATION;
+        Perms::allowAll();
         $guard = new CapabilityGuard();
 
         self::assertTrue($guard->can(Capabilities::CAP_MANAGE_PUBLICATION));
@@ -38,7 +39,7 @@ final class CapabilityGuardTest extends TestCase
 
         self::assertFalse($callback());
 
-        $GLOBALS['g3d_admin_ops_allowed_caps'][] = Capabilities::CAP_MANAGE_PUBLICATION;
+        Perms::allowAll();
 
         self::assertTrue($callback());
     }
