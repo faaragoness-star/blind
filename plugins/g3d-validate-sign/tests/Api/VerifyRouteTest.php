@@ -46,7 +46,7 @@ final class VerifyRouteTest extends TestCase
             'state'          => [],
         ];
 
-        $signed    = $signer->sign($signingPayload, $privateKey);
+        $signed = $signer->sign($signingPayload, $privateKey);
 
         $controller = new VerifyController($validator, $verifier, $publicKey);
 
@@ -85,7 +85,7 @@ final class VerifyRouteTest extends TestCase
             'state'       => [],
         ];
 
-        $signed    = $signer->sign($signingPayload, $privateKey);
+        $signed = $signer->sign($signingPayload, $privateKey);
 
         $clock->advance(new \DateInterval('P31D'));
 
@@ -125,7 +125,7 @@ final class VerifyRouteTest extends TestCase
             'state'       => [],
         ];
 
-        $signed    = $signer->sign($signingPayload, $privateKey);
+        $signed = $signer->sign($signingPayload, $privateKey);
 
         $controller = new VerifyController($validator, $verifier, $publicKey);
         $request = new WP_REST_Request('POST', '/g3d/v1/verify');
@@ -163,7 +163,7 @@ final class VerifyRouteTest extends TestCase
             'state'       => [],
         ];
 
-        $signed    = $signer->sign($signingPayload, $privateKey);
+        $signed = $signer->sign($signingPayload, $privateKey);
         $manipulatedSignature = (string) preg_replace('/^sig\\.v1/', 'sig.v2', $signed['signature']);
 
         $controller = new VerifyController($validator, $verifier, $publicKey);
@@ -202,7 +202,7 @@ final class VerifyRouteTest extends TestCase
             'state'       => [],
         ];
 
-        $signed    = $signer->sign($signingPayload, $privateKey);
+        $signed = $signer->sign($signingPayload, $privateKey);
 
         $controller = new VerifyController($validator, $verifier, $publicKey);
         $request = new WP_REST_Request('POST', '/g3d/v1/verify');
@@ -276,5 +276,4 @@ final class VerifyRouteTest extends TestCase
         self::assertArrayHasKey('request_id', $data);
         self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $data['request_id']);
     }
-
 }
