@@ -4,10 +4,7 @@ declare(strict_types=1);
 
 namespace G3D\ValidateSign\Api;
 
-use DateTimeImmutable;
-use DateTimeZone;
 use G3D\ValidateSign\Crypto\Signer;
-use G3D\ValidateSign\Domain\Expiry;
 use G3D\ValidateSign\Validation\RequestValidator;
 use G3D\VendorBase\Rest\Security;
 use WP_Error;
@@ -42,18 +39,15 @@ class ValidateSignController
 {
     private RequestValidator $validator;
     private Signer $signer;
-    private Expiry $expiry;
     private string $privateKey;
 
     public function __construct(
         RequestValidator $validator,
         Signer $signer,
-        Expiry $expiry,
         string $privateKey
     ) {
         $this->validator  = $validator;
         $this->signer     = $signer;
-        $this->expiry     = $expiry;
         $this->privateKey = $privateKey;
     }
 
@@ -119,9 +113,7 @@ class ValidateSignController
 
         // TODO(plugin-3-g3d-validate-sign.md §6.1): Validar snapshot, IDs y reglas de catálogo.
 
-        $now       = new DateTimeImmutable('now', new DateTimeZone('UTC'));
-        $expiresAt = $this->expiry->calculate(null, $now);
-        $signing   = $this->signer->sign($sanitized, $this->privateKey, $expiresAt);
+        $signing   = $this->signer->sign($sanitized, $this->privateKey);
 
         $snapshotId = isset($sanitized['snapshot_id']) ? (string) $sanitized['snapshot_id'] : '';
 

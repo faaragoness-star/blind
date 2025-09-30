@@ -7,6 +7,8 @@ namespace G3D\ValidateSign\Crypto;
 use DateTimeImmutable;
 use DateTimeInterface;
 use G3D\ValidateSign\Domain\Canonicalizer;
+use G3D\VendorBase\Time\Clock;
+use G3D\VendorBase\Time\SystemClock;
 use RuntimeException;
 
 class Verifier
@@ -15,8 +17,12 @@ class Verifier
      * @var string[]
      */
     private array $allowedPrefixes;
+    private Clock $clock;
 
-    public function __construct(array $allowedPrefixes = Signer::ALLOWED_SIGNATURE_PREFIXES)
+    public function __construct(
+        array $allowedPrefixes = Signer::ALLOWED_SIGNATURE_PREFIXES,
+        ?Clock $clock = null
+    )
     {
         if (!function_exists('sodium_crypto_sign_verify_detached')) {
             throw new RuntimeException(
@@ -27,6 +33,7 @@ class Verifier
         }
 
         $this->allowedPrefixes = $allowedPrefixes;
+        $this->clock           = $clock ?? new SystemClock();
     }
 
     /**
@@ -176,6 +183,18 @@ class Verifier
                 'Payload de firma no canónico (ver '
                 . 'docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
                 . '(slots Abiertos) — V2 (urls).md, sección SKU, firma y caducidad).'
+            );
+        }
+
+        $now = $this->clock->now();
+
+        if ($expiresAt < $now) {
+            return $this->error(
+                'E_SIGN_EXPIRED',
+                'sign_expired',
+                'Firma caducada según docs/Capa 3 — Validación, Firma Y Caducidad — '
+                . 'Actualizada (slots Abiertos) — V2 (urls).md.',
+                400
             );
         }
 

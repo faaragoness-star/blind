@@ -17,8 +17,8 @@ use G3D\ValidateSign\Api\ValidateSignController;
 use G3D\ValidateSign\Api\VerifyController;
 use G3D\ValidateSign\Crypto\Signer;
 use G3D\ValidateSign\Crypto\Verifier;
-use G3D\ValidateSign\Domain\Expiry;
 use G3D\ValidateSign\Validation\RequestValidator;
+use G3D\VendorBase\Time\SystemClock;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -34,14 +34,14 @@ add_action('rest_api_init', static function (): void {
     $validateValidator = new RequestValidator($schemaDir . '/validate-sign.request.schema.json');
     $verifyValidator = new RequestValidator($schemaDir . '/verify.request.schema.json');
 
-    $expiry = new Expiry();
-    $signer = new Signer();
+    $clock = new SystemClock();
+    $signer = new Signer(null, $clock);
     $privateKey = defined('G3D_VALIDATE_SIGN_PRIVATE_KEY') ? (string) G3D_VALIDATE_SIGN_PRIVATE_KEY : '';
-    $validateController = new ValidateSignController($validateValidator, $signer, $expiry, $privateKey);
+    $validateController = new ValidateSignController($validateValidator, $signer, $privateKey);
 
-    $verifier = new Verifier();
+    $verifier = new Verifier(Signer::ALLOWED_SIGNATURE_PREFIXES, $clock);
     $publicKey = defined('G3D_VALIDATE_SIGN_PUBLIC_KEY') ? (string) G3D_VALIDATE_SIGN_PUBLIC_KEY : '';
-    $verifyController = new VerifyController($verifyValidator, $verifier, $expiry, $publicKey);
+    $verifyController = new VerifyController($verifyValidator, $verifier, $publicKey);
 
     $validateController->registerRoutes();
     $verifyController->registerRoutes();
