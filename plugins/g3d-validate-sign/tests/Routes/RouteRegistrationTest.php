@@ -6,17 +6,11 @@ namespace G3D\ValidateSign\Tests\Routes;
 
 use PHPUnit\Framework\TestCase;
 
+require_once __DIR__ . '/../../../g3d-vendor-base-helper/tests/bootstrap.php';
+require_once __DIR__ . '/../../plugin.php';
+
 final class RouteRegistrationTest extends TestCase
 {
-    public static function setUpBeforeClass(): void
-    {
-        parent::setUpBeforeClass();
-
-        // Carga bootstrap y plugin sin producir efectos a nivel de archivo.
-        require_once __DIR__ . '/../../../g3d-vendor-base-helper/tests/bootstrap.php';
-        require_once __DIR__ . '/../../plugin.php';
-    }
-
     protected function setUp(): void
     {
         parent::setUp();
