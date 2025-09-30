@@ -1,6 +1,5 @@
 (function (global) {
   'use strict';
-
   var __ =
     global.wp && global.wp.i18n && typeof global.wp.i18n.__ === 'function'
       ? global.wp.i18n.__
@@ -25,9 +24,10 @@
   };
 
   global.G3DWIZARD.getJSON = async function getJSON(url, params) {
-    const qs = params && Object.keys(params).length
-      ? '?' + new URLSearchParams(params).toString()
-      : '';
+    const qs =
+      params && Object.keys(params).length
+        ? '?' + new URLSearchParams(params).toString()
+        : '';
     const res = await fetch(url + qs, {
       headers: {
         'X-WP-Nonce': (global.G3DWIZARD && global.G3DWIZARD.nonce) || '',
@@ -59,6 +59,12 @@
     var verifyButton = overlay.querySelector('[data-g3d-wizard-modal-verify]');
     var message = overlay.querySelector('.g3d-wizard-modal__msg');
     var rulesContainer = modal ? modal.querySelector('.g3d-wizard-modal__rules') : null;
+    var tabs = modal
+      ? Array.prototype.slice.call(modal.querySelectorAll('[role="tab"]'))
+      : [];
+    var panels = modal
+      ? Array.prototype.slice.call(modal.querySelectorAll('[role="tabpanel"]'))
+      : [];
     var lastValidation = null;
     var autoVerify = overlay.getAttribute('data-auto-verify') === '1';
     var shouldAutoAudit = modal && modal.getAttribute('data-auto-audit') === '1';
@@ -123,6 +129,69 @@
       }
     }
 
+    function activateTab(tab) {
+      if (!tab || tabs.indexOf(tab) === -1) {
+        return;
+      }
+
+      var controls = tab.getAttribute('aria-controls');
+
+      tabs.forEach(function (item) {
+        var isActive = item === tab;
+        item.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        item.setAttribute('tabindex', isActive ? '0' : '-1');
+      });
+
+      panels.forEach(function (panel) {
+        if (!panel || !panel.getAttribute) {
+          return;
+        }
+
+        if (panel.id && panel.id === controls) {
+          panel.removeAttribute('hidden');
+        } else {
+          panel.setAttribute('hidden', '');
+        }
+      });
+
+      if (typeof tab.focus === 'function') {
+        tab.focus();
+      }
+    }
+
+    function focusNext(current) {
+      if (!tabs.length) {
+        return;
+      }
+
+      var index = tabs.indexOf(current);
+      var nextIndex = (index + 1) % tabs.length;
+      var target = tabs[nextIndex];
+
+      if (target && typeof target.focus === 'function') {
+        target.focus();
+      }
+    }
+
+    function focusPrev(current) {
+      if (!tabs.length) {
+        return;
+      }
+
+      var index = tabs.indexOf(current);
+
+      if (index === -1) {
+        index = 0;
+      }
+
+      var prevIndex = (index - 1 + tabs.length) % tabs.length;
+      var target = tabs[prevIndex];
+
+      if (target && typeof target.focus === 'function') {
+        target.focus();
+      }
+    }
+
     function getModalData() {
       var snapshotId = '';
       var productoId = '';
@@ -154,10 +223,7 @@
       var api = wizard.api || {};
 
       if (!api.validateSign || typeof wizard.postJson !== 'function') {
-        setText(
-          message,
-          __('ERROR — endpoint no disponible', TEXT_DOMAIN)
-        );
+        setText(message, __('ERROR — endpoint no disponible', TEXT_DOMAIN));
         return;
       }
 
@@ -298,22 +364,12 @@
       var api = wizard.api || {};
 
       if (!api.verify || typeof wizard.postJson !== 'function') {
-        setText(
-          message,
-          __('ERROR — endpoint no disponible', TEXT_DOMAIN)
-        );
+        setText(message, __('ERROR — endpoint no disponible', TEXT_DOMAIN));
         return;
       }
 
-      if (
-        !lastValidation ||
-        !lastValidation.sku_hash ||
-        !lastValidation.sku_signature
-      ) {
-        setText(
-          message,
-          __('ERROR — Primero valida y firma', TEXT_DOMAIN)
-        );
+      if (!lastValidation || !lastValidation.sku_hash || !lastValidation.sku_signature) {
+        setText(message, __('ERROR — Primero valida y firma', TEXT_DOMAIN));
         return;
       }
 
@@ -345,10 +401,7 @@
 
         if (response.ok && data && data.ok === true) {
           var requestId = data.request_id ? data.request_id : '-';
-          setText(
-            message,
-            __('Verificado OK — request_id: ', TEXT_DOMAIN) + requestId
-          );
+          setText(message, __('Verificado OK — request_id: ', TEXT_DOMAIN) + requestId);
 
           if (shouldAutoAudit) {
             audit('verify_success', {
@@ -402,7 +455,8 @@
         event.preventDefault();
       }
 
-      previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      previousFocus =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
       overlay.removeAttribute('hidden');
       document.body.classList.add('g3d-wizard-open');
@@ -421,10 +475,7 @@
         if (!productoId) {
           setText(
             rulesContainer,
-            __(
-              'TODO(plugin-2-g3d-catalog-rules.md §6): faltan parámetros.',
-              TEXT_DOMAIN
-            )
+            __('TODO(plugin-2-g3d-catalog-rules.md §6): faltan parámetros.', TEXT_DOMAIN)
           );
         } else {
           var params = {
@@ -498,6 +549,67 @@
     closeButtons.forEach(function (button) {
       button.addEventListener('click', closeModal);
     });
+
+    if (tabs.length && panels.length) {
+      activateTab(tabs[0]);
+
+      tabs.forEach(function (tab) {
+        tab.addEventListener('click', function (event) {
+          if (event && typeof event.preventDefault === 'function') {
+            event.preventDefault();
+          }
+
+          activateTab(tab);
+        });
+
+        tab.addEventListener('keydown', function (event) {
+          if (!event) {
+            return;
+          }
+
+          var key = event.key;
+
+          if (key === 'ArrowRight' || key === 'ArrowDown') {
+            event.preventDefault();
+            focusNext(tab);
+            return;
+          }
+
+          if (key === 'ArrowLeft' || key === 'ArrowUp') {
+            event.preventDefault();
+            focusPrev(tab);
+            return;
+          }
+
+          if (key === 'Home') {
+            event.preventDefault();
+
+            if (tabs[0] && typeof tabs[0].focus === 'function') {
+              tabs[0].focus();
+            }
+
+            return;
+          }
+
+          if (key === 'End') {
+            event.preventDefault();
+
+            var last = tabs[tabs.length - 1];
+
+            if (last && typeof last.focus === 'function') {
+              last.focus();
+            }
+
+            return;
+          }
+
+          if (key === 'Enter' || key === ' ') {
+            event.preventDefault();
+            activateTab(tab);
+          }
+        });
+      });
+    }
 
     if (cta) {
       cta.addEventListener('click', handleCtaClick);
