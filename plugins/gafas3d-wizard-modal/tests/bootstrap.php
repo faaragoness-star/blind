@@ -94,6 +94,27 @@ if (!isset($GLOBALS['g3d_wizard_modal_enqueued_styles'])) {
     $GLOBALS['g3d_wizard_modal_enqueued_styles'] = [];
 }
 
+if (!isset($GLOBALS['g3d_wizard_modal_registered_scripts'])) {
+    /**
+     * @var array<string, array{src:string,deps:array<int, string>,ver:string|bool,in_footer:bool}> $GLOBALS['g3d_wizard_modal_registered_scripts']
+     */
+    $GLOBALS['g3d_wizard_modal_registered_scripts'] = [];
+}
+
+if (!isset($GLOBALS['g3d_wizard_modal_registered_styles'])) {
+    /**
+     * @var array<string, array{src:string,deps:array<int, string>,ver:string|bool,media:string}> $GLOBALS['g3d_wizard_modal_registered_styles']
+     */
+    $GLOBALS['g3d_wizard_modal_registered_styles'] = [];
+}
+
+if (!isset($GLOBALS['g3d_wizard_modal_localized_scripts'])) {
+    /**
+     * @var array<string, array<string, mixed>> $GLOBALS['g3d_wizard_modal_localized_scripts']
+     */
+    $GLOBALS['g3d_wizard_modal_localized_scripts'] = [];
+}
+
 if (!function_exists('wp_enqueue_script')) {
     /**
      * @param array<int, string> $deps
@@ -111,6 +132,56 @@ if (!function_exists('wp_enqueue_script')) {
             'ver' => $ver,
             'in_footer' => $inFooter,
         ];
+    }
+}
+
+if (!function_exists('wp_register_script')) {
+    /**
+     * @param array<int, string> $deps
+     */
+    function wp_register_script(
+        string $handle,
+        string $src,
+        array $deps = [],
+        string|bool $ver = false,
+        bool $inFooter = false
+    ): void {
+        $GLOBALS['g3d_wizard_modal_registered_scripts'][$handle] = [
+            'src' => $src,
+            'deps' => $deps,
+            'ver' => $ver,
+            'in_footer' => $inFooter,
+        ];
+    }
+}
+
+if (!function_exists('wp_register_style')) {
+    /**
+     * @param array<int, string> $deps
+     */
+    function wp_register_style(
+        string $handle,
+        string $src,
+        array $deps = [],
+        string|bool $ver = false,
+        string $media = 'all'
+    ): void {
+        $GLOBALS['g3d_wizard_modal_registered_styles'][$handle] = [
+            'src' => $src,
+            'deps' => $deps,
+            'ver' => $ver,
+            'media' => $media,
+        ];
+    }
+}
+
+if (!function_exists('wp_localize_script')) {
+    /**
+     * @param array<string, mixed> $l10n
+     */
+    function wp_localize_script(string $handle, string $objectName, array $l10n): void
+    {
+        $GLOBALS['g3d_wizard_modal_localized_scripts'][$handle][$objectName] = $l10n;
     }
 }
 
