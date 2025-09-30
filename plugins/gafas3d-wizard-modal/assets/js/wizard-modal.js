@@ -351,14 +351,15 @@
       });
 
       panelElements.forEach(function (panel) {
-        if (!panel || !panel.getAttribute) {
+        if (!panel || !panel.id) {
           return;
         }
 
-        if (panel.id && panel.id === controls) {
+        if (panel.id === controls) {
+          panel.hidden = false;
           panel.removeAttribute('hidden');
         } else {
-          panel.setAttribute('hidden', '');
+          panel.hidden = true;
         }
       });
 
@@ -789,21 +790,26 @@
     if (tabElements.length && panelElements.length) {
       var initialTab = null;
 
-      tabElements.forEach(function (tab) {
-        if (!initialTab && tab.getAttribute('aria-selected') === 'true' && !isTabDisabled(tab)) {
-          initialTab = tab;
-        }
-      });
+      if (Array.prototype.find) {
+        initialTab = Array.prototype.find.call(tabs, function (candidate) {
+          return (
+            candidate &&
+            candidate.getAttribute &&
+            candidate.getAttribute('aria-selected') === 'true' &&
+            !isTabDisabled(candidate)
+          );
+        });
+      }
 
       if (!initialTab) {
-        initialTab = getFirstEnabledTab();
+        initialTab = getFirstEnabledTab() || (tabs.length ? tabs[0] : null);
       }
 
       if (initialTab) {
         activateTab(initialTab);
       }
 
-      tabElements.forEach(function (tab) {
+      Array.prototype.forEach.call(tabs, function (tab) {
         tab.addEventListener('click', function (event) {
           if (event && typeof event.preventDefault === 'function') {
             event.preventDefault();
