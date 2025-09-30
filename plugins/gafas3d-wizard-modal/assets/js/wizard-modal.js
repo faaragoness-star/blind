@@ -157,6 +157,7 @@
     const panels = root.querySelectorAll('[role="tabpanel"]');
     var tabElements = Array.prototype.slice.call(tabs);
     var panelElements = Array.prototype.slice.call(panels);
+    var panelById = {};
     var lastValidation = null;
     var shouldAutoAudit = modal && modal.getAttribute('data-auto-audit') === '1';
     var previousFocus = null;
@@ -495,10 +496,23 @@
       return null;
     }
 
-    function setTabFocusState(target) {
+    var selectedTab = null;
+    var rovingTab = null;
+
+    panelElements.forEach(function (panel) {
+      if (!panel || !panel.id) {
+        return;
+      }
+
+      panelById[panel.id] = panel;
+    });
+
+    function setFocusableTab(target) {
       tabElements.forEach(function (item) {
         item.setAttribute('tabindex', item === target ? '0' : '-1');
       });
+
+      rovingTab = target;
     }
 
     function focusTab(tab) {
@@ -506,25 +520,30 @@
         return;
       }
 
-      setTabFocusState(tab);
+      setFocusableTab(tab);
 
       if (typeof tab.focus === 'function') {
         tab.focus();
       }
     }
 
-    function activateTab(tab) {
+    function setActiveTab(tab) {
       if (!tab || tabElements.indexOf(tab) === -1 || isTabDisabled(tab)) {
         return;
       }
 
       var controls = tab.getAttribute('aria-controls');
 
+      if (!controls || !panelById[controls]) {
+        return;
+      }
+
       tabElements.forEach(function (item) {
         var isActive = item === tab;
         item.setAttribute('aria-selected', isActive ? 'true' : 'false');
       });
 
+      selectedTab = tab;
       focusTab(tab);
 
       panelElements.forEach(function (panel) {
@@ -534,6 +553,34 @@
 
         panel.hidden = panel.id !== controls;
       });
+    }
+
+    function focusNext(direction) {
+      if (!tabElements.length) {
+        return;
+      }
+
+      var current = document.activeElement;
+
+      if (!current || tabElements.indexOf(current) === -1) {
+        current = rovingTab || selectedTab || getFirstEnabledTab();
+      }
+
+      if (!current) {
+        return;
+      }
+
+      var target = null;
+
+      if (direction > 0) {
+        target = getNextEnabledTab(current) || current;
+      } else if (direction < 0) {
+        target = getPreviousEnabledTab(current) || current;
+      }
+
+      if (target && target !== current) {
+        focusTab(target);
+      }
     }
 
     function collectState(scope) {
@@ -1071,7 +1118,7 @@
       }
 
       if (initialTab) {
-        activateTab(initialTab);
+        setActiveTab(initialTab);
       }
 
       Array.prototype.forEach.call(tabs, function (tab) {
@@ -1084,7 +1131,7 @@
             return;
           }
 
-          activateTab(tab);
+          setActiveTab(tab);
         });
 
         tab.addEventListener('keydown', function (event) {
@@ -1094,23 +1141,15 @@
 
           var key = event.key;
 
-          if (key === 'ArrowRight' || key === 'ArrowDown') {
+          if (key === 'ArrowRight') {
             event.preventDefault();
-            var next = getNextEnabledTab(tab);
-
-            if (next) {
-              focusTab(next);
-            }
+            focusNext(1);
             return;
           }
 
-          if (key === 'ArrowLeft' || key === 'ArrowUp') {
+          if (key === 'ArrowLeft') {
             event.preventDefault();
-            var previous = getPreviousEnabledTab(tab);
-
-            if (previous) {
-              focusTab(previous);
-            }
+            focusNext(-1);
             return;
           }
 
@@ -1145,7 +1184,7 @@
               return;
             }
 
-            activateTab(tab);
+            setActiveTab(tab);
           }
         });
       });

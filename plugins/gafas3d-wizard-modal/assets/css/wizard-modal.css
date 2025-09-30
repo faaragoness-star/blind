@@ -1,5 +1,5 @@
 [hidden] {
-  display: none !important;
+  display: none;
 }
 
 body.g3d-wizard-open {
@@ -29,17 +29,7 @@ body.g3d-wizard-open {
   padding: 1.5rem;
 }
 
-.g3d-wizard-modal :focus {
-  outline: 2px solid;
-  outline-offset: 2px;
-}
-
 .g3d-wizard-modal [role="tab"]:focus {
-  outline: 2px solid;
-  outline-offset: 2px;
-}
-
-[role="tab"]:focus {
   outline: 2px solid;
   outline-offset: 2px;
 }
