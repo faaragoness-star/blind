@@ -95,6 +95,7 @@
     var summaryMessage = '';
     var statusMessage = '';
     var rulesSummaryMessage = '';
+    var lastRules = null;
 
     function setText(element, value) {
       if (!element) {
@@ -200,6 +201,21 @@
       }
 
       return 'Reglas: error';
+    }
+
+    async function fetchRules(params) {
+      var wizard = global.G3DWIZARD || {};
+      var api = wizard.api || {};
+      var url = typeof api.rules === 'string' && api.rules ? api.rules : '';
+
+      if (!url) {
+        var endpointError = new Error('missing_endpoint');
+        endpointError.code = 'missing_endpoint';
+
+        return Promise.reject(endpointError);
+      }
+
+      return global.G3DWIZARD.getJSON(url, params || {});
     }
 
     function audit(action, extras) {
@@ -694,8 +710,18 @@
 
       var params = {};
 
+      if (message) {
+        message.setAttribute('aria-busy', 'true');
+      }
+
       if (!productoId) {
+        lastRules = null;
         setRulesSummaryMessage('Reglas: error (missing producto_id)');
+
+        if (message) {
+          message.removeAttribute('aria-busy');
+        }
+
         return;
       }
 
@@ -705,36 +731,26 @@
         params.locale = locale;
       }
 
-      var api = (global.G3DWIZARD && global.G3DWIZARD.api) || {};
-      var url = typeof api.rules === 'string' && api.rules ? api.rules : '';
-
-      if (!url) {
-        setRulesSummaryMessage('Reglas: error (endpoint no disponible)');
-        // TODO(plugin-2-g3d-catalog-rules.md §6 APIs / Contratos (lectura)): exponer URL pública en localización.
-        return;
-      }
-
       if (rulesContainer) {
         rulesContainer.setAttribute('aria-busy', 'true');
       }
 
       setRulesSummaryMessage('Reglas: cargando…');
 
-      if (message) {
-        message.removeAttribute('aria-busy');
-      }
-
-      global.G3DWIZARD
-        .getJSON(url, params)
+      fetchRules(params)
         .then(function (data) {
+          lastRules = data;
           setRulesSummaryMessage(formatRulesSummary(data));
-
-          if (rulesContainer) {
-            rulesContainer.removeAttribute('aria-busy');
-          }
         })
         .catch(function (error) {
+          lastRules = null;
           setRulesSummaryMessage(formatRulesError(error));
+          // TODO(Plugin 4 §controles de recarga).
+        })
+        .finally(function () {
+          if (message) {
+            message.removeAttribute('aria-busy');
+          }
 
           if (rulesContainer) {
             rulesContainer.removeAttribute('aria-busy');
