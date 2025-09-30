@@ -34,7 +34,10 @@
     var dialog = overlay.querySelector('[role="dialog"]');
     var modal = overlay.querySelector('.g3d-wizard-modal');
     var cta = overlay.querySelector('[data-g3d-wizard-modal-cta]');
+    var verifyButton = overlay.querySelector('[data-g3d-wizard-modal-verify]');
     var message = overlay.querySelector('.g3d-wizard-modal__msg');
+    var lastValidation = null;
+    var autoVerify = overlay.getAttribute('data-auto-verify') === '1';
     var previousFocus = null;
 
     function setText(element, value) {
@@ -61,6 +64,8 @@
         setText(message, 'ERROR — endpoint no disponible');
         return;
       }
+
+      lastValidation = null;
 
       var snapshotId = '';
       var productoId = '';
@@ -111,7 +116,9 @@
           var okValue = data && data.ok !== undefined ? data.ok : response.ok;
           var hash = data && data.sku_hash ? data.sku_hash : '-';
           var expires = data && data.expires_at ? data.expires_at : '-';
-          var snapshot = data && data.snapshot_id ? data.snapshot_id : snapshotId || '-';
+          var snapshotValue =
+            data && data.snapshot_id ? data.snapshot_id : snapshotId || '';
+          var snapshot = snapshotValue || '-';
           var signature = '-';
 
           if (data && typeof data.sku_signature === 'string' && data.sku_signature) {
@@ -132,6 +139,19 @@
             signature;
 
           setText(message, successMessage);
+
+          lastValidation = {
+            sku_hash: data && data.sku_hash ? data.sku_hash : '',
+            sku_signature:
+              data && typeof data.sku_signature === 'string'
+                ? data.sku_signature
+                : '',
+            snapshot_id: snapshotValue,
+          };
+
+          if (autoVerify) {
+            runVerifyRequest();
+          }
         } else {
           var code = '-';
 
@@ -155,6 +175,93 @@
         cta.disabled = false;
         setText(cta, defaultLabel);
       }
+    }
+
+    async function runVerifyRequest() {
+      if (!verifyButton) {
+        return;
+      }
+
+      if (verifyButton.disabled) {
+        return;
+      }
+
+      var wizard = global.G3DWIZARD || {};
+      var api = wizard.api || {};
+
+      if (!api.verify || typeof wizard.postJson !== 'function') {
+        setText(message, 'ERROR — endpoint no disponible');
+        return;
+      }
+
+      if (
+        !lastValidation ||
+        !lastValidation.sku_hash ||
+        !lastValidation.sku_signature
+      ) {
+        setText(message, 'ERROR — Primero valida y firma');
+        return;
+      }
+
+      var payload = {
+        sku_hash: lastValidation.sku_hash,
+        sku_signature: lastValidation.sku_signature,
+        snapshot_id: lastValidation.snapshot_id || '',
+      };
+
+      var defaultLabel = verifyButton.textContent;
+      verifyButton.disabled = true;
+      setText(verifyButton, 'Verificando…');
+      setText(message, '');
+
+      try {
+        var response = await wizard.postJson(api.verify, payload);
+        var data = null;
+
+        try {
+          data = await response.json();
+        } catch (jsonError) {
+          data = null;
+        }
+
+        if (response.ok && data && data.ok === true) {
+          var requestId = data.request_id ? data.request_id : '-';
+          setText(message, 'Verificado OK — request_id: ' + requestId);
+        } else {
+          var code = null;
+
+          if (data) {
+            if (data.reason_key) {
+              code = data.reason_key;
+            } else if (data.code) {
+              code = data.code;
+            }
+          }
+
+          if (!code && response.status) {
+            code = 'HTTP ' + response.status;
+          }
+
+          if (!code) {
+            code = 'ERROR';
+          }
+
+          setText(message, 'ERROR — ' + code);
+        }
+      } catch (error) {
+        setText(message, 'ERROR — fallo de red');
+      } finally {
+        verifyButton.disabled = false;
+        setText(verifyButton, defaultLabel);
+      }
+    }
+
+    function handleVerifyClick(event) {
+      if (event && typeof event.preventDefault === 'function') {
+        event.preventDefault();
+      }
+
+      runVerifyRequest();
     }
 
     function openModal(event) {
@@ -199,6 +306,10 @@
 
     if (cta) {
       cta.addEventListener('click', handleCtaClick);
+    }
+
+    if (verifyButton) {
+      verifyButton.addEventListener('click', handleVerifyClick);
     }
 
     overlay.addEventListener('click', function (event) {
