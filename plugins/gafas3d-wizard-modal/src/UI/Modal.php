@@ -42,7 +42,8 @@ final class Modal
         echo '<div class="g3d-wizard-modal" role="dialog" tabindex="-1" aria-modal="true" '
             . 'aria-labelledby="g3d-wizard-modal-title" '
             . 'aria-describedby="g3d-wizard-modal-description" '
-            . 'data-snapshot-id="" data-producto-id="" data-locale="' . $locale . '">';
+            . 'data-snapshot-id="" data-producto-id="" data-locale="' . $locale . '" '
+            . 'data-actor-id="" data-what="">';
 
         echo '<div tabindex="0" data-g3d-wizard-focus-guard="start"></div>';
         echo '<div class="g3d-wizard-modal__content">';
