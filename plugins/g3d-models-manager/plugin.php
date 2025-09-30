@@ -22,8 +22,11 @@ add_action('init', static function (): void {
 });
 
 add_action('rest_api_init', static function (): void {
-    $service = new \G3D\ModelsManager\Service\GlbIngestionService();
+    $service = $GLOBALS['g3d_models_manager_glb_service']
+        ?? new \G3D\ModelsManager\Service\GlbIngestionService();
 
-    (new \G3D\ModelsManager\Api\GlbIngestController())->registerRoutes();
+    $GLOBALS['g3d_models_manager_glb_service'] = $service;
+
+    (new \G3D\ModelsManager\Api\GlbIngestController($service))->registerRoutes();
     (new \G3D\ModelsManager\Api\IngestionController($service))->registerRoutes();
 });
