@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace G3D\ModelsManager\Api;
 
 use G3D\ModelsManager\Rbac\Capabilities;
+use G3D\ModelsManager\Service\GlbIngestionService;
 use G3D\VendorBase\Rest\Responses;
 use G3D\VendorBase\Rest\Security;
 use WP_Error;
@@ -13,6 +14,10 @@ use WP_REST_Response;
 
 final class GlbIngestController
 {
+    public function __construct(private GlbIngestionService $service)
+    {
+    }
+
     public function registerRoutes(): void
     {
         \register_rest_route(
@@ -29,58 +34,29 @@ final class GlbIngestController
         );
     }
 
-    /**
-     * @return WP_REST_Response|WP_Error
-     */
+    /** @return WP_REST_Response|WP_Error */
     public function handle(WP_REST_Request $req)
     {
         $nonce = Security::checkOptionalNonce($req);
         if ($nonce instanceof WP_Error) {
-            // TODO(doc §auth): confirmar si la validación de nonce debe bloquear la petición.
+            // TODO(doc §auth): si los docs exigen nonce obligatorio, devolver $nonce.
         }
 
-        $payload = $req->get_json_params();
-        if (!\is_array($payload)) {
-            $payload = [];
+        $file = $_FILES['g3d_glb_file'] ?? null;
+        if (!\is_array($file) || !isset($file['tmp_name'])) {
+            return new WP_REST_Response(
+                Responses::error('E_MISSING_FILE', 'missing_file', 'Necesario g3d_glb_file.'),
+                400
+            );
         }
 
-        /** @var array{
-         *     binding: array<string, mixed>,
-         *     validation: array{
-         *         ok: bool,
-         *         missing: list<string>,
-         *         type: list<array{field:string, expected:string}>
-         *     }
-         * } $response
-         */
-        $response = Responses::ok([
-            'binding' => [
-                'file_hash'       => 'stub:sha256:deadbeef',
-                'filesize_bytes'  => 123456,
-                'draco_enabled'   => false,
-                'bounding_box'    => [
-                    'min' => [0.0, 0.0, 0.0],
-                    'max' => [10.0, 5.0, 2.0],
-                ],
-                'piece_type'          => 'FRAME',
-                'slots_detectados'    => ['Frame_Anchor', 'Socket_Cage'],
-                'anchors_present'     => ['Frame_Anchor', 'Temple_L_Anchor', 'Temple_R_Anchor'],
-                'props'               => [
-                    'socket_w_mm' => 45,
-                    'socket_h_mm' => 35,
-                    'variant'     => 'rx-classic',
-                ],
-                'object_name'         => 'frame_MAIN',
-                'object_name_pattern' => 'frame_*',
-                'model_code'          => 'mdl:rx-2025',
-            ],
-            'validation' => [
-                'ok'      => true,
-                'missing' => [],
-                'type'    => [],
-            ],
-        ]);
+        /** @var array{name:string,type?:string,tmp_name:string,error:int,size:int} $file */
 
-        return new WP_REST_Response($response, 200);
+        $result = $this->service->ingest($file);
+
+        return new WP_REST_Response(
+            ['ok' => true] + $result,
+            200
+        );
     }
 }

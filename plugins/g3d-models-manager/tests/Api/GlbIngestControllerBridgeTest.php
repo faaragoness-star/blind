@@ -1,0 +1,109 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {
+    require_once __DIR__ . '/../../../g3d-vendor-base-helper/tests/bootstrap.php';
+}
+
+namespace G3D\ModelsManager\Tests\Api {
+
+    use G3D\ModelsManager\Api\GlbIngestController;
+    use G3D\ModelsManager\Service\GlbIngestionService;
+    use PHPUnit\Framework\TestCase;
+    use WP_REST_Request;
+    use WP_REST_Response;
+
+    final class GlbIngestControllerBridgeTest extends TestCase
+    {
+        protected function setUp(): void
+        {
+            parent::setUp();
+            $_FILES = [];
+        }
+
+        protected function tearDown(): void
+        {
+            $_FILES = [];
+            parent::tearDown();
+        }
+
+        public function testHandleReturns400WhenFileMissing(): void
+        {
+            $_FILES = [];
+
+            $service = new GlbIngestionService();
+            $controller = new GlbIngestController($service);
+
+            $request = new WP_REST_Request('POST', '/g3d/v1/glb-ingest');
+
+            $response = $controller->handle($request);
+
+            self::assertInstanceOf(WP_REST_Response::class, $response);
+            self::assertSame(400, $response->get_status());
+
+            $data = $response->get_data();
+            self::assertIsArray($data);
+            self::assertSame(
+                [
+                    'ok'         => false,
+                    'code'       => 'E_MISSING_FILE',
+                    'reason_key' => 'missing_file',
+                    'detail'     => 'Necesario g3d_glb_file.',
+                ],
+                $data
+            );
+        }
+
+        public function testHandleDelegatesToServiceAndReturnsResult(): void
+        {
+            $tmp = tempnam(sys_get_temp_dir(), 'glb');
+            self::assertIsString($tmp);
+
+            $bytesWritten = file_put_contents($tmp, 'abc');
+            self::assertNotFalse($bytesWritten);
+
+            $size = filesize($tmp);
+            self::assertIsInt($size);
+
+            $_FILES['g3d_glb_file'] = [
+                'name'     => 'test.glb',
+                'type'     => 'model/gltf-binary',
+                'tmp_name' => $tmp,
+                'error'    => 0,
+                'size'     => $size,
+            ];
+
+            try {
+                $service = new GlbIngestionService();
+                $controller = new GlbIngestController($service);
+
+                $request = new WP_REST_Request('POST', '/g3d/v1/glb-ingest');
+
+                $response = $controller->handle($request);
+
+                self::assertInstanceOf(WP_REST_Response::class, $response);
+                self::assertSame(200, $response->get_status());
+
+                $data = $response->get_data();
+                self::assertIsArray($data);
+                self::assertArrayHasKey('ok', $data);
+                self::assertTrue($data['ok']);
+                self::assertArrayHasKey('binding', $data);
+                self::assertArrayHasKey('validation', $data);
+
+                self::assertIsArray($data['binding']);
+                self::assertSame(hash_file('sha256', $tmp), $data['binding']['file_hash'] ?? null);
+                self::assertSame($size, $data['binding']['filesize_bytes'] ?? null);
+
+                self::assertIsArray($data['validation']);
+                self::assertTrue($data['validation']['ok'] ?? false);
+                self::assertSame([], $data['validation']['missing'] ?? null);
+                self::assertSame([], $data['validation']['type'] ?? null);
+            } finally {
+                unset($_FILES['g3d_glb_file']);
+                @unlink($tmp);
+            }
+        }
+    }
+}
