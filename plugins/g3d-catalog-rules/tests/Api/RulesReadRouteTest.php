@@ -6,6 +6,7 @@ namespace G3D\CatalogRules\Tests\Api;
 
 use G3D\CatalogRules\Api\RulesReadController;
 use PHPUnit\Framework\TestCase;
+use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
 
@@ -49,6 +50,8 @@ final class RulesReadRouteTest extends TestCase
 
         $data = $response->get_data();
         self::assertIsArray($data);
+        self::assertArrayHasKey('ok', $data);
+        self::assertTrue($data['ok']);
         self::assertArrayHasKey('id', $data);
         self::assertSame('snap:2025-09-27T18:45:00Z', $data['id']);
         self::assertArrayHasKey('schema_version', $data);
@@ -86,18 +89,47 @@ final class RulesReadRouteTest extends TestCase
 
         $response = $controller->handle($request);
 
-        self::assertInstanceOf(WP_REST_Response::class, $response);
-        self::assertSame(400, $response->get_status());
+        self::assertInstanceOf(WP_Error::class, $response);
+        self::assertSame('rest_missing_required_params', $response->get_error_code());
 
-        $data = $response->get_data();
-        self::assertSame(
-            [
-                'ok' => false,
-                'code' => 'E_MISSING_PARAM',
-                'reason_key' => 'missing_param',
-                'detail' => 'Faltan parámetros requeridos.',
-            ],
-            $data
-        );
+        $data = $response->get_error_data();
+        self::assertIsArray($data);
+        self::assertSame(400, $data['status']);
+        self::assertSame(['producto_id'], $data['missing_fields']);
+    }
+
+    public function testHandleReturnsErrorWhenProductoIdHasInvalidType(): void
+    {
+        $controller = new RulesReadController();
+        $request = new WP_REST_Request('GET', '/g3d/v1/catalog/rules');
+        $request->set_param('producto_id', ['prod:base']);
+
+        $response = $controller->handle($request);
+
+        self::assertInstanceOf(WP_Error::class, $response);
+        self::assertSame('rest_invalid_param', $response->get_error_code());
+
+        $data = $response->get_error_data();
+        self::assertIsArray($data);
+        self::assertSame(400, $data['status']);
+        self::assertSame(['producto_id'], $data['type_errors']);
+    }
+
+    public function testHandleReturnsErrorWhenLocaleHasInvalidType(): void
+    {
+        $controller = new RulesReadController();
+        $request = new WP_REST_Request('GET', '/g3d/v1/catalog/rules');
+        $request->set_param('producto_id', 'prod:base');
+        $request->set_param('locale', ['es-ES']);
+
+        $response = $controller->handle($request);
+
+        self::assertInstanceOf(WP_Error::class, $response);
+        self::assertSame('rest_invalid_param', $response->get_error_code());
+
+        $data = $response->get_error_data();
+        self::assertIsArray($data);
+        self::assertSame(400, $data['status']);
+        self::assertSame(['locale'], $data['type_errors']);
     }
 }
