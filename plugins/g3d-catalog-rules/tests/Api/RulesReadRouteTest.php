@@ -6,6 +6,7 @@ namespace G3D\CatalogRules\Tests\Api;
 
 use G3D\CatalogRules\Api\RulesReadController;
 use PHPUnit\Framework\TestCase;
+use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
 
@@ -32,17 +33,17 @@ final class RulesReadRouteTest extends TestCase
         self::assertSame('__return_true', $route['args']['permission_callback']);
         self::assertArrayHasKey('producto_id', $route['args']['args']);
         self::assertTrue($route['args']['args']['producto_id']['required']);
+        self::assertArrayHasKey('snapshot_id', $route['args']['args']);
+        self::assertFalse($route['args']['args']['snapshot_id']['required']);
+        self::assertArrayHasKey('locale', $route['args']['args']);
+        self::assertFalse($route['args']['args']['locale']['required']);
     }
 
-    public function testHandleReturnsCatalogRulesSnapshotPayload(): void
+    public function testHandleReturnsCatalogRulesPayload(): void
     {
         $controller = new RulesReadController();
         $request = new WP_REST_Request('GET', '/g3d/v1/catalog/rules');
-        $request->set_header('Content-Type', 'application/json');
-        $request->set_body((string) json_encode([
-            'producto_id' => 'prod:base',
-            'locale' => 'es-ES',
-        ]));
+        $request->set_param('producto_id', 'prod:base');
 
         $response = $controller->handle($request);
 
@@ -51,14 +52,20 @@ final class RulesReadRouteTest extends TestCase
 
         $data = $response->get_data();
         self::assertIsArray($data);
-        self::assertSame('prod:base', $data['producto_id'] ?? null);
-        self::assertSame(['es-ES'], $data['locales'] ?? []);
         self::assertArrayHasKey('rules', $data);
         self::assertIsArray($data['rules']);
-        self::assertArrayHasKey('material_to_modelos', $data['rules']);
-        self::assertArrayHasKey('slot_mapping_editorial', $data['rules']);
-        self::assertArrayHasKey('entities', $data);
-        self::assertIsArray($data['entities']['piezas'] ?? null);
+        self::assertArrayHasKey('snapshot_id', $data);
+        self::assertArrayHasKey('version', $data);
+        self::assertArrayHasKey('producto_id', $data);
+        self::assertSame('snap:2025-09-27T18:45:00Z', $data['snapshot_id']);
+        self::assertSame('ver:2025-09-27T18:45:00Z', $data['version']);
+        self::assertSame('prod:base', $data['producto_id']);
+
+        $firstRule = $data['rules'][0] ?? null;
+        self::assertIsArray($firstRule);
+        self::assertArrayHasKey('key', $firstRule);
+        self::assertArrayHasKey('value', $firstRule);
+        self::assertSame('material_to_modelos', $firstRule['key']);
     }
 
     public function testHandleReturnsErrorWhenProductoIdMissing(): void
@@ -68,13 +75,11 @@ final class RulesReadRouteTest extends TestCase
 
         $response = $controller->handle($request);
 
-        self::assertInstanceOf(WP_REST_Response::class, $response);
-        self::assertSame(400, $response->get_status());
-
-        $data = $response->get_data();
-        self::assertIsArray($data);
-        self::assertFalse($data['ok']);
-        self::assertSame('g3d_catalog_rules_missing_producto_id', $data['code']);
-        self::assertSame(400, $data['status'] ?? null);
+        self::assertInstanceOf(WP_Error::class, $response);
+        self::assertSame('rest_missing_required_params', $response->get_error_code());
+        self::assertSame(
+            ['status' => 400, 'params' => ['producto_id']],
+            $response->get_error_data()
+        );
     }
 }
