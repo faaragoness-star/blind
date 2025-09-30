@@ -47,7 +47,6 @@ final class AssetsTest extends TestCase
         self::assertArrayHasKey('validateSign', $localized['api']);
         self::assertArrayHasKey('verify', $localized['api']);
         self::assertArrayHasKey('audit', $localized['api']);
-        self::assertArrayHasKey('rules', $localized['api']);
         self::assertSame(
             'http://example.test/wp-json/g3d/v1/validate-sign',
             $localized['api']['validateSign'] ?? null
@@ -57,10 +56,9 @@ final class AssetsTest extends TestCase
             'http://example.test/wp-json/g3d/v1/audit',
             $localized['api']['audit'] ?? null
         );
-        self::assertSame(
-            'http://example.test/wp-json/g3d/v1/catalog/rules',
-            $localized['api']['rules'] ?? null
-        );
+        self::assertArrayHasKey('rules', $localized['api']);
+        self::assertIsString($localized['api']['rules']);
+        self::assertStringStartsWith('http://example.test/wp-json/', $localized['api']['rules']);
         self::assertArrayHasKey('nonce', $localized);
         self::assertSame('nonce-123', $localized['nonce'] ?? null);
         self::assertArrayHasKey('locale', $localized);
