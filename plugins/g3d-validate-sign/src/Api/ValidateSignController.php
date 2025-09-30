@@ -9,14 +9,25 @@ use DateTimeZone;
 use G3D\ValidateSign\Crypto\Signer;
 use G3D\ValidateSign\Domain\Expiry;
 use G3D\ValidateSign\Validation\RequestValidator;
+use G3D\VendorBase\Auth\RestPerms;
 use G3D\VendorBase\Rest\Responses;
 use G3D\VendorBase\Rest\Security;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
 
+/**
+ * REST controller to sign SKU payloads.
+ *
+ * Requires the CAP_USE_API capability to access the REST endpoint.
+ */
 class ValidateSignController
 {
+    /**
+     * Capability required to consume the Validate & Sign REST API.
+     */
+    public const CAP_USE_API = 'g3d_validate_use_api';
+
     private RequestValidator $validator;
     private Signer $signer;
     private Expiry $expiry;
@@ -42,7 +53,9 @@ class ValidateSignController
             [
                 'methods' => 'POST',
                 'callback' => [$this, 'handle'],
-                'permission_callback' => '__return_true', // público según docs/plugin-3-g3d-validate-sign.md §2.
+                'permission_callback' => static function (WP_REST_Request $request): bool {
+                    return RestPerms::canUse(self::CAP_USE_API, $request);
+                },
             ]
         );
     }

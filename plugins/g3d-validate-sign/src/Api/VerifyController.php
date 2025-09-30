@@ -9,12 +9,19 @@ use DateTimeZone;
 use G3D\ValidateSign\Crypto\Verifier;
 use G3D\ValidateSign\Domain\Expiry;
 use G3D\ValidateSign\Validation\RequestValidator;
+use G3D\VendorBase\Auth\RestPerms;
 use G3D\VendorBase\Rest\Responses;
 use G3D\VendorBase\Rest\Security;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
 
+/**
+ * REST controller to verify SKU signatures.
+ *
+ * Requires the ValidateSignController::CAP_USE_API capability to access the
+ * endpoint.
+ */
 class VerifyController
 {
     private RequestValidator $validator;
@@ -42,7 +49,9 @@ class VerifyController
             [
                 'methods' => 'POST',
                 'callback' => [$this, 'handle'],
-                'permission_callback' => '__return_true', // público según docs/plugin-3-g3d-validate-sign.md §2.
+                'permission_callback' => static function (WP_REST_Request $request): bool {
+                    return RestPerms::canUse(ValidateSignController::CAP_USE_API, $request);
+                },
             ]
         );
     }
