@@ -6,7 +6,6 @@ namespace G3D\CatalogRules\Tests\Api;
 
 use G3D\CatalogRules\Api\RulesReadController;
 use PHPUnit\Framework\TestCase;
-use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
 
@@ -33,15 +32,19 @@ final class RulesReadRouteTest extends TestCase
         self::assertSame('__return_true', $route['args']['permission_callback']);
         self::assertArrayHasKey('producto_id', $route['args']['args']);
         self::assertTrue($route['args']['args']['producto_id']['required']);
+        self::assertArrayHasKey('snapshot_id', $route['args']['args']);
+        self::assertTrue($route['args']['args']['snapshot_id']['required']);
         self::assertArrayHasKey('locale', $route['args']['args']);
-        self::assertFalse($route['args']['args']['locale']['required']);
+        self::assertTrue($route['args']['args']['locale']['required']);
     }
 
-    public function testHandleReturnsCatalogRulesPayload(): void
+    public function testHandleReturnsDeterministicRulesStub(): void
     {
         $controller = new RulesReadController();
         $request = new WP_REST_Request('GET', '/g3d/v1/catalog/rules');
-        $request->set_param('producto_id', 'prod:base');
+        $request->set_param('producto_id', 'prod:rx-classic');
+        $request->set_param('snapshot_id', 'snap:2025-09-01');
+        $request->set_param('locale', 'es_ES');
 
         $response = $controller->handle($request);
 
@@ -52,34 +55,13 @@ final class RulesReadRouteTest extends TestCase
         self::assertIsArray($data);
         self::assertArrayHasKey('ok', $data);
         self::assertTrue($data['ok']);
-        self::assertArrayHasKey('id', $data);
-        self::assertSame('snap:2025-09-27T18:45:00Z', $data['id']);
-        self::assertArrayHasKey('schema_version', $data);
-        self::assertSame('2.0.0', $data['schema_version']);
-        self::assertArrayHasKey('producto_id', $data);
-        self::assertSame('prod:base', $data['producto_id']);
-        self::assertArrayHasKey('entities', $data);
-        self::assertIsArray($data['entities']);
         self::assertArrayHasKey('rules', $data);
         self::assertIsArray($data['rules']);
-        self::assertArrayHasKey('material_to_modelos', $data['rules']);
-        self::assertArrayHasKey('material_to_colores', $data['rules']);
-        self::assertArrayHasKey('material_to_texturas', $data['rules']);
-        self::assertArrayHasKey('defaults', $data['rules']);
-        self::assertArrayHasKey('encaje', $data['rules']);
-        self::assertArrayHasKey('slot_mapping_editorial', $data['rules']);
-        self::assertArrayHasKey('ver', $data);
-        self::assertSame('ver:2025-09-27T18:45:00Z', $data['ver']);
-        self::assertArrayHasKey('published_at', $data);
-        self::assertSame('2025-09-27T18:45:00Z', $data['published_at']);
-        self::assertArrayHasKey('published_by', $data);
-        self::assertSame('user:admin', $data['published_by']);
-        self::assertArrayHasKey('locales', $data);
-        self::assertIsArray($data['locales']);
-        self::assertContains('es-ES', $data['locales']);
-        self::assertArrayHasKey('sku_policy', $data);
-        self::assertIsArray($data['sku_policy']);
-        self::assertArrayHasKey('include_morphs_in_sku', $data['sku_policy']);
+        self::assertSame([], $data['rules']);
+        self::assertArrayHasKey('snapshot_id', $data);
+        self::assertSame('snap:2025-09-27T18:45:00Z', $data['snapshot_id']);
+        self::assertArrayHasKey('version', $data);
+        self::assertSame('ver:2025-09-27T18:45:00Z', $data['version']);
     }
 
     public function testHandleReturnsErrorWhenProductoIdMissing(): void
@@ -89,13 +71,14 @@ final class RulesReadRouteTest extends TestCase
 
         $response = $controller->handle($request);
 
-        self::assertInstanceOf(WP_Error::class, $response);
-        self::assertSame('rest_missing_required_params', $response->get_error_code());
+        self::assertInstanceOf(WP_REST_Response::class, $response);
+        self::assertSame(400, $response->get_status());
 
-        $data = $response->get_error_data();
+        $data = $response->get_data();
         self::assertIsArray($data);
-        self::assertSame(400, $data['status']);
-        self::assertSame(['producto_id'], $data['missing_fields']);
+        self::assertFalse($data['ok']);
+        self::assertSame('E_MISSING_PARAMS', $data['code']);
+        self::assertSame('missing_params', $data['reason_key']);
     }
 
     public function testHandleReturnsErrorWhenProductoIdHasInvalidType(): void
@@ -103,16 +86,19 @@ final class RulesReadRouteTest extends TestCase
         $controller = new RulesReadController();
         $request = new WP_REST_Request('GET', '/g3d/v1/catalog/rules');
         $request->set_param('producto_id', ['prod:base']);
+        $request->set_param('snapshot_id', 'snap:2025-09-01');
+        $request->set_param('locale', 'es_ES');
 
         $response = $controller->handle($request);
 
-        self::assertInstanceOf(WP_Error::class, $response);
-        self::assertSame('rest_invalid_param', $response->get_error_code());
+        self::assertInstanceOf(WP_REST_Response::class, $response);
+        self::assertSame(400, $response->get_status());
 
-        $data = $response->get_error_data();
+        $data = $response->get_data();
         self::assertIsArray($data);
-        self::assertSame(400, $data['status']);
-        self::assertSame(['producto_id'], $data['type_errors']);
+        self::assertFalse($data['ok']);
+        self::assertSame('E_INVALID_PARAMS', $data['code']);
+        self::assertSame('invalid_params', $data['reason_key']);
     }
 
     public function testHandleReturnsErrorWhenLocaleHasInvalidType(): void
@@ -121,15 +107,17 @@ final class RulesReadRouteTest extends TestCase
         $request = new WP_REST_Request('GET', '/g3d/v1/catalog/rules');
         $request->set_param('producto_id', 'prod:base');
         $request->set_param('locale', ['es-ES']);
+        $request->set_param('snapshot_id', 'snap:2025-09-01');
 
         $response = $controller->handle($request);
 
-        self::assertInstanceOf(WP_Error::class, $response);
-        self::assertSame('rest_invalid_param', $response->get_error_code());
+        self::assertInstanceOf(WP_REST_Response::class, $response);
+        self::assertSame(400, $response->get_status());
 
-        $data = $response->get_error_data();
+        $data = $response->get_data();
         self::assertIsArray($data);
-        self::assertSame(400, $data['status']);
-        self::assertSame(['locale'], $data['type_errors']);
+        self::assertFalse($data['ok']);
+        self::assertSame('E_INVALID_PARAMS', $data['code']);
+        self::assertSame('invalid_params', $data['reason_key']);
     }
 }
