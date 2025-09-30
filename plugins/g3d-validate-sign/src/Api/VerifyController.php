@@ -84,8 +84,8 @@ class VerifyController
                 'rest_missing_required_params',
                 'Faltan campos requeridos.',
                 [
-                    'status' => 400,
-                    'request_id' => $requestId,
+                    'status'         => 400,
+                    'request_id'     => $requestId,
                     'missing_fields' => $validation['missing'],
                 ]
             );
@@ -97,8 +97,8 @@ class VerifyController
                 'rest_invalid_param',
                 'Tipos inválidos detectados.',
                 [
-                    'status' => 400,
-                    'request_id' => $requestId,
+                    'status'      => 400,
+                    'request_id'  => $requestId,
                     'type_errors' => $validation['type'],
                 ]
             );
@@ -112,8 +112,8 @@ class VerifyController
         $verification = $this->verifier->verify($sanitized, $signature, $this->publicKey);
 
         if (!$verification['ok']) {
-            $status      = $verification['http_status'] ?? 400;
-            $errorDetail = $verification['detail'] ?? '';
+            $status       = $verification['http_status'] ?? 400;
+            $errorDetail  = $verification['detail'] ?? '';
             $errorResponse = Responses::error(
                 $verification['code'],
                 $verification['reason_key'],
@@ -130,7 +130,8 @@ class VerifyController
             $errorResponse = Responses::error(
                 'E_SIGN_EXPIRED',
                 'sign_expired',
-                'Firma caducada según docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md.'
+                'Firma caducada según docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
+                . '(slots Abiertos) — V2 (urls).md.'
             );
             $errorResponse['request_id'] = $requestId;
 
