@@ -34,6 +34,11 @@ body.g3d-wizard-open {
   outline-offset: 2px;
 }
 
+.g3d-wizard-modal [role="tab"]:focus {
+  outline: 2px solid;
+  outline-offset: 2px;
+}
+
 .g3d-wizard-modal__rules {
   margin-top: 0.5rem;
   font-size: 0.875rem;

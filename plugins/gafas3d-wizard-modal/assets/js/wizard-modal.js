@@ -59,6 +59,12 @@
     var verifyButton = overlay.querySelector('[data-g3d-wizard-modal-verify]');
     var message = overlay.querySelector('.g3d-wizard-modal__msg');
     var rulesContainer = modal ? modal.querySelector('.g3d-wizard-modal__rules') : null;
+    var tabs = modal
+      ? Array.prototype.slice.call(modal.querySelectorAll('[role="tab"]'))
+      : [];
+    var panels = modal
+      ? Array.prototype.slice.call(modal.querySelectorAll('[role="tabpanel"]'))
+      : [];
     var lastValidation = null;
     var autoVerify = overlay.getAttribute('data-auto-verify') === '1';
     var shouldAutoAudit = modal && modal.getAttribute('data-auto-audit') === '1';
@@ -120,6 +126,69 @@
           });
       } catch (error) {
         // no-op
+      }
+    }
+
+    function activateTab(tab) {
+      if (!tab || tabs.indexOf(tab) === -1) {
+        return;
+      }
+
+      var controls = tab.getAttribute('aria-controls');
+
+      tabs.forEach(function (item) {
+        var isActive = item === tab;
+        item.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        item.setAttribute('tabindex', isActive ? '0' : '-1');
+      });
+
+      panels.forEach(function (panel) {
+        if (!panel || !panel.getAttribute) {
+          return;
+        }
+
+        if (panel.id && panel.id === controls) {
+          panel.removeAttribute('hidden');
+        } else {
+          panel.setAttribute('hidden', '');
+        }
+      });
+
+      if (typeof tab.focus === 'function') {
+        tab.focus();
+      }
+    }
+
+    function focusNext(current) {
+      if (!tabs.length) {
+        return;
+      }
+
+      var index = tabs.indexOf(current);
+      var nextIndex = (index + 1) % tabs.length;
+      var target = tabs[nextIndex];
+
+      if (target && typeof target.focus === 'function') {
+        target.focus();
+      }
+    }
+
+    function focusPrev(current) {
+      if (!tabs.length) {
+        return;
+      }
+
+      var index = tabs.indexOf(current);
+
+      if (index === -1) {
+        index = 0;
+      }
+
+      var prevIndex = (index - 1 + tabs.length) % tabs.length;
+      var target = tabs[prevIndex];
+
+      if (target && typeof target.focus === 'function') {
+        target.focus();
       }
     }
 
@@ -498,6 +567,67 @@
     closeButtons.forEach(function (button) {
       button.addEventListener('click', closeModal);
     });
+
+    if (tabs.length && panels.length) {
+      activateTab(tabs[0]);
+
+      tabs.forEach(function (tab) {
+        tab.addEventListener('click', function (event) {
+          if (event && typeof event.preventDefault === 'function') {
+            event.preventDefault();
+          }
+
+          activateTab(tab);
+        });
+
+        tab.addEventListener('keydown', function (event) {
+          if (!event) {
+            return;
+          }
+
+          var key = event.key;
+
+          if (key === 'ArrowRight' || key === 'ArrowDown') {
+            event.preventDefault();
+            focusNext(tab);
+            return;
+          }
+
+          if (key === 'ArrowLeft' || key === 'ArrowUp') {
+            event.preventDefault();
+            focusPrev(tab);
+            return;
+          }
+
+          if (key === 'Home') {
+            event.preventDefault();
+
+            if (tabs[0] && typeof tabs[0].focus === 'function') {
+              tabs[0].focus();
+            }
+
+            return;
+          }
+
+          if (key === 'End') {
+            event.preventDefault();
+
+            var last = tabs[tabs.length - 1];
+
+            if (last && typeof last.focus === 'function') {
+              last.focus();
+            }
+
+            return;
+          }
+
+          if (key === 'Enter' || key === ' ') {
+            event.preventDefault();
+            activateTab(tab);
+          }
+        });
+      });
+    }
 
     if (cta) {
       cta.addEventListener('click', handleCtaClick);
