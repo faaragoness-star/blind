@@ -48,8 +48,9 @@ body.g3d-wizard-open {
   min-height: 1.5em;
 }
 
+.g3d-wizard-modal__rules[aria-busy="true"],
 .g3d-wizard-modal__msg[aria-busy="true"] {
-  opacity: .8;
+  opacity: .7;
 }
 
 .g3d-wizard-modal__verify {
