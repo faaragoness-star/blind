@@ -66,10 +66,10 @@ final class ModalRenderTest extends TestCase
         self::assertGreaterThan(0, $tablists->length);
 
         $tabs = $xpath->query('//*[@role="tab"]');
-        self::assertGreaterThan(0, $tabs->length);
+        self::assertGreaterThanOrEqual(2, $tabs->length);
 
         $panels = $xpath->query('//*[@role="tabpanel"]');
-        self::assertGreaterThan(0, $panels->length);
+        self::assertGreaterThanOrEqual(2, $panels->length);
 
         $panelIds = [];
 
@@ -79,6 +79,9 @@ final class ModalRenderTest extends TestCase
             }
 
             $panelIds[$panel->getAttribute('id')] = true;
+            self::assertNotSame('', $panel->getAttribute('id'));
+            self::assertNotSame('', $panel->getAttribute('aria-labelledby'));
+            self::assertTrue($panel->hasAttribute('hidden'));
         }
 
         foreach ($tabs as $tab) {
