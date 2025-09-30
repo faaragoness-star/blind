@@ -34,6 +34,13 @@ body.g3d-wizard-open {
   outline-offset: 2px;
 }
 
+.g3d-wizard-modal__rules {
+  margin-top: 1rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  min-height: 1.5em;
+}
+
 .g3d-wizard-modal__msg {
   margin-top: 1rem;
   font-size: 0.875rem;
