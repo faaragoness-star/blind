@@ -10,6 +10,12 @@
 
   global.G3DWIZARD = global.G3DWIZARD || {};
 
+  var rulesURL =
+    (global.G3DWIZARD &&
+      global.G3DWIZARD.api &&
+      global.G3DWIZARD.api.rules) ||
+    '/wp-json/g3d/v1/catalog/rules'; // TODO(plugin-2-g3d-catalog-rules.md §6): confirmar endpoint público exacto.
+
   global.G3DWIZARD.postJson = async function postJson(url, body) {
     const res = await fetch(url, {
       method: 'POST',
@@ -75,6 +81,7 @@
     var previousFocus = null;
     var summaryMessage = '';
     var statusMessage = '';
+    var rulesLoaded = false;
 
     function setText(element, value) {
       if (!element) {
@@ -186,117 +193,59 @@
       return params;
     }
 
-    function deriveRulesUrl(api) {
-      if (api && api.rules) {
-        return api.rules;
-      }
-
-      if (api && api.catalogRules) {
-        return api.catalogRules;
-      }
-
-      // TODO(plugin-2-g3d-catalog-rules.md §6): confirmar endpoint público exacto.
-      return '/wp-json/g3d/v1/catalog/rules';
-    }
-
-    function fetchRulesSummary(productoId, snapshotId, locale) {
-      var wizard = global.G3DWIZARD || {};
-      var api = wizard.api || {};
-      var rulesUrl = deriveRulesUrl(api);
-
-      if (!rulesUrl) {
-        setSummaryMessage(__('ERROR — endpoint no disponible', TEXT_DOMAIN));
+    async function loadRulesOnce(params) {
+      if (rulesLoaded) {
         return;
       }
 
-      var params = buildRulesParams(productoId, snapshotId, locale);
-      var searchParams = new URLSearchParams();
+      rulesLoaded = true;
 
-      Object.keys(params).forEach(function (key) {
-        var value = params[key];
+      var headers = {
+        'X-WP-Nonce': (global.G3DWIZARD && global.G3DWIZARD.nonce) || '',
+      };
 
-        if (value) {
-          searchParams.append(key, value);
-        }
-      });
+      var query = '';
 
-      var query = searchParams.toString();
-      var delimiter = rulesUrl.indexOf('?') === -1 ? '?' : '&';
-      var requestUrl = query ? rulesUrl + delimiter + query : rulesUrl;
-      var headers = {};
-      var nonce = wizard && wizard.nonce ? wizard.nonce : '';
-
-      if (nonce) {
-        headers['X-WP-Nonce'] = nonce;
+      if (params && typeof params === 'object' && Object.keys(params).length) {
+        query = '?' + new URLSearchParams(params).toString();
       }
 
       setSummaryMessage(__('Cargando reglas…', TEXT_DOMAIN));
 
-      fetch(requestUrl, { headers: headers })
-        .then(function (response) {
-          return response
-            .json()
-            .then(function (body) {
-              return { response: response, body: body };
-            })
-            .catch(function () {
-              return { response: response, body: null };
-            });
-        })
-        .then(function (result) {
-          if (!result) {
-            setSummaryMessage('Rules: N/D');
-            return;
+      try {
+        var res = await fetch(rulesURL + query, { headers: headers });
+        var data = {};
+
+        try {
+          data = await res.json();
+        } catch (error) {
+          data = {};
+        }
+
+        if (res.ok && data) {
+          var n = Array.isArray(data.rules) ? data.rules.length : undefined;
+          var bits = [];
+
+          if (typeof n === 'number') {
+            bits.push('rules: ' + n);
           }
 
-          var res = result.response;
-          var body = result.body && typeof result.body === 'object' ? result.body : null;
-
-          if (res.ok) {
-            var summaryParts = [];
-
-            if (body && Array.isArray(body.rules)) {
-              summaryParts.push('Rules: ' + String(body.rules.length));
-            }
-
-            if (body && body.snapshot_id) {
-              summaryParts.push('snapshot_id: ' + String(body.snapshot_id));
-            }
-
-            if (body && body.version) {
-              summaryParts.push('version: ' + String(body.version));
-            }
-
-            if (summaryParts.length) {
-              setSummaryMessage(summaryParts.join(' · '));
-            } else {
-              setSummaryMessage('Rules: N/D');
-            }
-
-            return;
+          if (data.snapshot_id) {
+            bits.push('snapshot_id: ' + data.snapshot_id);
           }
 
-          var statusCode = res.status || 0;
-          var errorText = __('ERROR — HTTP ', TEXT_DOMAIN) + String(statusCode);
-          var reason = null;
-
-          if (body && typeof body === 'object') {
-            if (body.reason_key) {
-              reason = body.reason_key;
-            } else if (body.code) {
-              reason = body.code;
-            }
+          if (data.version) {
+            bits.push('version: ' + data.version);
           }
 
-          if (reason) {
-            errorText += ' (' + String(reason) + ')';
-          }
-
-          setSummaryMessage(errorText);
-        })
-        .catch(function () {
-          setSummaryMessage(__('ERROR — fallo de red', TEXT_DOMAIN));
-        });
+          setSummaryMessage(bits.join(' | '));
+        } else {
+          var status = res && typeof res.status === 'number' ? res.status : 0;
+          setSummaryMessage('ERROR — HTTP ' + String(status));
+        }
+      } catch (error) {
+        setSummaryMessage('ERROR — red');
+      }
     }
 
     function activateTab(tab) {
@@ -647,6 +596,10 @@
 
       setStatusMessage('');
 
+      if (!rulesLoaded) {
+        setSummaryMessage('');
+      }
+
       if (!productoId) {
         setSummaryMessage(
           __('TODO(plugin-2-g3d-catalog-rules.md §6): faltan parámetros.', TEXT_DOMAIN)
@@ -654,7 +607,9 @@
         return;
       }
 
-      fetchRulesSummary(productoId, snapshotId, locale);
+      var params = buildRulesParams(productoId, snapshotId, locale);
+
+      loadRulesOnce(params);
     }
 
     function closeModal(event) {
@@ -670,6 +625,7 @@
       }
 
       previousFocus = null;
+      rulesLoaded = false;
     }
 
     var openButtons = document.querySelectorAll('[' + OPEN_ATTR + ']');
