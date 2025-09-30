@@ -21,6 +21,8 @@ final class ModalRenderTest extends TestCase
         self::assertStringContainsString('data-producto-id=""', $output);
         self::assertStringContainsString('data-locale="', $output);
         self::assertStringContainsString('class="g3d-wizard-modal__rules"', $output);
+        self::assertStringContainsString('data-g3d-wizard-modal-cta', $output);
+        self::assertStringContainsString('data-g3d-wizard-modal-verify', $output);
     }
 
     public function testRenderContainsSinglePoliteMessageRegion(): void

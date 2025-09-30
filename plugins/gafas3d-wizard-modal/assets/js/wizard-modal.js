@@ -237,6 +237,71 @@
       updateLiveMessage();
     }
 
+    function setButtonEnabledState(button, shouldEnable) {
+      if (!button) {
+        return;
+      }
+
+      var enabled = !!shouldEnable;
+      button.disabled = !enabled;
+      button.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+    }
+
+    function gateCtasByRules(rulesPayload) {
+      var payload =
+        rulesPayload && typeof rulesPayload === 'object' ? rulesPayload : null;
+
+      if (!payload) {
+        setButtonEnabledState(cta, false);
+        setButtonEnabledState(verifyButton, false);
+
+        return;
+      }
+
+      var missing = [];
+
+      if (typeof payload.id !== 'string' || payload.id === '') {
+        missing.push('id');
+      }
+
+      if (typeof payload.producto_id !== 'string' || payload.producto_id === '') {
+        missing.push('producto_id');
+      }
+
+      if (!payload.rules || typeof payload.rules !== 'object') {
+        missing.push('rules');
+      }
+
+      if (missing.length) {
+        setButtonEnabledState(cta, false);
+        setButtonEnabledState(verifyButton, false);
+        setRulesSummaryMessage(
+          'Reglas ERROR — Faltan campos requeridos: ' + missing.join(', ')
+        );
+        // TODO(docs/plugin-2-g3d-catalog-rules.md §6 APIs / Contratos (lectura)):
+        // confirmar parámetros requeridos para habilitar CTA.
+
+        return;
+      }
+
+      if (Object.prototype.hasOwnProperty.call(payload, 'ok')) {
+        if (payload.ok === true) {
+          setButtonEnabledState(cta, true);
+          setButtonEnabledState(verifyButton, true);
+        } else {
+          setButtonEnabledState(cta, false);
+          setButtonEnabledState(verifyButton, false);
+        }
+
+        return;
+      }
+
+      // TODO(docs/plugin-4-gafas3d-wizard-modal.md §5.6 CTA Add to Cart):
+      // confirmar gating exacto para CTAs ante reglas cargadas.
+      setButtonEnabledState(cta, true);
+      setButtonEnabledState(verifyButton, true);
+    }
+
     function setStatusMessage(value) {
       statusMessage = value || '';
       updateLiveMessage();
@@ -922,6 +987,8 @@
           setBusy(rulesContainer, false);
         }
 
+        gateCtasByRules(lastRules);
+
         return;
       }
 
@@ -944,6 +1011,8 @@
         if (rulesContainer) {
           setBusy(rulesContainer, false);
         }
+
+        gateCtasByRules(lastRules);
 
         return;
       }
@@ -1002,6 +1071,7 @@
         }
 
         clearAbort(controller);
+        gateCtasByRules(lastRules);
       }
     }
 

@@ -43,7 +43,7 @@ body.g3d-wizard-open {
 }
 
 .g3d-wizard-modal__msg {
-  margin-top: 0.5rem;
+  margin-top: .5rem;
   font-size: 0.875rem;
   min-height: 1.5em;
 }
@@ -62,7 +62,8 @@ body.g3d-wizard-open {
   margin-left: 0.75rem;
 }
 
-.g3d-wizard-modal__footer button[disabled] {
-  opacity: 0.6;
+.g3d-wizard-modal__cta[disabled],
+.g3d-wizard-modal__verify[disabled] {
+  opacity: .5;
   cursor: not-allowed;
 }
