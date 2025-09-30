@@ -23,5 +23,7 @@ add_action('init', static function (): void {
 
 add_action('rest_api_init', static function (): void {
     $service = new \G3D\ModelsManager\Service\GlbIngestionService();
+
+    (new \G3D\ModelsManager\Api\GlbIngestController())->registerRoutes();
     (new \G3D\ModelsManager\Api\IngestionController($service))->registerRoutes();
 });
