@@ -286,6 +286,59 @@
       }
     }
 
+    function collectState(scope) {
+      var out = {};
+
+      if (!scope || typeof scope.querySelectorAll !== 'function') {
+        return out;
+      }
+
+      var nodes = scope.querySelectorAll('[data-g3d-state-key]');
+
+      Array.prototype.forEach.call(nodes, function (el) {
+        var key = el.getAttribute('data-g3d-state-key');
+
+        if (!key) {
+          return;
+        }
+
+        var v;
+        var tag = el.tagName.toLowerCase();
+        var type = (el.getAttribute('type') || '').toLowerCase();
+
+        if (tag === 'input' && type === 'checkbox') {
+          v = !!el.checked;
+        } else if (
+          tag === 'input' &&
+          (type === 'number' || el.dataset.stateType === 'number')
+        ) {
+          var n = Number(el.value);
+
+          if (!Number.isNaN(n)) {
+            v = n;
+          }
+        } else if (tag === 'input' && type === 'radio') {
+          if (el.checked) {
+            v = el.value;
+          }
+        } else if (tag === 'select') {
+          v = el.multiple
+            ? Array.from(el.selectedOptions).map(function (o) {
+                return o.value;
+              })
+            : el.value;
+        } else {
+          v = el.value != null ? el.value : el.textContent;
+        }
+
+        if (v !== undefined && v !== null && key.length) {
+          out[key] = v;
+        }
+      });
+
+      return out;
+    }
+
     function getModalData() {
       var snapshotId = '';
       var productoId = '';
@@ -333,7 +386,7 @@
       }
 
       var payload = {
-        state: {},
+        state: collectState(modal),
       };
 
       if (snapshotId) {
