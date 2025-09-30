@@ -41,8 +41,13 @@ final class AssetsTest extends TestCase
         self::assertStringEndsWith('assets/css/wizard-modal.css', $registeredStyles[Assets::HANDLE_CSS]['src']);
 
         $localized = $GLOBALS['g3d_wizard_modal_localized_scripts'][Assets::HANDLE_JS]['G3DWIZARD'] ?? [];
-        self::assertSame('/wp-json/g3d/v1/validate-sign', $localized['api']['validateSign'] ?? null);
-        self::assertSame('/wp-json/g3d/v1/verify', $localized['api']['verify'] ?? null);
+        self::assertSame(
+            'http://example.test/wp-json/g3d/v1/validate-sign',
+            $localized['api']['validateSign'] ?? null
+        );
+        self::assertSame('http://example.test/wp-json/g3d/v1/verify', $localized['api']['verify'] ?? null);
+        self::assertSame('nonce-123', $localized['nonce'] ?? null);
+        self::assertSame('es_ES', $localized['locale'] ?? null);
 
         self::assertArrayHasKey(Assets::HANDLE_JS, $GLOBALS['g3d_wizard_modal_enqueued_scripts']);
         self::assertArrayHasKey(Assets::HANDLE_CSS, $GLOBALS['g3d_wizard_modal_enqueued_styles']);

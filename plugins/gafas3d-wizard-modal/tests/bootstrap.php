@@ -80,6 +80,29 @@ if (!function_exists('plugins_url')) {
     }
 }
 
+if (!function_exists('rest_url')) {
+    function rest_url(string $path = ''): string
+    {
+        $base = 'http://example.test/wp-json/';
+
+        return rtrim($base, '/') . '/' . ltrim($path, '/');
+    }
+}
+
+if (!function_exists('wp_create_nonce')) {
+    function wp_create_nonce(string $action = 'wp_rest'): string
+    {
+        return 'nonce-123';
+    }
+}
+
+if (!function_exists('get_locale')) {
+    function get_locale(): string
+    {
+        return 'es_ES';
+    }
+}
+
 if (!isset($GLOBALS['g3d_wizard_modal_enqueued_scripts'])) {
     /**
      * @var array<string, array{src:string,deps:array<int, string>,ver:string|bool,in_footer:bool}> $GLOBALS['g3d_wizard_modal_enqueued_scripts']
