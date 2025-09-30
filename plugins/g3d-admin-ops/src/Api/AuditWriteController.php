@@ -8,7 +8,6 @@ use G3D\AdminOps\Audit\EditorialActionLogger;
 use G3D\AdminOps\Rbac\Capabilities;
 use G3D\VendorBase\Rest\Responses;
 use G3D\VendorBase\Rest\Security;
-use InvalidArgumentException;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -49,31 +48,34 @@ final class AuditWriteController
         }
 
         /**
-         * @var array{actor_id?:string,action?:string,context?:array<string,mixed>} $payload
+         * @var array{
+         *   actor_id?:string,
+         *   action?:string,
+         *   context?:array<string,mixed>
+         * } $payload
          */
 
-        $actor  = (string)($payload['actor_id'] ?? '');
-        $action = (string)($payload['action'] ?? '');
-        $ctx    = \is_array($payload['context'] ?? null) ? (array) $payload['context'] : [];
+        $actorId = isset($payload['actor_id']) ? (string) $payload['actor_id'] : '';
+        $action = isset($payload['action']) ? (string) $payload['action'] : '';
+        $context = $payload['context'] ?? null;
 
-        if ($actor === '' || $action === '') {
-            $err = Responses::error(
-                'E_INVALID_INPUT',
-                'invalid_input',
-                'actor_id y action son requeridos.'
+        if ($actorId === '' || $action === '' || !\is_array($context)) {
+            return new WP_REST_Response(
+                Responses::error('E_BAD_REQUEST', 'bad_request', 'Campos inválidos.'),
+                400
             );
-
-            return new WP_REST_Response($err, 400);
         }
 
-        try {
-            $this->logger->logAction($actor, $action, $ctx);
-        } catch (InvalidArgumentException $e) {
-            $err = Responses::error('E_INVALID_CONTEXT', 'invalid_context', $e->getMessage());
-
-            return new WP_REST_Response($err, 400);
+        $what = $context['what'] ?? null;
+        if (!\is_string($what) || $what === '') {
+            return new WP_REST_Response(
+                Responses::error('E_BAD_REQUEST', 'bad_request', 'Campos inválidos.'),
+                400
+            );
         }
 
-        return new WP_REST_Response(Responses::ok(), 201);
+        $this->logger->logAction($actorId, $action, $context);
+
+        return new WP_REST_Response(Responses::ok(['saved' => true]), 201);
     }
 }

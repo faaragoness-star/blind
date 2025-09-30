@@ -80,6 +80,30 @@ if (!function_exists('register_rest_route')) {
      */
     function register_rest_route(string $ns, string $route, array $args): void
     {
+        foreach ($GLOBALS['g3d_tests_registered_rest_routes'] as $index => $registered) {
+            if ($registered['namespace'] === $ns && $registered['route'] === $route) {
+                $existing = $registered['args']['methods'] ?? '';
+                $incoming = $args['methods'] ?? '';
+
+                if (is_string($existing) && is_string($incoming)) {
+                    $merged = array_filter(array_map('trim', explode(',', $existing)));
+                    foreach (array_filter(array_map('trim', explode(',', $incoming))) as $method) {
+                        if ($method !== '' && !in_array($method, $merged, true)) {
+                            $merged[] = $method;
+                        }
+                    }
+
+                    $registered['args']['methods'] = implode(',', $merged);
+                } else {
+                    $registered['args']['methods'] = $incoming;
+                }
+
+                $GLOBALS['g3d_tests_registered_rest_routes'][$index] = $registered;
+
+                return;
+            }
+        }
+
         $GLOBALS['g3d_tests_registered_rest_routes'][] = [
             'namespace' => $ns,
             'route' => $route,
@@ -180,6 +204,21 @@ if (!class_exists('WP_REST_Request')) {
             $params = $this->get_params();
 
             return $params[$key] ?? null;
+        }
+
+        public function set_param(string $key, mixed $value): void
+        {
+            $this->params[$key] = $value;
+        }
+
+        /**
+         * @param array<string, mixed> $params
+         */
+        public function set_params(array $params): void
+        {
+            foreach ($params as $key => $value) {
+                $this->set_param((string) $key, $value);
+            }
         }
 
         /**

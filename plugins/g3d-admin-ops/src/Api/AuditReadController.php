@@ -6,6 +6,7 @@ namespace G3D\AdminOps\Api;
 
 use G3D\AdminOps\Audit\AuditLogReader;
 use G3D\AdminOps\Rbac\Capabilities;
+use G3D\VendorBase\Rest\Responses;
 use G3D\VendorBase\Rest\Security;
 use WP_Error;
 use WP_REST_Request;
@@ -42,11 +43,52 @@ final class AuditReadController
             // si no, seguimos (best effort).
         }
 
+        $pageParam = $req->get_param('page');
+        $page = 1;
+        if (\is_scalar($pageParam)) {
+            $page = (int) $pageParam;
+            if ($page < 1) {
+                $page = 1;
+            }
+        }
+
+        $perPageParam = $req->get_param('per_page');
+        $perPage = 20;
+        if (\is_scalar($perPageParam)) {
+            $candidate = (int) $perPageParam;
+            if ($candidate < 1) {
+                $candidate = 1;
+            }
+
+            if ($candidate > 100) {
+                $candidate = 100;
+            }
+
+            $perPage = $candidate;
+        }
+
+        /**
+         * @var list<array{
+         *   actor_id:string,
+         *   action:string,
+         *   what:string,
+         *   occurred_at:string,
+         *   context:array<string,mixed>
+         * }> $events
+         */
         $events = $this->reader->getEvents();
 
-        return new WP_REST_Response([
-            'ok'     => true,
-            'events' => $events,
-        ], 200);
+        $offset = ($page - 1) * $perPage;
+        $items = \array_slice($events, $offset, $perPage);
+
+        return new WP_REST_Response(
+            Responses::ok([
+                'items'    => $items,
+                'page'     => $page,
+                'per_page' => $perPage,
+                'total'    => \count($events),
+            ]),
+            200
+        );
     }
 }
