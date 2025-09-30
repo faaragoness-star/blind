@@ -16,10 +16,13 @@ namespace G3D\ModelsManager\Tests\Api {
 
     final class GlbIngestControllerBridgeTest extends TestCase
     {
+        private GlbIngestionServiceStub $service;
+
         protected function setUp(): void
         {
             parent::setUp();
             $_FILES = [];
+            $this->service = new GlbIngestionServiceStub();
         }
 
         protected function tearDown(): void
@@ -30,10 +33,7 @@ namespace G3D\ModelsManager\Tests\Api {
 
         public function testHandleReturns400WhenFileMissing(): void
         {
-            $_FILES = [];
-
-            $service = new GlbIngestionService();
-            $controller = new GlbIngestController($service);
+            $controller = new GlbIngestController($this->service);
 
             $request = new WP_REST_Request('POST', '/g3d/v1/glb-ingest');
 
@@ -53,6 +53,8 @@ namespace G3D\ModelsManager\Tests\Api {
                 ],
                 $data
             );
+
+            self::assertSame(0, $this->service->ingestCalls);
         }
 
         public function testHandleDelegatesToServiceAndReturnsResult(): void
@@ -75,8 +77,18 @@ namespace G3D\ModelsManager\Tests\Api {
             ];
 
             try {
-                $service = new GlbIngestionService();
-                $controller = new GlbIngestController($service);
+                $expected = [
+                    'binding' => ['foo' => 'bar'],
+                    'validation' => [
+                        'ok' => true,
+                        'missing' => [],
+                        'type' => [],
+                    ],
+                ];
+
+                $this->service->result = $expected;
+
+                $controller = new GlbIngestController($this->service);
 
                 $request = new WP_REST_Request('POST', '/g3d/v1/glb-ingest');
 
@@ -87,23 +99,51 @@ namespace G3D\ModelsManager\Tests\Api {
 
                 $data = $response->get_data();
                 self::assertIsArray($data);
-                self::assertArrayHasKey('ok', $data);
-                self::assertTrue($data['ok']);
-                self::assertArrayHasKey('binding', $data);
-                self::assertArrayHasKey('validation', $data);
+                self::assertSame(['ok' => true] + $expected, $data);
 
-                self::assertIsArray($data['binding']);
-                self::assertSame(hash_file('sha256', $tmp), $data['binding']['file_hash'] ?? null);
-                self::assertSame($size, $data['binding']['filesize_bytes'] ?? null);
-
-                self::assertIsArray($data['validation']);
-                self::assertTrue($data['validation']['ok'] ?? false);
-                self::assertSame([], $data['validation']['missing'] ?? null);
-                self::assertSame([], $data['validation']['type'] ?? null);
+                self::assertSame(1, $this->service->ingestCalls);
+                self::assertSame($_FILES['g3d_glb_file'], $this->service->lastFile);
             } finally {
                 unset($_FILES['g3d_glb_file']);
                 @unlink($tmp);
             }
+        }
+    }
+
+    final class GlbIngestionServiceStub extends GlbIngestionService
+    {
+        public int $ingestCalls = 0;
+
+        /**
+         * @var array{
+         *   binding: array<string, mixed>,
+         *   validation: array{
+         *     ok: bool,
+         *     missing: list<string>,
+         *     type: list<array<string, string>>
+         *   }
+         * }
+         */
+        public array $result = [
+            'binding' => [],
+            'validation' => [
+                'ok' => true,
+                'missing' => [],
+                'type' => [],
+            ],
+        ];
+
+        /**
+         * @var array<string, mixed>|null
+         */
+        public ?array $lastFile = null;
+
+        public function ingest(array $file): array
+        {
+            $this->ingestCalls++;
+            $this->lastFile = $file;
+
+            return $this->result;
         }
     }
 }
