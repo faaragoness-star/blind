@@ -6,14 +6,14 @@ namespace G3D\AdminOps\Tests\Routes;
 
 use PHPUnit\Framework\TestCase;
 
-require_once __DIR__ . '/../../../g3d-vendor-base-helper/tests/bootstrap.php';
-
 final class AuditRouteRegistrationTest extends TestCase
 {
     public static function setUpBeforeClass(): void
     {
         parent::setUpBeforeClass();
 
+        // Carga bootstrap y el plugin dentro del ciclo de vida del test (sin efectos a nivel de archivo).
+        require_once __DIR__ . '/../../../g3d-vendor-base-helper/tests/bootstrap.php';
         require_once __DIR__ . '/../../plugin.php';
     }
 
@@ -22,7 +22,13 @@ final class AuditRouteRegistrationTest extends TestCase
         parent::setUp();
 
         /**
-         * @var list<array{namespace:string,route:string,args:array<string,mixed>}> $GLOBALS['g3d_tests_registered_rest_routes']
+         * Reinicia la lista de rutas REST registradas capturadas por el bootstrap.
+         *
+         * @var list<array{
+         *   namespace:string,
+         *   route:string,
+         *   args:array<string,mixed>
+         * }> $GLOBALS['g3d_tests_registered_rest_routes']
          */
         $GLOBALS['g3d_tests_registered_rest_routes'] = [];
     }
