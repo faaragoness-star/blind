@@ -21,6 +21,7 @@ final class AssetsTest extends TestCase
         $GLOBALS['g3d_wizard_modal_localized_scripts'] = [];
         $GLOBALS['g3d_wizard_modal_enqueued_scripts'] = [];
         $GLOBALS['g3d_wizard_modal_enqueued_styles'] = [];
+        $GLOBALS['g3d_wizard_modal_script_translations'] = [];
     }
 
     public function testRegistersHooksAndEnqueuesAssets(): void
@@ -35,6 +36,7 @@ final class AssetsTest extends TestCase
         $registeredScripts = $GLOBALS['g3d_wizard_modal_registered_scripts'];
         self::assertArrayHasKey(Assets::HANDLE_JS, $registeredScripts);
         self::assertStringEndsWith('assets/js/wizard-modal.js', $registeredScripts[Assets::HANDLE_JS]['src']);
+        self::assertContains('wp-i18n', $registeredScripts[Assets::HANDLE_JS]['deps']);
 
         $registeredStyles = $GLOBALS['g3d_wizard_modal_registered_styles'];
         self::assertArrayHasKey(Assets::HANDLE_CSS, $registeredStyles);
@@ -66,5 +68,13 @@ final class AssetsTest extends TestCase
 
         self::assertArrayHasKey(Assets::HANDLE_JS, $GLOBALS['g3d_wizard_modal_enqueued_scripts']);
         self::assertArrayHasKey(Assets::HANDLE_CSS, $GLOBALS['g3d_wizard_modal_enqueued_styles']);
+
+        $translations = $GLOBALS['g3d_wizard_modal_script_translations'];
+        self::assertNotEmpty($translations);
+
+        $translation = $translations[0];
+        self::assertSame(Assets::HANDLE_JS, $translation['handle']);
+        self::assertSame('gafas3d-wizard-modal', $translation['domain']);
+        self::assertStringEndsWith('/languages', $translation['path']);
     }
 }

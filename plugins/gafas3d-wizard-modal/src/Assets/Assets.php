@@ -6,7 +6,9 @@ namespace Gafas3d\WizardModal\Assets;
 
 use function add_action;
 use function dirname;
+use function function_exists;
 use function get_locale;
+use function plugin_basename;
 use function plugins_url;
 use function rest_url;
 use function wp_create_nonce;
@@ -38,10 +40,18 @@ final class Assets
         wp_register_script(
             self::HANDLE_JS,
             plugins_url('assets/js/wizard-modal.js', $pluginFile),
-            [],
+            ['wp-i18n'],
             false,
             true
         );
+
+        if (function_exists('wp_set_script_translations')) {
+            wp_set_script_translations(
+                self::HANDLE_JS,
+                'gafas3d-wizard-modal',
+                dirname(plugin_basename(__FILE__)) . '/../../languages'
+            );
+        }
 
         wp_register_style(
             self::HANDLE_CSS,

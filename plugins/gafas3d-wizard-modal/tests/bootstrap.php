@@ -138,6 +138,13 @@ if (!isset($GLOBALS['g3d_wizard_modal_localized_scripts'])) {
     $GLOBALS['g3d_wizard_modal_localized_scripts'] = [];
 }
 
+if (!isset($GLOBALS['g3d_wizard_modal_script_translations'])) {
+    /**
+     * @var array<int, array{handle:string,domain:string,path:string}> $GLOBALS['g3d_wizard_modal_script_translations']
+     */
+    $GLOBALS['g3d_wizard_modal_script_translations'] = [];
+}
+
 if (!function_exists('wp_enqueue_script')) {
     /**
      * @param array<int, string> $deps
@@ -194,6 +201,17 @@ if (!function_exists('wp_register_style')) {
             'deps' => $deps,
             'ver' => $ver,
             'media' => $media,
+        ];
+    }
+}
+
+if (!function_exists('wp_set_script_translations')) {
+    function wp_set_script_translations(string $handle, string $domain, string $path): void
+    {
+        $GLOBALS['g3d_wizard_modal_script_translations'][] = [
+            'handle' => $handle,
+            'domain' => $domain,
+            'path' => $path,
         ];
     }
 }
