@@ -504,32 +504,17 @@
         }
 
         if (response.ok) {
-          var okValue = data && data.ok !== undefined ? data.ok : response.ok;
           var hash = data && data.sku_hash ? data.sku_hash : '-';
           var expires = data && data.expires_at ? data.expires_at : '-';
           var snapshotValue =
             data && data.snapshot_id ? data.snapshot_id : snapshotId || '';
-          var snapshot = snapshotValue || '-';
-          var signature = '-';
 
-          if (data && typeof data.sku_signature === 'string' && data.sku_signature) {
-            var truncated = data.sku_signature.slice(0, 16);
-            signature = truncated + '…';
-          }
-
-          var successMessage =
-            __('OK — ok: ', TEXT_DOMAIN) +
-            String(okValue) +
-            __(' | hash: ', TEXT_DOMAIN) +
-            hash +
-            __(' | expira: ', TEXT_DOMAIN) +
-            expires +
-            __(' | snapshot: ', TEXT_DOMAIN) +
-            snapshot +
-            __(' | sig: ', TEXT_DOMAIN) +
-            signature;
-
-          setStatusMessage(successMessage);
+          setStatusMessage(
+            __('OK — hash: ', TEXT_DOMAIN) +
+              hash +
+              __(' | expira: ', TEXT_DOMAIN) +
+              expires
+          );
 
           lastValidation = {
             sku_hash: data && data.sku_hash ? data.sku_hash : '',
@@ -567,7 +552,7 @@
           setStatusMessage(__('ERROR — ', TEXT_DOMAIN) + code);
         }
       } catch (error) {
-        setStatusMessage(__('ERROR — fallo de red', TEXT_DOMAIN));
+        setStatusMessage(__('ERROR — NETWORK', TEXT_DOMAIN));
       } finally {
         cta.disabled = false;
         cta.removeAttribute('aria-busy');
@@ -628,8 +613,14 @@
         }
 
         if (response.ok && data && data.ok === true) {
-          var requestId = data.request_id ? data.request_id : '-';
-          setStatusMessage(__('Verificado OK — request_id: ', TEXT_DOMAIN) + requestId);
+          if (data.request_id) {
+            setStatusMessage(
+              __('Verificado OK — request_id: ', TEXT_DOMAIN) + data.request_id
+            );
+          } else {
+            setStatusMessage(__('Verificado OK', TEXT_DOMAIN));
+            // TODO(plugin-3-g3d-validate-sign.md §6.2 POST /verify): exponer request_id en payload.
+          }
 
           if (shouldAutoAudit) {
             audit('verify_success', {
@@ -658,7 +649,7 @@
           setStatusMessage(__('ERROR — ', TEXT_DOMAIN) + code);
         }
       } catch (error) {
-        setStatusMessage(__('ERROR — fallo de red', TEXT_DOMAIN));
+        setStatusMessage(__('ERROR — NETWORK', TEXT_DOMAIN));
       } finally {
         verifyButton.disabled = false;
         verifyButton.removeAttribute('aria-busy');

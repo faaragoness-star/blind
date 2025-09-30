@@ -58,6 +58,10 @@ body.g3d-wizard-open {
   min-height: 1.5em;
 }
 
+.g3d-wizard-modal__msg[aria-busy='true'] {
+  opacity: 0.8;
+}
+
 .g3d-wizard-modal__verify {
   margin-top: 1rem;
   margin-right: 0.75rem;
@@ -65,4 +69,9 @@ body.g3d-wizard-open {
 
 .g3d-wizard-modal__verify + .g3d-wizard-modal__cta {
   margin-left: 0.75rem;
+}
+
+.g3d-wizard-modal__footer button[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
