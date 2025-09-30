@@ -9,6 +9,112 @@
   var TEXT_DOMAIN = 'gafas3d-wizard-modal';
 
   global.G3DWIZARD = global.G3DWIZARD || {};
+  global.G3DWIZARD.last = global.G3DWIZARD.last || null;
+
+  function readValue(el) {
+    if (!el) {
+      return undefined;
+    }
+
+    const tag = el.tagName.toLowerCase();
+    const type = (el.getAttribute('type') || '').toLowerCase();
+
+    if (tag === 'input') {
+      if (type === 'checkbox') {
+        return !!el.checked;
+      }
+
+      if (type === 'radio') {
+        return el.checked ? el.value : undefined;
+      }
+
+      if (type === 'number') {
+        const n = Number(el.value);
+
+        return Number.isFinite(n) ? n : undefined;
+      }
+
+      return el.value || undefined;
+    }
+
+    if (tag === 'select') {
+      return el.value || undefined;
+    }
+
+    if (tag === 'textarea') {
+      return el.value || undefined;
+    }
+
+    return el.getAttribute('data-value') || undefined;
+  }
+
+  function buildState(modalRoot) {
+    const state = {};
+
+    if (!modalRoot) {
+      return state;
+    }
+
+    const nodes = modalRoot.querySelectorAll('[data-g3d-state-key]');
+
+    Array.prototype.forEach.call(nodes, function (el) {
+      const k = el.getAttribute('data-g3d-state-key');
+
+      if (!k) {
+        return;
+      }
+
+      const v = readValue(el);
+
+      if (v !== undefined && v !== '') {
+        state[k] = v;
+      }
+    });
+
+    return state;
+  }
+
+  function setBusy(el, busy) {
+    if (!el) {
+      return;
+    }
+
+    if (busy) {
+      el.setAttribute('aria-busy', 'true');
+      el.setAttribute('data-busy', '1');
+      if (typeof el.textContent === 'string') {
+        el.textContent = '';
+      }
+    } else {
+      el.removeAttribute('aria-busy');
+      el.removeAttribute('data-busy');
+    }
+  }
+
+  function disableBtn(btn, on, labelWhenBusy) {
+    if (!btn) {
+      return;
+    }
+
+    if (on) {
+      btn.disabled = true;
+      btn.setAttribute('aria-disabled', 'true');
+
+      if (labelWhenBusy) {
+        btn.setAttribute('data-label-prev', btn.textContent || '');
+        btn.textContent = labelWhenBusy;
+      }
+    } else {
+      btn.disabled = false;
+      btn.removeAttribute('aria-disabled');
+      const prev = btn.getAttribute('data-label-prev');
+
+      if (prev !== null) {
+        btn.textContent = prev;
+        btn.removeAttribute('data-label-prev');
+      }
+    }
+  }
 
   function getJSON(url, params, options) {
     var query = '';
@@ -52,40 +158,12 @@
       return response;
     });
 
-  function setBusy(el, busy) {
-    if (!el) {
-      return;
-    }
-
-    el.setAttribute('aria-busy', busy ? 'true' : 'false');
-  }
-
   function setText(el, s) {
     if (!el) {
       return;
     }
 
     el.textContent = s;
-  }
-
-  function disableBtn(btn, on, labelBusy) {
-    if (!btn) {
-      return function () {};
-    }
-
-    const previous = btn.textContent;
-    btn.disabled = !!on;
-    btn.setAttribute('aria-disabled', on ? 'true' : 'false');
-
-    if (on && labelBusy) {
-      setText(btn, labelBusy);
-    }
-
-    return function () {
-      btn.disabled = false;
-      btn.setAttribute('aria-disabled', 'false');
-      setText(btn, previous);
-    };
   }
 
   global.G3DWIZARD.postJson = async function postJson(url, body) {
@@ -182,7 +260,6 @@
     var tabElements = Array.prototype.slice.call(tabs);
     var panelElements = Array.prototype.slice.call(panels);
     var panelById = {};
-    var lastValidation = null;
     var shouldAutoAudit = modal && modal.getAttribute('data-auto-audit') === '1';
     var previousFocus = null;
     var summaryMessage = '';
@@ -407,49 +484,6 @@
       return '/wp-json/g3d/v1/catalog/rules';
     }
 
-    function blockButton(btn, busyLabel) {
-      if (!btn) {
-        return function () {};
-      }
-
-      var wasDisabled = btn.disabled;
-      var previousText = btn.textContent;
-
-      if (!wasDisabled) {
-        return disableBtn(btn, true, busyLabel);
-      }
-
-      return function () {
-        setText(btn, previousText);
-      };
-    }
-
-    function blockRulesCtas() {
-      var restoreFns = [];
-
-      var restoreCta = blockButton(cta, __('Cargando…', TEXT_DOMAIN));
-      var restoreVerify = blockButton(
-        verifyButton,
-        __('Cargando…', TEXT_DOMAIN)
-      );
-
-      if (typeof restoreCta === 'function') {
-        restoreFns.push(restoreCta);
-      }
-
-      if (typeof restoreVerify === 'function') {
-        restoreFns.push(restoreVerify);
-      }
-
-      return function () {
-        restoreFns.forEach(function (fn) {
-          if (typeof fn === 'function') {
-            fn();
-          }
-        });
-      };
-    }
-
     function audit(action, extras) {
       try {
         if (!modal) {
@@ -672,59 +706,6 @@
       }
     }
 
-    function collectState(scope) {
-      var out = {};
-
-      if (!scope || typeof scope.querySelectorAll !== 'function') {
-        return out;
-      }
-
-      var nodes = scope.querySelectorAll('[data-g3d-state-key]');
-
-      Array.prototype.forEach.call(nodes, function (el) {
-        var key = el.getAttribute('data-g3d-state-key');
-
-        if (!key) {
-          return;
-        }
-
-        var v;
-        var tag = el.tagName.toLowerCase();
-        var type = (el.getAttribute('type') || '').toLowerCase();
-
-        if (tag === 'input' && type === 'checkbox') {
-          v = !!el.checked;
-        } else if (
-          tag === 'input' &&
-          (type === 'number' || el.dataset.stateType === 'number')
-        ) {
-          var n = Number(el.value);
-
-          if (!Number.isNaN(n)) {
-            v = n;
-          }
-        } else if (tag === 'input' && type === 'radio') {
-          if (el.checked) {
-            v = el.value;
-          }
-        } else if (tag === 'select') {
-          v = el.multiple
-            ? Array.from(el.selectedOptions).map(function (o) {
-                return o.value;
-              })
-            : el.value;
-        } else {
-          v = el.value != null ? el.value : el.textContent;
-        }
-
-        if (v !== undefined && v !== null && key.length) {
-          out[key] = v;
-        }
-      });
-
-      return out;
-    }
-
     function getModalData() {
       var snapshotId = '';
       var productoId = '';
@@ -764,8 +745,6 @@
         return;
       }
 
-      lastValidation = null;
-
       var modalData = getModalData();
       var snapshotId = modalData.snapshotId;
       var productoId = modalData.productoId;
@@ -775,8 +754,11 @@
         locale = wizard.locale;
       }
 
-      var payload = {
-        state: collectState(modal),
+      // TODO(Capa 4 §estado wizard): documentar claves válidas para state
+      const state = buildState(modal);
+
+      const payload = {
+        state: state,
       };
 
       if (snapshotId) {
@@ -793,8 +775,7 @@
 
       const controller = startAbortableRequest();
       var signal = controller ? controller.signal : undefined;
-      const restoreButton = disableBtn(cta, true, __('Enviando…', TEXT_DOMAIN));
-
+      disableBtn(cta, true, __('Enviando…', TEXT_DOMAIN));
       setBusy(message, true);
       setStatusMessage('');
 
@@ -810,6 +791,13 @@
           data = null;
         }
 
+        const resultData = data || null;
+
+        global.G3DWIZARD.last = {
+          payload: payload,
+          response: resultData,
+        };
+
         if (response.ok) {
           var hash = data && data.sku_hash ? data.sku_hash : '-';
           var expires = data && data.expires_at ? data.expires_at : '-';
@@ -823,18 +811,9 @@
               expires
           );
 
-          lastValidation = {
-            sku_hash: data && data.sku_hash ? data.sku_hash : '',
-            sku_signature:
-              data && typeof data.sku_signature === 'string'
-                ? data.sku_signature
-                : '',
-            snapshot_id: snapshotValue || '',
-          };
-
           if (shouldAutoAudit) {
             audit('validate_sign_success', {
-              snapshot_id: lastValidation.snapshot_id || '',
+              snapshot_id: snapshotValue || '',
               // TODO(Plugin 5 §Auditoría): campos adicionales permitidos
             });
           }
@@ -863,9 +842,14 @@
           return;
         }
 
+        global.G3DWIZARD.last = {
+          payload: payload,
+          response: null,
+        };
+
         setStatusMessage('ERROR — NETWORK');
       } finally {
-        restoreButton();
+        disableBtn(cta, false);
         var shouldReleaseBusy = !currentAbort || currentAbort === controller;
 
         if (shouldReleaseBusy) {
@@ -893,41 +877,56 @@
         return;
       }
 
-      if (!lastValidation || !lastValidation.sku_hash || !lastValidation.sku_signature) {
+      var last = wizard.last || null;
+      var response = last && typeof last === 'object' ? last.response : null;
+      var payload = last && typeof last === 'object' ? last.payload : null;
+      var skuHash =
+        response && typeof response.sku_hash === 'string' ? response.sku_hash : '';
+      var skuSignature =
+        response && typeof response.sku_signature === 'string'
+          ? response.sku_signature
+          : '';
+      var snapshotFromResponse =
+        response && typeof response.snapshot_id === 'string'
+          ? response.snapshot_id
+          : '';
+      var snapshotFromPayload =
+        payload && typeof payload.snapshot_id === 'string'
+          ? payload.snapshot_id
+          : '';
+      var snapshotForVerify = snapshotFromResponse || snapshotFromPayload || '';
+
+      if (!skuHash || !skuSignature) {
         setStatusMessage('ERROR — Primero valida y firma');
         return;
       }
 
-      var payload = {
-        sku_hash: lastValidation.sku_hash,
-        sku_signature: lastValidation.sku_signature,
-        snapshot_id: lastValidation.snapshot_id || '',
+      var payloadVerify = {
+        sku_hash: skuHash,
+        sku_signature: skuSignature,
+        snapshot_id: snapshotForVerify,
       };
 
       const controller = startAbortableRequest();
       var signal = controller ? controller.signal : undefined;
-      const restoreVerify = disableBtn(
-        verifyButton,
-        true,
-        __('Verificando…', TEXT_DOMAIN)
-      );
+      disableBtn(verifyButton, true, __('Verificando…', TEXT_DOMAIN));
 
       setBusy(message, true);
       setStatusMessage('');
 
       try {
-        var response = await wizard.postJson(api.verify, payload, {
+        var responseVerify = await wizard.postJson(api.verify, payloadVerify, {
           signal: signal,
         });
         var data = null;
 
         try {
-          data = await response.json();
+          data = await responseVerify.json();
         } catch (jsonError) {
           data = null;
         }
 
-        if (response.ok && data && data.ok === true) {
+        if (responseVerify.ok && data && data.ok === true) {
           if (data.request_id) {
             setStatusMessage(
               __('Verificado OK — request_id: ', TEXT_DOMAIN) + data.request_id
@@ -939,7 +938,7 @@
 
           if (shouldAutoAudit) {
             audit('verify_success', {
-              snapshot_id: (lastValidation && lastValidation.snapshot_id) || '',
+              snapshot_id: snapshotForVerify || '',
             });
           }
         } else {
@@ -953,8 +952,8 @@
             }
           }
 
-          if (!code && response.status) {
-            code = 'HTTP ' + response.status;
+          if (!code && responseVerify.status) {
+            code = 'HTTP ' + responseVerify.status;
           }
 
           if (!code) {
@@ -970,7 +969,7 @@
 
         setStatusMessage('ERROR — NETWORK');
       } finally {
-        restoreVerify();
+        disableBtn(verifyButton, false);
         var shouldReleaseBusy = !currentAbort || currentAbort === controller;
 
         if (shouldReleaseBusy) {
@@ -990,7 +989,11 @@
     }
 
     async function loadRulesData(snapshotId, productoId, locale) {
-      var releaseButtons = blockRulesCtas();
+      disableBtn(cta, true, __('Cargando…', TEXT_DOMAIN));
+
+      if (verifyButton) {
+        disableBtn(verifyButton, true, __('Cargando…', TEXT_DOMAIN));
+      }
 
       setBusy(message, true);
 
@@ -1021,11 +1024,20 @@
       if (!url) {
         lastRules = null;
         setRulesSummaryMessage('Reglas ERROR — missing endpoint');
-        releaseButtons();
         setBusy(message, false);
 
         if (rulesContainer) {
           setBusy(rulesContainer, false);
+        }
+
+        disableBtn(cta, false);
+
+        if (verifyButton) {
+          disableBtn(verifyButton, false);
+        }
+
+        if (modal) {
+          modal.setAttribute('data-ready', '1');
         }
 
         gateCtasByRules(lastRules);
@@ -1074,7 +1086,11 @@
         lastRules = null;
         setRulesSummaryMessage(formatRulesNetworkError());
       } finally {
-        releaseButtons();
+        disableBtn(cta, false);
+
+        if (verifyButton) {
+          disableBtn(verifyButton, false);
+        }
 
         var shouldReleaseBusy = !currentAbort || currentAbort === controller;
 
@@ -1087,6 +1103,9 @@
         }
 
         clearAbort(controller);
+        if (modal) {
+          modal.setAttribute('data-ready', '1');
+        }
         gateCtasByRules(lastRules);
       }
     }
