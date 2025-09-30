@@ -4,50 +4,24 @@ declare(strict_types=1);
 
 namespace G3D\CatalogRules\Api;
 
+use G3D\VendorBase\Rest\Responses;
 use G3D\VendorBase\Rest\Security;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
 
 /**
- * @phpstan-type SlotControl array{type: string, affects_sku: bool}
- * @phpstan-type SlotDefinition array{
- *     controles: list<SlotControl>,
- *     defaults: array<string, string>,
- *     visible: bool,
- *     order: int
- * }
- * @phpstan-type RulesSections array{
- *     material_to_modelos: array<string, array<string, list<string>>>,
- *     material_to_colores: array<string, list<string>>,
- *     material_to_texturas: array<string, list<string>>,
- *     defaults: array<string, array<string, string>>,
- *     encaje: array<string, mixed>,
- *     slot_mapping_editorial: array<string, array<string, SlotDefinition>>
- * }
- * @phpstan-type SnapshotEntities array{
- *     piezas: list<array{id: string, order: int}>,
- *     modelos: list<array{id: string, g3d_model_id: string, slots_detectados: list<string>}>,
- *     materiales: list<array{id: string, defaults: array<string, string>}>,
- *     colores: list<array{id: string, hex: string}>,
- *     texturas: list<array{id: string, slot: string, defines_color: bool, source: string}>,
- *     acabados: list<array{id: string}>
+ * @phpstan-type RuleEntry array{
+ *   key: string,
+ *   value: mixed
  * }
  * @phpstan-type RulesPayload array{
- *     ok: bool,
- *     id: string,
- *     schema_version: string,
- *     producto_id: string,
- *     entities: SnapshotEntities,
- *     rules: RulesSections,
- *     published_at: string,
- *     published_by: string,
- *     notes: string,
- *     ver: string,
- *     locales: list<string>,
- *     sku_policy: array{include_morphs_in_sku: bool}
+ *   rules: list<RuleEntry>,
+ *   snapshot_id?: string,
+ *   version?: string
  * }
  */
+// TODO(Plugin 2 §payload): añadir metadatos cuando el doc lo fije.
 final class RulesReadController
 {
     public function registerRoutes(): void
@@ -65,18 +39,20 @@ final class RulesReadController
                         'required' => true,
                         'type'     => 'string',
                     ],
-                    'locale'      => [
-                        'required' => false,
+                    'snapshot_id' => [
+                        'required' => true,
                         'type'     => 'string',
                     ],
-                    // TODO(docs/plugin-2-g3d-catalog-rules.md §6 APIs / Contratos (lectura)):
-                    // documentar snapshot_id si aplica.
+                    'locale'      => [
+                        'required' => true,
+                        'type'     => 'string',
+                    ],
                 ],
             ]
         );
     }
 
-    public function handle(WP_REST_Request $request): WP_REST_Response|WP_Error
+    public function handle(WP_REST_Request $request): WP_REST_Response
     {
         $nonceCheck = Security::checkOptionalNonce($request);
 
@@ -84,190 +60,97 @@ final class RulesReadController
             // TODO(docs/plugin-2-g3d-catalog-rules.md §12 Seguridad): confirmar bloqueo ante nonce inválido.
         }
 
-        $missingFields = [];
-        $typeErrors    = [];
+        $missingParams = [];
+        $invalidTypes  = [];
 
-        $productoIdParam = $request->get_param('producto_id');
-        $productoId      = null;
+        $this->readRequiredStringParam(
+            $request->get_param('producto_id'),
+            'producto_id',
+            $missingParams,
+            $invalidTypes
+        );
 
-        if ($productoIdParam === null) {
-            $missingFields[] = 'producto_id';
-        } elseif (!is_string($productoIdParam)) {
-            $typeErrors[] = 'producto_id';
-        } else {
-            $productoId = trim($productoIdParam);
+        $this->readRequiredStringParam(
+            $request->get_param('snapshot_id'),
+            'snapshot_id',
+            $missingParams,
+            $invalidTypes
+        );
 
-            if ($productoId === '') {
-                $missingFields[] = 'producto_id';
-            }
-        }
+        $this->readRequiredStringParam(
+            $request->get_param('locale'),
+            'locale',
+            $missingParams,
+            $invalidTypes
+        );
 
-        $localeParam = $request->get_param('locale');
-        $locale      = null;
-
-        if ($localeParam !== null) {
-            if (!is_string($localeParam)) {
-                $typeErrors[] = 'locale';
-            } else {
-                $locale = trim($localeParam);
-
-                if ($locale === '') {
-                    $locale = null;
-                }
-            }
-        }
-
-        if ($missingFields !== []) {
-            return new WP_Error(
-                'rest_missing_required_params',
-                'Faltan campos requeridos.',
-                [
-                    'status'         => 400,
-                    'missing_fields' => $missingFields,
-                ]
+        if ($missingParams !== []) {
+            return new WP_REST_Response(
+                Responses::error(
+                    'E_MISSING_PARAMS',
+                    'missing_params',
+                    'Faltan parámetros requeridos.'
+                ),
+                400
             );
         }
 
-        if ($typeErrors !== []) {
-            return new WP_Error(
-                'rest_invalid_param',
-                'Tipos inválidos.',
-                [
-                    'status'      => 400,
-                    'type_errors' => $typeErrors,
-                ]
+        if ($invalidTypes !== []) {
+            return new WP_REST_Response(
+                Responses::error(
+                    'E_INVALID_PARAMS',
+                    'invalid_params',
+                    'Parámetros inválidos.'
+                ),
+                400
             );
         }
 
-        $snapshotIdParam = $request->get_param('snapshot_id');
-        $snapshotId      = is_string($snapshotIdParam) && $snapshotIdParam !== '' ? $snapshotIdParam : null;
-        // TODO(docs/plugin-2-g3d-catalog-rules.md §6 APIs / Contratos (lectura)):
-        // definir uso público de snapshot_id cuando aplique.
+        /** @var RulesPayload $payload */
+        $payload = [
+            'rules'       => [],
+            'snapshot_id' => 'snap:2025-09-27T18:45:00Z',
+            'version'     => 'ver:2025-09-27T18:45:00Z',
+            // TODO(Plugin 2 §payload): añadir metadatos cuando el doc lo fije.
+        ];
 
         return new WP_REST_Response(
-            $this->buildPayload($productoId ?? '', $locale, $snapshotId),
+            Responses::ok($payload),
             200
         );
     }
 
     /**
-     * @return RulesPayload
+     * @param mixed $value
+     * @param list<string> $missing
+     * @param list<string> $invalid
      */
-    private function buildPayload(string $productoId, ?string $locale, ?string $snapshotId): array
-    {
-        $localeList = ['es-ES'];
+    private function readRequiredStringParam(
+        mixed $value,
+        string $name,
+        array &$missing,
+        array &$invalid
+    ): ?string {
+        if ($value === null) {
+            $missing[] = $name;
 
-        if ($locale !== null && $locale !== '') {
-            $localeList = [$locale];
+            return null;
         }
 
-        if ($snapshotId !== null) {
-            // TODO(docs/plugin-2-g3d-catalog-rules.md §6 APIs / Contratos (lectura)):
-            // aplicar snapshot_id cuando el contrato público lo especifique.
+        if (!is_string($value)) {
+            $invalid[] = $name;
+
+            return null;
         }
 
-        return [
-            'ok'             => true,
-            'id'             => 'snap:2025-09-27T18:45:00Z',
-            // TODO(docs/Capa 2 Schemas Snapshot — Actualizada (slots Abiertos).md §Snapshot publicado)
-            'schema_version' => '2.0.0',
-            'producto_id'    => $productoId,
-            'entities'       => [
-                'piezas'     => [
-                    ['id' => 'pieza:frame', 'order' => 1],
-                    ['id' => 'pieza:temple', 'order' => 2],
-                ],
-                'modelos'    => [
-                    [
-                        'id'              => 'modelo:FR_A_R',
-                        'g3d_model_id'    => 'g3d:FR_A_R',
-                        'slots_detectados' => ['MAT_BASE', 'MAT_TIP'],
-                    ],
-                ],
-                'materiales' => [
-                    [
-                        'id'       => 'mat:acetato',
-                        'defaults' => [
-                            'color'   => 'col:black',
-                            'textura' => 'tex:acetato_base',
-                            // TODO(docs/plugin-2-g3d-catalog-rules.md §4.3 Reglas)
-                        ],
-                    ],
-                ],
-                'colores'    => [
-                    [
-                        'id'  => 'col:black',
-                        'hex' => '#000000',
-                    ],
-                ],
-                'texturas'   => [
-                    [
-                        'id'            => 'tex:acetato_base',
-                        'slot'          => 'MAT_BASE',
-                        'defines_color' => true,
-                        'source'        => 'embedded',
-                    ],
-                ],
-                'acabados'   => [
-                    ['id' => 'fin:clearcoat_high'],
-                ],
-                // TODO(docs/plugin-2-g3d-catalog-rules.md §4.2 Entidades)
-            ],
-            'rules'          => [
-                'material_to_modelos'  => [
-                    'pieza:frame' => [
-                        'mat:acetato' => ['modelo:FR_A_R'],
-                    ],
-                ],
-                'material_to_colores'  => [
-                    'mat:acetato' => ['col:black', 'col:white'],
-                ],
-                'material_to_texturas' => [
-                    'mat:acetato' => ['tex:acetato_base'],
-                ],
-                'defaults'             => [
-                    'mat:acetato' => [
-                        'color'   => 'col:black',
-                        'textura' => 'tex:acetato_base',
-                    ],
-                ],
-                'encaje'               => [
-                    'clearance_por_material_mm' => [
-                        'mat:acetato' => 0.10,
-                    ],
-                    // TODO(docs/Capa 2 Schemas Snapshot — Actualizada (slots Abiertos).md §Encaje y morphs)
-                ],
-                'slot_mapping_editorial' => [
-                    'pieza:frame' => [
-                        'MAT_BASE' => [
-                            'controles' => [
-                                ['type' => 'material', 'affects_sku' => true],
-                                ['type' => 'color', 'affects_sku' => true],
-                                ['type' => 'textura', 'affects_sku' => true],
-                                ['type' => 'acabado', 'affects_sku' => false],
-                                // TODO(docs/plugin-2-g3d-catalog-rules.md §4.4 Slots (mapeo editorial))
-                            ],
-                            'defaults'  => [
-                                'material' => 'mat:acetato',
-                                'color'    => 'col:black',
-                                'textura'  => 'tex:acetato_base',
-                            ],
-                            'visible'   => true,
-                            'order'     => 1,
-                        ],
-                    ],
-                ],
-            ],
-            'published_at'   => '2025-09-27T18:45:00Z',
-            'published_by'   => 'user:admin',
-            'notes'          => 'v2 — slots abiertos',
-            'ver'            => 'ver:2025-09-27T18:45:00Z',
-            'locales'        => $localeList,
-            'sku_policy'     => [
-                'include_morphs_in_sku' => false,
-            ],
-            // TODO(docs/plugin-2-g3d-catalog-rules.md §6 APIs / Contratos (lectura)):
-            // confirmar si snapshot_id debe reflejarse en payload público.
-        ];
+        $trimmed = trim($value);
+
+        if ($trimmed === '') {
+            $missing[] = $name;
+
+            return null;
+        }
+
+        return $trimmed;
     }
 }
