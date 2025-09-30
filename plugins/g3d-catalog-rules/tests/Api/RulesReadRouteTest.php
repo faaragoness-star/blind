@@ -14,7 +14,7 @@ final class RulesReadRouteTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $GLOBALS['g3d_catalog_rules_registered_routes'] = [];
+        $GLOBALS['g3d_tests_registered_rest_routes'] = [];
     }
 
     public function testRegisterRoutesRegistersCatalogRulesReadEndpoint(): void
@@ -22,9 +22,9 @@ final class RulesReadRouteTest extends TestCase
         $controller = new RulesReadController();
         $controller->registerRoutes();
 
-        self::assertNotEmpty($GLOBALS['g3d_catalog_rules_registered_routes']);
+        self::assertNotEmpty($GLOBALS['g3d_tests_registered_rest_routes']);
 
-        $route = $GLOBALS['g3d_catalog_rules_registered_routes'][0];
+        $route = $GLOBALS['g3d_tests_registered_rest_routes'][0];
         self::assertSame('g3d/v1', $route['namespace']);
         self::assertSame('/catalog/rules', $route['route']);
         self::assertSame('GET', $route['args']['methods']);
