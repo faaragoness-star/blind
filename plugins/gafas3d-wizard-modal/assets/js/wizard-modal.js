@@ -10,12 +10,6 @@
 
   global.G3DWIZARD = global.G3DWIZARD || {};
 
-  var rulesURL =
-    (global.G3DWIZARD &&
-      global.G3DWIZARD.api &&
-      global.G3DWIZARD.api.rules) ||
-    '/wp-json/g3d/v1/catalog/rules'; // TODO(plugin-2-g3d-catalog-rules.md §6): confirmar endpoint público exacto.
-
   global.G3DWIZARD.postJson = async function postJson(url, body) {
     const res = await fetch(url, {
       method: 'POST',
@@ -34,11 +28,7 @@
       params && Object.keys(params).length
         ? '?' + new URLSearchParams(params).toString()
         : '';
-    const res = await fetch(url + qs, {
-      headers: {
-        'X-WP-Nonce': (global.G3DWIZARD && global.G3DWIZARD.nonce) || '',
-      },
-    });
+    const res = await fetch(url + qs, { method: 'GET' });
 
     return res.ok ? res.json() : {};
   };
@@ -79,7 +69,7 @@
     var previousFocus = null;
     var summaryMessage = '';
     var statusMessage = '';
-    var rulesLoaded = false;
+    var rulesSummaryMessage = '';
 
     function setText(element, value) {
       if (!element) {
@@ -95,6 +85,10 @@
       }
 
       var parts = [];
+
+      if (rulesSummaryMessage) {
+        parts.push(rulesSummaryMessage);
+      }
 
       if (summaryMessage) {
         parts.push(summaryMessage);
@@ -114,6 +108,11 @@
         setText(summaryContainer, summaryMessage);
       }
 
+      updateLiveMessage();
+    }
+
+    function setRulesSummaryMessage(value) {
+      rulesSummaryMessage = value || '';
       updateLiveMessage();
     }
 
@@ -170,91 +169,6 @@
           });
       } catch (error) {
         // no-op
-      }
-    }
-
-    function buildRulesParams(productoId, snapshotId, locale) {
-      var params = {};
-
-      // TODO(docs/plugin-2-g3d-catalog-rules.md §6): confirmar lista definitiva de parámetros públicos.
-
-      if (productoId) {
-        params.producto_id = productoId;
-      }
-
-      if (snapshotId) {
-        params.snapshot_id = snapshotId;
-      }
-
-      if (locale) {
-        params.locale = locale;
-      }
-
-      return params;
-    }
-
-    async function loadRulesOnce(params) {
-      if (rulesLoaded) {
-        return;
-      }
-
-      rulesLoaded = true;
-
-      var headers = {
-        'X-WP-Nonce': (global.G3DWIZARD && global.G3DWIZARD.nonce) || '',
-      };
-
-      var query = '';
-
-      if (params && typeof params === 'object' && Object.keys(params).length) {
-        query = '?' + new URLSearchParams(params).toString();
-      }
-
-      var ctaWasDisabled = cta ? cta.disabled : false;
-
-      if (cta) {
-        cta.disabled = true;
-      }
-
-      setSummaryMessage(__('Cargando reglas…', TEXT_DOMAIN));
-
-      try {
-        var res = await fetch(rulesURL + query, { headers: headers });
-        var data = {};
-
-        try {
-          data = await res.json();
-        } catch (error) {
-          data = {};
-        }
-
-        if (res.ok && data) {
-          var n = Array.isArray(data.rules) ? data.rules.length : undefined;
-          var bits = [];
-
-          if (typeof n === 'number') {
-            bits.push('rules: ' + n);
-          }
-
-          if (data.snapshot_id) {
-            bits.push('snapshot_id: ' + data.snapshot_id);
-          }
-
-          if (data.version) {
-            bits.push('version: ' + data.version);
-          }
-
-          setSummaryMessage(bits.join(' | '));
-        } else {
-          var status = res && typeof res.status === 'number' ? res.status : 0;
-          setSummaryMessage('ERROR — HTTP ' + String(status));
-        }
-      } catch (error) {
-        setSummaryMessage('ERROR — red');
-      }
-
-      if (cta) {
-        cta.disabled = ctaWasDisabled;
       }
     }
 
@@ -655,21 +569,42 @@
       var locale = modalData.locale || wizard.locale || '';
 
       setStatusMessage('');
+      setSummaryMessage('');
 
-      if (!rulesLoaded) {
-        setSummaryMessage('');
+      var params = {};
+
+      if (productoId) {
+        params.producto_id = productoId;
       }
 
-      if (!productoId) {
-        setSummaryMessage(
-          __('TODO(plugin-2-g3d-catalog-rules.md §6): faltan parámetros.', TEXT_DOMAIN)
-        );
-        return;
+      if (snapshotId) {
+        params.snapshot_id = snapshotId;
       }
 
-      var params = buildRulesParams(productoId, snapshotId, locale);
+      if (locale) {
+        params.locale = locale;
+      }
 
-      loadRulesOnce(params);
+      var api = (global.G3DWIZARD && global.G3DWIZARD.api) || {};
+      var url =
+        api.rules ||
+        '/wp-json/g3d/v1/catalog/rules'; // TODO(plugin-2-g3d-catalog-rules.md §6): confirmar ruta pública exacta.
+
+      if (message) {
+        message.removeAttribute('aria-busy');
+      }
+
+      setRulesSummaryMessage('Reglas: 0');
+
+      global.G3DWIZARD
+        .getJSON(url, params)
+        .then(function (data) {
+          var n = Array.isArray(data && data.rules) ? data.rules.length : 0;
+          setRulesSummaryMessage('Reglas: ' + n);
+        })
+        .catch(function () {
+          setRulesSummaryMessage('Reglas: 0');
+        });
     }
 
     function closeModal(event) {
@@ -685,9 +620,9 @@
       }
 
       previousFocus = null;
-      rulesLoaded = false;
       setSummaryMessage('');
       setStatusMessage('');
+      setRulesSummaryMessage('');
 
       if (message) {
         message.removeAttribute('aria-busy');
