@@ -48,7 +48,7 @@ add_action('admin_menu', static function (): void {
 });
 
 add_action('plugins_loaded', static function (): void {
-    (new AdminAssets())->register();
+    (new AdminAssets(__FILE__))->register();
 });
 
 add_action('wp_enqueue_scripts', [Assets::class, 'register']);

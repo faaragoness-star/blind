@@ -55,3 +55,81 @@ if (!function_exists('esc_html__')) {
         return $text;
     }
 }
+
+if (!function_exists('plugin_dir_path')) {
+    function plugin_dir_path(string $file): string
+    {
+        return rtrim(dirname($file), '\\/') . '/';
+    }
+}
+
+if (!function_exists('plugins_url')) {
+    function plugins_url(string $path = '', string $pluginFile = ''): string
+    {
+        $base = 'https://example.com/wp-content/plugins';
+
+        if ($pluginFile !== '') {
+            $base .= '/' . basename(dirname($pluginFile));
+        }
+
+        if ($path !== '') {
+            $path = '/' . ltrim($path, '/');
+        }
+
+        return $base . $path;
+    }
+}
+
+if (!isset($GLOBALS['g3d_wizard_modal_enqueued_scripts'])) {
+    /**
+     * @var array<string, array{src:string,deps:array<int, string>,ver:string|bool,in_footer:bool}> $GLOBALS['g3d_wizard_modal_enqueued_scripts']
+     */
+    $GLOBALS['g3d_wizard_modal_enqueued_scripts'] = [];
+}
+
+if (!isset($GLOBALS['g3d_wizard_modal_enqueued_styles'])) {
+    /**
+     * @var array<string, array{src:string,deps:array<int, string>,ver:string|bool,media:string}> $GLOBALS['g3d_wizard_modal_enqueued_styles']
+     */
+    $GLOBALS['g3d_wizard_modal_enqueued_styles'] = [];
+}
+
+if (!function_exists('wp_enqueue_script')) {
+    /**
+     * @param array<int, string> $deps
+     */
+    function wp_enqueue_script(
+        string $handle,
+        string $src = '',
+        array $deps = [],
+        string|bool $ver = false,
+        bool $inFooter = false
+    ): void {
+        $GLOBALS['g3d_wizard_modal_enqueued_scripts'][$handle] = [
+            'src' => $src,
+            'deps' => $deps,
+            'ver' => $ver,
+            'in_footer' => $inFooter,
+        ];
+    }
+}
+
+if (!function_exists('wp_enqueue_style')) {
+    /**
+     * @param array<int, string> $deps
+     */
+    function wp_enqueue_style(
+        string $handle,
+        string $src = '',
+        array $deps = [],
+        string|bool $ver = false,
+        string $media = 'all'
+    ): void {
+        $GLOBALS['g3d_wizard_modal_enqueued_styles'][$handle] = [
+            'src' => $src,
+            'deps' => $deps,
+            'ver' => $ver,
+            'media' => $media,
+        ];
+    }
+}
