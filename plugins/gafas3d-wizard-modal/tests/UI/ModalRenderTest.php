@@ -1,0 +1,23 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Gafas3d\WizardModal\Tests\UI;
+
+use Gafas3d\WizardModal\UI\Modal;
+use PHPUnit\Framework\TestCase;
+
+final class ModalRenderTest extends TestCase
+{
+    public function testRenderOutputsModalStructure(): void
+    {
+        ob_start();
+        Modal::render();
+        $output = ob_get_clean();
+
+        self::assertIsString($output);
+        self::assertStringContainsString('data-g3d-wizard-modal-open', $output);
+        self::assertStringContainsString('data-g3d-wizard-modal-overlay', $output);
+        self::assertStringContainsString('data-g3d-wizard-modal-close', $output);
+    }
+}
