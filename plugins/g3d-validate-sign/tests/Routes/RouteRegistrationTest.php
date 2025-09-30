@@ -12,21 +12,20 @@ final class RouteRegistrationTest extends TestCase
     {
         parent::setUpBeforeClass();
 
-        // Cargar bootstrap de pruebas SIN efectos laterales a nivel de archivo
+        // Carga bootstrap y plugin sin producir efectos a nivel de archivo.
         require_once __DIR__ . '/../../../g3d-vendor-base-helper/tests/bootstrap.php';
-
-        if (!\function_exists('sodium_crypto_sign_keypair')) {
-            self::markTestSkipped(
-                'ext-sodium requerida para las pruebas (ver docs/plugin-3-g3d-validate-sign.md §4.1).'
-            );
-        }
-
         require_once __DIR__ . '/../../plugin.php';
     }
 
     protected function setUp(): void
     {
         parent::setUp();
+
+        if (!\function_exists('sodium_crypto_sign_detached')) {
+            $this->markTestSkipped(
+                'ext-sodium requerida para las pruebas (ver docs/plugin-3-g3d-validate-sign.md §4.1).'
+            );
+        }
 
         $GLOBALS['g3d_tests_registered_rest_routes'] = [];
     }
@@ -47,6 +46,7 @@ final class RouteRegistrationTest extends TestCase
     {
         /** @var list<array{namespace:string,route:string,args:array<string,mixed>}> $routes */
         $routes = $GLOBALS['g3d_tests_registered_rest_routes'] ?? [];
+
         foreach ($routes as $r) {
             if ($r['namespace'] === $ns && $r['route'] === $route) {
                 $methods = $r['args']['methods'] ?? '';
