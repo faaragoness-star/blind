@@ -12,8 +12,9 @@ use RuntimeException;
 class Signer
 {
     /**
-     * Prefijos permitidos según docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md
-     * sección "Firma con prefijo sig.vN".
+     * Prefijos permitidos según
+     * docs/Capa 3 — Validación, Firma y Caducidad — Actualizada
+     * (slots Abiertos) — V2 (urls).md, sección "Firma con prefijo sig.vN".
      *
      * @var string[]
      */
@@ -59,10 +60,10 @@ class Signer
             $state = $payload['state'];
         }
 
-        $skuHash = $this->computeSkuHash($state);
+        $skuHash    = $this->computeSkuHash($state);
         $snapshotId = isset($payload['snapshot_id']) ? (string) $payload['snapshot_id'] : '';
-        $locale = isset($payload['locale']) ? (string) $payload['locale'] : '';
-        $abVariant = '';
+        $locale     = isset($payload['locale']) ? (string) $payload['locale'] : '';
+        $abVariant  = '';
 
         if (isset($payload['flags']) && is_array($payload['flags']) && isset($payload['flags']['ab_variant'])) {
             $abVariant = (string) $payload['flags']['ab_variant'];
@@ -71,20 +72,20 @@ class Signer
         $expiresAtUtc = $expiresAt->setTimezone(new DateTimeZone('UTC'));
 
         $messagePayload = [
-            'sku_hash' => $skuHash,
+            'sku_hash'    => $skuHash,
             'snapshot_id' => $snapshotId,
-            'expires_at' => $expiresAtUtc->format(DateTimeInterface::ATOM),
-            'locale' => $locale,
-            'ab_variant' => $abVariant,
+            'expires_at'  => $expiresAtUtc->format(DateTimeInterface::ATOM),
+            'locale'      => $locale,
+            'ab_variant'  => $abVariant,
         ];
 
-        $message = $this->canonicalize($messagePayload);
+        $message   = $this->canonicalize($messagePayload);
         $signature = sodium_crypto_sign_detached($message, $normalizedPrivateKey);
 
         return [
-            'sku_hash' => $skuHash,
-            'signature' => $this->encodeSignature($message, $signature),
-            'message' => $message,
+            'sku_hash'   => $skuHash,
+            'signature'  => $this->encodeSignature($message, $signature),
+            'message'    => $message,
             'expires_at' => $messagePayload['expires_at'],
         ];
     }
@@ -112,7 +113,7 @@ class Signer
     private function canonicalize(array $data): string
     {
         $normalized = $this->normalizeValue($data);
-        $encoded = json_encode($normalized, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $encoded    = json_encode($normalized, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         if ($encoded === false) {
             throw new RuntimeException(
@@ -127,7 +128,7 @@ class Signer
     private function normalizeValue(mixed $value): mixed
     {
         if (is_array($value)) {
-            $isAssoc = $this->isAssoc($value);
+            $isAssoc    = $this->isAssoc($value);
             $normalized = [];
 
             if ($isAssoc) {
