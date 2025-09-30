@@ -30,7 +30,32 @@
         : '';
     const res = await fetch(url + qs, { method: 'GET' });
 
-    return res.ok ? res.json() : {};
+    let payload = null;
+
+    try {
+      payload = await res.json();
+    } catch (error) {
+      payload = null;
+    }
+
+    if (!res.ok) {
+      const requestError = new Error('Request failed');
+      requestError.status = res.status;
+
+      if (payload && typeof payload === 'object') {
+        requestError.payload = payload;
+
+        if (payload.reason_key) {
+          requestError.code = payload.reason_key;
+        } else if (payload.code) {
+          requestError.code = payload.code;
+        }
+      }
+
+      throw requestError;
+    }
+
+    return payload || {};
   };
 
   if (global.console && typeof global.console.log === 'function') {
@@ -113,12 +138,68 @@
 
     function setRulesSummaryMessage(value) {
       rulesSummaryMessage = value || '';
+
+      if (rulesContainer) {
+        setText(rulesContainer, rulesSummaryMessage);
+      }
+
       updateLiveMessage();
     }
 
     function setStatusMessage(value) {
       statusMessage = value || '';
       updateLiveMessage();
+    }
+
+    function formatRulesSummary(data) {
+      var payload = data && typeof data === 'object' ? data : {};
+      var sections =
+        payload.rules && typeof payload.rules === 'object'
+          ? Object.keys(payload.rules)
+          : [];
+      var count = sections.length;
+      var summaryParts = ['Reglas: ' + String(count)];
+
+      ['id', 'ver', 'schema_version', 'producto_id', 'published_at', 'published_by'].forEach(
+        function (key) {
+          var value = payload[key];
+
+          if (typeof value === 'string' && value) {
+            summaryParts.push(key + '=' + value);
+          }
+        }
+      );
+
+      if (Array.isArray(payload.locales) && payload.locales.length) {
+        summaryParts.push('locales=' + payload.locales.join(','));
+      }
+
+      return summaryParts.join(' · ');
+    }
+
+    function formatRulesError(error) {
+      var detailParts = [];
+
+      if (error && typeof error.status === 'number' && error.status > 0) {
+        detailParts.push('HTTP ' + String(error.status));
+      }
+
+      if (error && error.code) {
+        detailParts.push(String(error.code));
+      } else if (
+        error &&
+        error.payload &&
+        typeof error.payload === 'object' &&
+        error.payload.reason_key
+      ) {
+        detailParts.push(String(error.payload.reason_key));
+      }
+
+      if (detailParts.length) {
+        return 'Reglas: error (' + detailParts.join(' | ') + ')';
+      }
+
+      return 'Reglas: error';
     }
 
     function audit(action, extras) {
@@ -611,13 +692,8 @@
         dialog.focus();
       }
 
-      if (rulesContainer) {
-        setText(rulesContainer, '');
-      }
-
       var wizard = global.G3DWIZARD || {};
       var modalData = getModalData();
-      var snapshotId = modalData.snapshotId;
       var productoId = modalData.productoId;
       var locale = modalData.locale || wizard.locale || '';
 
@@ -626,37 +702,51 @@
 
       var params = {};
 
-      if (productoId) {
-        params.producto_id = productoId;
+      if (!productoId) {
+        setRulesSummaryMessage('Reglas: error (missing producto_id)');
+        return;
       }
 
-      if (snapshotId) {
-        params.snapshot_id = snapshotId;
-      }
+      params.producto_id = productoId;
 
       if (locale) {
         params.locale = locale;
       }
 
       var api = (global.G3DWIZARD && global.G3DWIZARD.api) || {};
-      var url =
-        api.rules ||
-        '/wp-json/g3d/v1/catalog/rules'; // TODO(plugin-2-g3d-catalog-rules.md §6): confirmar ruta pública exacta.
+      var url = typeof api.rules === 'string' && api.rules ? api.rules : '';
+
+      if (!url) {
+        setRulesSummaryMessage('Reglas: error (endpoint no disponible)');
+        // TODO(plugin-2-g3d-catalog-rules.md §6 APIs / Contratos (lectura)): exponer URL pública en localización.
+        return;
+      }
+
+      if (rulesContainer) {
+        rulesContainer.setAttribute('aria-busy', 'true');
+      }
+
+      setRulesSummaryMessage('Reglas: cargando…');
 
       if (message) {
         message.removeAttribute('aria-busy');
       }
 
-      setRulesSummaryMessage('Reglas: 0');
-
       global.G3DWIZARD
         .getJSON(url, params)
         .then(function (data) {
-          var n = Array.isArray(data && data.rules) ? data.rules.length : 0;
-          setRulesSummaryMessage('Reglas: ' + n);
+          setRulesSummaryMessage(formatRulesSummary(data));
+
+          if (rulesContainer) {
+            rulesContainer.removeAttribute('aria-busy');
+          }
         })
-        .catch(function () {
-          setRulesSummaryMessage('Reglas: 0');
+        .catch(function (error) {
+          setRulesSummaryMessage(formatRulesError(error));
+
+          if (rulesContainer) {
+            rulesContainer.removeAttribute('aria-busy');
+          }
         });
     }
 
@@ -679,6 +769,10 @@
 
       if (message) {
         message.removeAttribute('aria-busy');
+      }
+
+      if (rulesContainer) {
+        rulesContainer.removeAttribute('aria-busy');
       }
     }
 
