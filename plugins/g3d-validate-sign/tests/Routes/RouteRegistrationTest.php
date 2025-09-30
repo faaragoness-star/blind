@@ -13,7 +13,9 @@ final class RouteRegistrationTest extends TestCase
         parent::setUpBeforeClass();
 
         if (!function_exists('sodium_crypto_sign_keypair')) {
-            self::markTestSkipped('ext-sodium requerida para las pruebas (ver docs/plugin-3-g3d-validate-sign.md §4.1).');
+            self::markTestSkipped(
+                'ext-sodium requerida para las pruebas (ver docs/plugin-3-g3d-validate-sign.md §4.1).'
+            );
         }
 
         require_once __DIR__ . '/../../plugin.php';
