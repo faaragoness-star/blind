@@ -26,18 +26,18 @@ final class PermissionsTest extends TestCase
         $this->registerRoutes();
     }
 
-    public function testValidateSignRouteRequiresNonceAndCapability(): void
+    public function testValidateSignRouteIsPublicAccordingDocs(): void
     {
         $callback = $this->getPermissionCallback('/validate-sign');
 
-        $this->assertPermissionMatrix($callback, '/validate-sign');
+        $this->assertRouteIsPublic($callback, '/validate-sign');
     }
 
-    public function testVerifyRouteRequiresNonceAndCapability(): void
+    public function testVerifyRouteIsPublicAccordingDocs(): void
     {
         $callback = $this->getPermissionCallback('/verify');
 
-        $this->assertPermissionMatrix($callback, '/verify');
+        $this->assertRouteIsPublic($callback, '/verify');
     }
 
     /**
@@ -57,7 +57,7 @@ final class PermissionsTest extends TestCase
         self::fail('Route not registered: ' . $route);
     }
 
-    private function assertPermissionMatrix(callable $callback, string $route): void
+    private function assertRouteIsPublic(callable $callback, string $route): void
     {
         Perms::allowAll();
         Nonce::allow();
@@ -67,17 +67,17 @@ final class PermissionsTest extends TestCase
         Perms::denyAll();
         Nonce::allow();
         $request = $this->createRequest($route, true);
-        self::assertFalse($callback($request));
+        self::assertTrue($callback($request));
 
         Perms::allowAll();
-        Nonce::allow();
+        Nonce::deny();
         $request = $this->createRequest($route, false);
-        self::assertFalse($callback($request));
+        self::assertTrue($callback($request));
 
         Perms::denyAll();
-        Nonce::allow();
+        Nonce::deny();
         $request = $this->createRequest($route, false);
-        self::assertFalse($callback($request));
+        self::assertTrue($callback($request));
     }
 
     private function createRequest(string $route, bool $withNonce): WP_REST_Request
