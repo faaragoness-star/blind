@@ -134,6 +134,12 @@ final class Modal
 
         echo '<div class="g3d-wizard-modal__msg" aria-live="polite"></div>';
 
+        echo '<button type="button"'
+            . ' class="g3d-wizard-modal__verify"'
+            . ' data-g3d-wizard-modal-verify>';
+        echo esc_html__('Verificar', 'gafas3d-wizard-modal');
+        echo '</button>';
+
         echo '<button type="button" class="g3d-wizard-modal__cta" data-g3d-wizard-modal-cta>';
         echo esc_html__(
             'TODO: Texto del CTA. Ver docs/plugin-4-gafas3d-wizard-modal.md §5.6.',

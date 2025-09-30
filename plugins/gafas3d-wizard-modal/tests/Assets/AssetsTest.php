@@ -43,6 +43,7 @@ final class AssetsTest extends TestCase
         $localized = $GLOBALS['g3d_wizard_modal_localized_scripts'][Assets::HANDLE_JS]['G3DWIZARD'] ?? [];
         self::assertArrayHasKey('api', $localized);
         self::assertArrayHasKey('validateSign', $localized['api']);
+        self::assertArrayHasKey('verify', $localized['api']);
         self::assertSame(
             'http://example.test/wp-json/g3d/v1/validate-sign',
             $localized['api']['validateSign'] ?? null
