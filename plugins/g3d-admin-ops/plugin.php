@@ -14,6 +14,7 @@
 declare(strict_types=1);
 
 use G3D\AdminOps\Plugin;
+use G3D\AdminOps\Services\Registry;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -40,9 +41,6 @@ add_action('init', static function (): void {
 $plugin = new Plugin();
 $plugin->register();
 
-$GLOBALS['g3d_admin_ops_audit_reader'] = $plugin->auditLogger();
-$GLOBALS['g3d_admin_ops_audit_writer'] = $plugin->auditLogger();
-
 register_activation_hook(__FILE__, static function (): void {
     // TODO(doc §RBAC roles->caps): asignar capacidades a roles según doc.
     // Ejemplo (comentar si el doc no lo fija):
@@ -56,23 +54,34 @@ register_activation_hook(__FILE__, static function (): void {
 });
 
 add_action('rest_api_init', static function (): void {
-    $logger = $GLOBALS['g3d_admin_ops_audit_writer'] ?? null;
+    $logger = null;
 
-    if (
-        !(
-            $logger instanceof \G3D\AdminOps\Audit\EditorialActionLogger
-            && $logger instanceof \G3D\AdminOps\Audit\AuditLogReader
-        )
-    ) {
-        $logger = $GLOBALS['g3d_admin_ops_audit_reader'] ?? null;
+    // 1) Intentar resolver desde el contenedor (si existe).
+    if (class_exists(\G3D\AdminOps\Services\Registry::class)) {
+        $service = Registry::instance()->get(Registry::S_AUDIT_LOGGER);
+
+        if (
+            $service instanceof \G3D\AdminOps\Audit\AuditLogReader
+            && $service instanceof \G3D\AdminOps\Audit\EditorialActionLogger
+        ) {
+            $logger = $service;
+        }
     }
 
-    if (
-        !(
-            $logger instanceof \G3D\AdminOps\Audit\EditorialActionLogger
-            && $logger instanceof \G3D\AdminOps\Audit\AuditLogReader
-        )
-    ) {
+    // 2) Intentar globals (por compat).
+    if ($logger === null) {
+        $candidate = $GLOBALS['g3d_admin_ops_audit_writer'] ?? ($GLOBALS['g3d_admin_ops_audit_reader'] ?? null);
+
+        if (
+            $candidate instanceof \G3D\AdminOps\Audit\AuditLogReader
+            && $candidate instanceof \G3D\AdminOps\Audit\EditorialActionLogger
+        ) {
+            $logger = $candidate;
+        }
+    }
+
+    // 3) Fallback en memoria y exponer globals para compatibilidad.
+    if ($logger === null) {
         $logger = new \G3D\AdminOps\Audit\InMemoryEditorialActionLogger();
         // TODO(doc §bootstrap): mover a contenedor cuando tengamos DI real.
         $GLOBALS['g3d_admin_ops_audit_reader'] = $logger;

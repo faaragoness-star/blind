@@ -56,26 +56,26 @@ final class AuditWriteController
          */
 
         $actorId = isset($payload['actor_id']) ? (string) $payload['actor_id'] : '';
-        $action = isset($payload['action']) ? (string) $payload['action'] : '';
-        $context = $payload['context'] ?? null;
+        $action  = isset($payload['action']) ? (string) $payload['action'] : '';
+        $context = \is_array($payload['context'] ?? null) ? $payload['context'] : [];
 
-        if ($actorId === '' || $action === '' || !\is_array($context)) {
+        if ($actorId === '' || $action === '') {
             return new WP_REST_Response(
-                Responses::error('E_BAD_REQUEST', 'bad_request', 'Campos inválidos.'),
+                Responses::error('E_INVALID_INPUT', 'invalid_input', 'Campos inválidos.'),
                 400
             );
         }
 
-        $what = $context['what'] ?? null;
-        if (!\is_string($what) || $what === '') {
+        try {
+            $this->logger->logAction($actorId, $action, $context);
+        } catch (\Throwable $e) {
             return new WP_REST_Response(
-                Responses::error('E_BAD_REQUEST', 'bad_request', 'Campos inválidos.'),
+                Responses::error('E_INVALID_CONTEXT', 'invalid_context', 'Contexto inválido.'),
                 400
             );
         }
 
-        $this->logger->logAction($actorId, $action, $context);
-
-        return new WP_REST_Response(Responses::ok(['saved' => true]), 201);
+        // Éxito.
+        return new WP_REST_Response(Responses::ok(), 201);
     }
 }

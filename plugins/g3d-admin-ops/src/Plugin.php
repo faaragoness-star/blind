@@ -7,6 +7,7 @@ namespace G3D\AdminOps;
 use G3D\AdminOps\Admin\Menu;
 use G3D\AdminOps\Audit\InMemoryEditorialActionLogger;
 use G3D\AdminOps\Rbac\CapabilityGuard;
+use G3D\AdminOps\Services\Registry;
 
 final class Plugin
 {
@@ -19,6 +20,7 @@ final class Plugin
     public function __construct()
     {
         $this->auditLogger = new InMemoryEditorialActionLogger();
+        Registry::instance()->set(Registry::S_AUDIT_LOGGER, $this->auditLogger);
         $this->guard = new CapabilityGuard();
         $this->menu = new Menu($this->guard, $this->auditLogger);
     }
