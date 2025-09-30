@@ -68,8 +68,8 @@ final class VerifierTest extends TestCase
         ], $manipulatedSignature ?? '', $publicKey);
 
         self::assertFalse($result['ok']);
-        self::assertSame('E_SIGN_INVALID', $result['code']);
-        self::assertSame('sign_invalid', $result['reason_key']);
+        self::assertSame('E_SIG_PREFIX', $result['code']);
+        self::assertSame('invalid_signature_prefix', $result['reason_key']);
     }
 
     public function testVerifyDetectsSnapshotMismatch(): void

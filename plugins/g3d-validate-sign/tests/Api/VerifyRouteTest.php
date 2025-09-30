@@ -90,12 +90,11 @@ final class VerifyRouteTest extends TestCase
         $response = $controller->handle($request);
 
         self::assertInstanceOf(WP_REST_Response::class, $response);
-        self::assertSame(400, $response->get_status());
+        self::assertSame(409, $response->get_status());
         $data = $response->get_data();
         self::assertFalse($data['ok']);
-        self::assertSame('E_SIGN_EXPIRED', $data['code']);
-        self::assertSame('sign_expired', $data['reason_key']);
-        self::assertSame(400, $data['status']);
+        self::assertSame('E_EXPIRED', $data['code']);
+        self::assertSame('expired', $data['reason_key']);
         self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $data['request_id']);
     }
 
@@ -135,7 +134,6 @@ final class VerifyRouteTest extends TestCase
         self::assertFalse($data['ok']);
         self::assertSame('E_SIGN_SNAPSHOT_MISMATCH', $data['code']);
         self::assertSame('sign_snapshot_mismatch', $data['reason_key']);
-        self::assertSame(400, $data['status']);
         self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $data['request_id']);
     }
 
@@ -174,9 +172,8 @@ final class VerifyRouteTest extends TestCase
         self::assertSame(400, $response->get_status());
         $data = $response->get_data();
         self::assertFalse($data['ok']);
-        self::assertSame('E_SIGN_INVALID', $data['code']);
-        self::assertSame('sign_invalid', $data['reason_key']);
-        self::assertSame(400, $data['status']);
+        self::assertSame('E_SIG_PREFIX', $data['code']);
+        self::assertSame('invalid_signature_prefix', $data['reason_key']);
         self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $data['request_id']);
     }
 
@@ -216,7 +213,6 @@ final class VerifyRouteTest extends TestCase
         self::assertFalse($data['ok']);
         self::assertSame('E_SIGN_INVALID', $data['code']);
         self::assertSame('sign_invalid', $data['reason_key']);
-        self::assertSame(400, $data['status']);
         self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $data['request_id']);
     }
 
@@ -240,8 +236,9 @@ final class VerifyRouteTest extends TestCase
         self::assertSame(400, $response->get_status());
         $data = $response->get_data();
         self::assertFalse($data['ok']);
-        self::assertSame('rest_missing_required_params', $data['code']);
-        self::assertSame(400, $data['status']);
+        self::assertSame('E_MISSING_REQUIRED', $data['code']);
+        self::assertSame('missing_required', $data['reason_key']);
+        self::assertArrayHasKey('missing_fields', $data);
         self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $data['request_id']);
     }
 
@@ -267,8 +264,8 @@ final class VerifyRouteTest extends TestCase
         self::assertSame(400, $response->get_status());
         $data = $response->get_data();
         self::assertFalse($data['ok']);
-        self::assertSame('rest_invalid_param', $data['code']);
-        self::assertSame(400, $data['status']);
+        self::assertSame('E_INVALID_PARAM', $data['code']);
+        self::assertSame('invalid_param', $data['reason_key']);
         self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $data['request_id']);
     }
 
