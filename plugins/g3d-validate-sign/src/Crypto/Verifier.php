@@ -22,8 +22,7 @@ class Verifier
     public function __construct(
         array $allowedPrefixes = Signer::ALLOWED_SIGNATURE_PREFIXES,
         ?Clock $clock = null
-    )
-    {
+    ) {
         if (!function_exists('sodium_crypto_sign_verify_detached')) {
             throw new RuntimeException(
                 'ext-sodium requerida (ver docs/plugin-3-g3d-validate-sign.md §4.1 y '
@@ -198,10 +197,10 @@ class Verifier
             );
         }
 
-        $signatureSkuHash     = $decoded['sku_hash'];
-        $signatureSnapshotId  = $decoded['snapshot_id'];
-        $requestedSkuHash     = isset($payload['sku_hash']) ? (string) $payload['sku_hash'] : '';
-        $requestedSnapshotId  = isset($payload['snapshot_id']) ? (string) $payload['snapshot_id'] : '';
+        $signatureSkuHash    = $decoded['sku_hash'];
+        $signatureSnapshotId = $decoded['snapshot_id'];
+        $requestedSkuHash    = isset($payload['sku_hash']) ? (string) $payload['sku_hash'] : '';
+        $requestedSnapshotId = isset($payload['snapshot_id']) ? (string) $payload['snapshot_id'] : '';
 
         if ($signatureSkuHash !== $requestedSkuHash) {
             return $this->error(
