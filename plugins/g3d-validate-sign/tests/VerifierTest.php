@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace G3D\ValidateSign\Tests;
 
-use DateTimeImmutable;
 use G3D\ValidateSign\Domain\Canonicalizer;
 use G3D\ValidateSign\Crypto\Signer;
 use G3D\ValidateSign\Crypto\Verifier;
+use G3D\VendorBase\Time\FixedClock;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -27,8 +27,9 @@ final class VerifierTest extends TestCase
 
     public function testVerifyAcceptsSignatureAlignedWithDocs(): void
     {
-        $signer   = new Signer('sig.v1');
-        $verifier = new Verifier(['sig.v1']);
+        $clock    = new FixedClock(new \DateTimeImmutable('2025-09-29T00:00:00+00:00'));
+        $signer   = new Signer('sig.v1', $clock);
+        $verifier = new Verifier(['sig.v1'], $clock);
         $keyPair  = sodium_crypto_sign_keypair();
         $privateKey = sodium_crypto_sign_secretkey($keyPair);
         $publicKey  = sodium_crypto_sign_publickey($keyPair);
@@ -41,8 +42,7 @@ final class VerifierTest extends TestCase
             'state'          => [],
         ];
 
-        $expiresAt = new DateTimeImmutable('2025-10-29T00:00:00+00:00');
-        $signed    = $signer->sign($payload, $privateKey, $expiresAt);
+        $signed    = $signer->sign($payload, $privateKey);
 
         $verificationPayload = [
             'sku_hash'      => $signed['sku_hash'],
@@ -54,17 +54,17 @@ final class VerifierTest extends TestCase
 
         self::assertTrue($result['ok']);
         self::assertSame('snap:2025-09-01', $result['snapshot_id']);
-        self::assertInstanceOf(DateTimeImmutable::class, $result['expires_at']);
         self::assertSame(
-            $expiresAt->format(DATE_ATOM),
+            $clock->now()->add(new \DateInterval('P30D'))->format(DATE_ATOM),
             $result['expires_at']->format(DATE_ATOM)
         );
     }
 
     public function testVerifyRejectsUnsupportedPrefix(): void
     {
-        $signer   = new Signer('sig.v1');
-        $verifier = new Verifier(['sig.v1']);
+        $clock    = new FixedClock(new \DateTimeImmutable('2025-09-29T00:00:00+00:00'));
+        $signer   = new Signer('sig.v1', $clock);
+        $verifier = new Verifier(['sig.v1'], $clock);
         $keyPair  = sodium_crypto_sign_keypair();
         $privateKey = sodium_crypto_sign_secretkey($keyPair);
         $publicKey  = sodium_crypto_sign_publickey($keyPair);
@@ -74,8 +74,7 @@ final class VerifierTest extends TestCase
             'state'       => [],
         ];
 
-        $expiresAt = new DateTimeImmutable('2025-10-29T00:00:00+00:00');
-        $signed    = $signer->sign($payload, $privateKey, $expiresAt);
+        $signed    = $signer->sign($payload, $privateKey);
         $manipulatedSignature = preg_replace('/^sig\.v1/', 'sig.v2', $signed['signature']);
 
         $result = $verifier->verify(
@@ -94,8 +93,9 @@ final class VerifierTest extends TestCase
 
     public function testVerifyDetectsSnapshotMismatch(): void
     {
-        $signer   = new Signer('sig.v1');
-        $verifier = new Verifier(['sig.v1']);
+        $clock    = new FixedClock(new \DateTimeImmutable('2025-09-29T00:00:00+00:00'));
+        $signer   = new Signer('sig.v1', $clock);
+        $verifier = new Verifier(['sig.v1'], $clock);
         $keyPair  = sodium_crypto_sign_keypair();
         $privateKey = sodium_crypto_sign_secretkey($keyPair);
         $publicKey  = sodium_crypto_sign_publickey($keyPair);
@@ -105,8 +105,7 @@ final class VerifierTest extends TestCase
             'state'       => [],
         ];
 
-        $expiresAt = new DateTimeImmutable('2025-10-29T00:00:00+00:00');
-        $signed    = $signer->sign($payload, $privateKey, $expiresAt);
+        $signed    = $signer->sign($payload, $privateKey);
 
         $result = $verifier->verify(
             [
@@ -122,9 +121,41 @@ final class VerifierTest extends TestCase
         self::assertSame('sign_snapshot_mismatch', $result['reason_key']);
     }
 
+    public function testVerifyRejectsExpiredSignatureAccordingDocs(): void
+    {
+        $clock    = new FixedClock(new \DateTimeImmutable('2025-09-29T00:00:00+00:00'));
+        $signer   = new Signer('sig.v1', $clock);
+        $verifier = new Verifier(['sig.v1'], $clock);
+        $keyPair  = sodium_crypto_sign_keypair();
+        $privateKey = sodium_crypto_sign_secretkey($keyPair);
+        $publicKey  = sodium_crypto_sign_publickey($keyPair);
+
+        $payload = [
+            'snapshot_id' => 'snap:2025-09-01',
+            'state'       => [],
+        ];
+
+        $signed = $signer->sign($payload, $privateKey);
+
+        $clock->advance(new \DateInterval('P31D'));
+
+        $result = $verifier->verify(
+            [
+                'sku_hash'    => $signed['sku_hash'],
+                'snapshot_id' => 'snap:2025-09-01',
+            ],
+            $signed['signature'],
+            $publicKey
+        );
+
+        self::assertFalse($result['ok']);
+        self::assertSame('E_SIGN_EXPIRED', $result['code']);
+        self::assertSame('sign_expired', $result['reason_key']);
+    }
+
     public function testVerifyRequiresExpirationInMessage(): void
     {
-        $verifier = new Verifier(['sig.v1']);
+        $verifier = new Verifier(['sig.v1'], new FixedClock(new \DateTimeImmutable('2025-09-29T00:00:00+00:00')));
         $keyPair  = sodium_crypto_sign_keypair();
         $privateKey = sodium_crypto_sign_secretkey($keyPair);
         $publicKey  = sodium_crypto_sign_publickey($keyPair);
@@ -165,7 +196,7 @@ final class VerifierTest extends TestCase
 
     public function testVerifyRequiresLocaleAndAbVariantKeys(): void
     {
-        $verifier = new Verifier(['sig.v1']);
+        $verifier = new Verifier(['sig.v1'], new FixedClock(new \DateTimeImmutable('2025-09-29T00:00:00+00:00')));
         $keyPair  = sodium_crypto_sign_keypair();
         $privateKey = sodium_crypto_sign_secretkey($keyPair);
         $publicKey  = sodium_crypto_sign_publickey($keyPair);
@@ -205,8 +236,9 @@ final class VerifierTest extends TestCase
 
     public function testVerifyRejectsTamperedSkuHash(): void
     {
-        $signer   = new Signer('sig.v1');
-        $verifier = new Verifier(['sig.v1']);
+        $clock    = new FixedClock(new \DateTimeImmutable('2025-09-29T00:00:00+00:00'));
+        $signer   = new Signer('sig.v1', $clock);
+        $verifier = new Verifier(['sig.v1'], $clock);
         $keyPair  = sodium_crypto_sign_keypair();
         $privateKey = sodium_crypto_sign_secretkey($keyPair);
         $publicKey  = sodium_crypto_sign_publickey($keyPair);
@@ -225,8 +257,7 @@ final class VerifierTest extends TestCase
             ],
         ];
 
-        $expiresAt = new DateTimeImmutable('2025-10-29T00:00:00+00:00');
-        $signed    = $signer->sign($payload, $privateKey, $expiresAt);
+        $signed    = $signer->sign($payload, $privateKey);
 
         $tampered = $payload;
         $tampered['state']['pieza:moldura']['modelos'][0]['colores'] = ['col:azul', 'col:negro'];

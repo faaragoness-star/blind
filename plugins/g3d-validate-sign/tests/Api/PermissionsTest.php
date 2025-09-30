@@ -6,7 +6,6 @@ namespace G3D\ValidateSign\Tests\Api;
 
 use G3D\ValidateSign\Api\ValidateSignController;
 use G3D\ValidateSign\Api\VerifyController;
-use G3D\ValidateSign\Domain\Expiry;
 use G3D\ValidateSign\Validation\RequestValidator;
 use PHPUnit\Framework\TestCase;
 use Test_Env\Nonce;
@@ -94,20 +93,18 @@ final class PermissionsTest extends TestCase
     private function registerRoutes(): void
     {
         $validator = $this->createStub(RequestValidator::class);
-        $expiry = new Expiry();
-
         $signer = $this->getMockBuilder(\G3D\ValidateSign\Crypto\Signer::class)
             ->disableOriginalConstructor()
             ->getMock();
 
-        $validateController = new ValidateSignController($validator, $signer, $expiry, 'private-key');
+        $validateController = new ValidateSignController($validator, $signer, 'private-key');
         $validateController->registerRoutes();
 
         $verifier = $this->getMockBuilder(\G3D\ValidateSign\Crypto\Verifier::class)
             ->disableOriginalConstructor()
             ->getMock();
 
-        $verifyController = new VerifyController($validator, $verifier, $expiry, 'public-key');
+        $verifyController = new VerifyController($validator, $verifier, 'public-key');
         $verifyController->registerRoutes();
     }
 }

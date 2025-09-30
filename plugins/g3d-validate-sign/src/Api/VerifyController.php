@@ -4,10 +4,7 @@ declare(strict_types=1);
 
 namespace G3D\ValidateSign\Api;
 
-use DateTimeImmutable;
-use DateTimeZone;
 use G3D\ValidateSign\Crypto\Verifier;
-use G3D\ValidateSign\Domain\Expiry;
 use G3D\ValidateSign\Validation\RequestValidator;
 use G3D\VendorBase\Rest\Responses;
 use G3D\VendorBase\Rest\Security;
@@ -32,18 +29,15 @@ class VerifyController
 {
     private RequestValidator $validator;
     private Verifier $verifier;
-    private Expiry $expiry;
     private string $publicKey;
 
     public function __construct(
         RequestValidator $validator,
         Verifier $verifier,
-        Expiry $expiry,
         string $publicKey
     ) {
         $this->validator = $validator;
         $this->verifier  = $verifier;
-        $this->expiry    = $expiry;
         $this->publicKey = $publicKey;
     }
 
@@ -104,7 +98,6 @@ class VerifyController
             );
         }
 
-        $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
         /** @var VerifyPayload $sanitized */
         $sanitized = $this->sanitizePayload($payload);
 
@@ -122,20 +115,6 @@ class VerifyController
             $errorResponse['request_id'] = $requestId;
 
             return new WP_REST_Response($errorResponse, $status);
-        }
-
-        $expiresAt = $verification['expires_at'];
-
-        if ($this->expiry->isExpired($expiresAt, $now)) {
-            $errorResponse = Responses::error(
-                'E_SIGN_EXPIRED',
-                'sign_expired',
-                'Firma caducada según docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
-                . '(slots Abiertos) — V2 (urls).md.'
-            );
-            $errorResponse['request_id'] = $requestId;
-
-            return new WP_REST_Response($errorResponse, 400);
         }
 
         /** @var VerifyResponse $response */

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace G3D\ValidateSign\Tests;
 
-use DateTimeImmutable;
 use G3D\ValidateSign\Domain\Canonicalizer;
 use G3D\ValidateSign\Crypto\Signer;
+use G3D\VendorBase\Time\FixedClock;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -25,7 +25,8 @@ final class SignerTest extends TestCase
 
     public function testSignProducesDeterministicSignatureWithDocsContract(): void
     {
-        $signer     = new Signer('sig.v1');
+        $clock      = new FixedClock(new \DateTimeImmutable('2025-09-29T00:00:00+00:00'));
+        $signer     = new Signer('sig.v1', $clock);
         $keyPair    = sodium_crypto_sign_keypair();
         $privateKey = sodium_crypto_sign_secretkey($keyPair);
         $publicKey  = sodium_crypto_sign_publickey($keyPair);
@@ -72,8 +73,7 @@ final class SignerTest extends TestCase
             ],
         ];
 
-        $expiresAt = new DateTimeImmutable('2025-10-29T00:00:00+00:00');
-        $result    = $signer->sign($payload, $privateKey, $expiresAt);
+        $result    = $signer->sign($payload, $privateKey);
 
         $signatureParts = explode('.', $result['signature']);
         self::assertCount(4, $signatureParts);
@@ -95,8 +95,9 @@ final class SignerTest extends TestCase
         self::assertSame('snap:2025-09-01', $messageData['snapshot_id']);
         self::assertSame('es-ES', $messageData['locale']);
         self::assertSame('checkout-a', $messageData['ab_variant']);
-        self::assertSame('2025-10-29T00:00:00+00:00', $messageData['expires_at']);
-        self::assertSame('2025-10-29T00:00:00+00:00', $result['expires_at']);
+        $expectedExpiry = $clock->now()->add(new \DateInterval('P30D'))->format(DATE_ATOM);
+        self::assertSame($expectedExpiry, $messageData['expires_at']);
+        self::assertSame($expectedExpiry, $result['expires_at']);
 
         $canonicalPayload = $this->buildCanonicalSkuPayload($payload);
         $expectedSkuHash = hash('sha256', Canonicalizer::canonicalize($canonicalPayload));
@@ -105,7 +106,8 @@ final class SignerTest extends TestCase
 
     public function testSkuHashRemainsStableAcrossMapOrder(): void
     {
-        $signer     = new Signer('sig.v1');
+        $clock      = new FixedClock(new \DateTimeImmutable('2025-09-29T00:00:00+00:00'));
+        $signer     = new Signer('sig.v1', $clock);
         $keyPair    = sodium_crypto_sign_keypair();
         $privateKey = sodium_crypto_sign_secretkey($keyPair);
 
@@ -179,9 +181,8 @@ final class SignerTest extends TestCase
             ],
         ];
 
-        $expiresAt = new DateTimeImmutable('2025-10-29T00:00:00+00:00');
-        $resultA   = $signer->sign($payloadA, $privateKey, $expiresAt);
-        $resultB   = $signer->sign($payloadB, $privateKey, $expiresAt);
+        $resultA   = $signer->sign($payloadA, $privateKey);
+        $resultB   = $signer->sign($payloadB, $privateKey);
 
         self::assertSame($resultA['sku_hash'], $resultB['sku_hash']);
         self::assertSame($resultA['message'], $resultB['message']);
@@ -189,7 +190,8 @@ final class SignerTest extends TestCase
 
     public function testSequentialArrayOrderImpactsSkuHash(): void
     {
-        $signer     = new Signer('sig.v1');
+        $clock      = new FixedClock(new \DateTimeImmutable('2025-09-29T00:00:00+00:00'));
+        $signer     = new Signer('sig.v1', $clock);
         $keyPair    = sodium_crypto_sign_keypair();
         $privateKey = sodium_crypto_sign_secretkey($keyPair);
 
@@ -207,8 +209,7 @@ final class SignerTest extends TestCase
             ],
         ];
 
-        $expiresAt      = new DateTimeImmutable('2025-10-29T00:00:00+00:00');
-        $signedOriginal = $signer->sign($payload, $privateKey, $expiresAt);
+        $signedOriginal = $signer->sign($payload, $privateKey);
 
         $tampered = $payload;
         $tampered['state']['pieza:moldura']['modelos'][0]['colores'] = ['col:azul', 'col:negro'];
@@ -221,7 +222,8 @@ final class SignerTest extends TestCase
 
     public function testSignHandlesMissingOptionalFields(): void
     {
-        $signer     = new Signer('sig.v1');
+        $clock      = new FixedClock(new \DateTimeImmutable('2025-09-29T00:00:00+00:00'));
+        $signer     = new Signer('sig.v1', $clock);
         $keyPair    = sodium_crypto_sign_keypair();
         $privateKey = sodium_crypto_sign_secretkey($keyPair);
 
@@ -234,8 +236,7 @@ final class SignerTest extends TestCase
             ],
         ];
 
-        $expiresAt = new DateTimeImmutable('2025-10-29T00:00:00+00:00');
-        $signed    = $signer->sign($payload, $privateKey, $expiresAt);
+        $signed    = $signer->sign($payload, $privateKey);
 
         $canonicalPayload = $this->buildCanonicalSkuPayload($payload);
         $expectedSkuHash  = hash('sha256', Canonicalizer::canonicalize($canonicalPayload));
@@ -248,11 +249,10 @@ final class SignerTest extends TestCase
     {
         $signer   = new Signer();
         $payload  = ['state' => []];
-        $expiresAt = new DateTimeImmutable('now');
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Clave privada inválida');
-        $signer->sign($payload, 'invalid-key', $expiresAt);
+        $signer->sign($payload, 'invalid-key');
     }
 
     /**

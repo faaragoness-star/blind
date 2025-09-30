@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace G3D\ValidateSign\Crypto;
 
+use DateInterval;
 use DateTimeImmutable;
 use DateTimeInterface;
 use DateTimeZone;
 use G3D\ValidateSign\Domain\Canonicalizer;
+use G3D\VendorBase\Time\Clock;
+use G3D\VendorBase\Time\SystemClock;
 use RuntimeException;
 
 /**
@@ -31,9 +34,16 @@ class Signer
      */
     public const ALLOWED_SIGNATURE_PREFIXES = ['sig.v1'];
 
-    private string $signaturePrefix;
+    /**
+     * TTL exacto de 30 días según docs/Capa 3 — Validación, Firma Y Caducidad —
+     * Actualizada (slots Abiertos) — V2 (urls).md, sección "Caducidad: 30 días".
+     */
+    private const TTL_INTERVAL_SPEC = 'P30D';
 
-    public function __construct(?string $signaturePrefix = null)
+    private string $signaturePrefix;
+    private Clock $clock;
+
+    public function __construct(?string $signaturePrefix = null, ?Clock $clock = null)
     {
         if (!function_exists('sodium_crypto_sign_detached')) {
             throw new RuntimeException(
@@ -52,16 +62,17 @@ class Signer
         }
 
         $this->signaturePrefix = $selectedPrefix;
+        $this->clock           = $clock ?? new SystemClock();
     }
 
     /**
      * @param array<string, mixed> $payload
-     * @param string               $privateKey Raw o Base64 Ed25519 (64 bytes)
-     *                                         según bóveda (ver docs/plugin-3-g3d-validate-sign.md §4.1).
+     * @param string $privateKey Raw o Base64 Ed25519 (64 bytes)
+     *                           según bóveda (ver docs/plugin-3-g3d-validate-sign.md §4.1).
      *
      * @return array{sku_hash: string, signature: string, message: string, expires_at: string}
      */
-    public function sign(array $payload, string $privateKey, DateTimeImmutable $expiresAt): array
+    public function sign(array $payload, string $privateKey): array
     {
         $normalizedPrivateKey = $this->normalizePrivateKey($privateKey);
 
@@ -75,6 +86,8 @@ class Signer
             $abVariant = (string) $payload['flags']['ab_variant'];
         }
 
+        $now         = $this->clock->now();
+        $expiresAt   = $now->add(new DateInterval(self::TTL_INTERVAL_SPEC));
         $expiresAtUtc = $expiresAt->setTimezone(new DateTimeZone('UTC'));
 
         $messagePayload = [

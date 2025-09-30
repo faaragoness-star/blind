@@ -7,6 +7,8 @@ namespace G3D\ValidateSign\Crypto;
 use DateTimeImmutable;
 use DateTimeInterface;
 use G3D\ValidateSign\Domain\Canonicalizer;
+use G3D\VendorBase\Time\Clock;
+use G3D\VendorBase\Time\SystemClock;
 use RuntimeException;
 
 class Verifier
@@ -15,9 +17,12 @@ class Verifier
      * @var string[]
      */
     private array $allowedPrefixes;
+    private Clock $clock;
 
-    public function __construct(array $allowedPrefixes = Signer::ALLOWED_SIGNATURE_PREFIXES)
-    {
+    public function __construct(
+        array $allowedPrefixes = Signer::ALLOWED_SIGNATURE_PREFIXES,
+        ?Clock $clock = null
+    ) {
         if (!function_exists('sodium_crypto_sign_verify_detached')) {
             throw new RuntimeException(
                 'ext-sodium requerida (ver docs/plugin-3-g3d-validate-sign.md §4.1 y '
@@ -27,6 +32,7 @@ class Verifier
         }
 
         $this->allowedPrefixes = $allowedPrefixes;
+        $this->clock           = $clock ?? new SystemClock();
     }
 
     /**
@@ -179,10 +185,22 @@ class Verifier
             );
         }
 
-        $signatureSkuHash     = $decoded['sku_hash'];
-        $signatureSnapshotId  = $decoded['snapshot_id'];
-        $requestedSkuHash     = isset($payload['sku_hash']) ? (string) $payload['sku_hash'] : '';
-        $requestedSnapshotId  = isset($payload['snapshot_id']) ? (string) $payload['snapshot_id'] : '';
+        $now = $this->clock->now();
+
+        if ($expiresAt < $now) {
+            return $this->error(
+                'E_SIGN_EXPIRED',
+                'sign_expired',
+                'Firma caducada según docs/Capa 3 — Validación, Firma Y Caducidad — '
+                . 'Actualizada (slots Abiertos) — V2 (urls).md.',
+                400
+            );
+        }
+
+        $signatureSkuHash    = $decoded['sku_hash'];
+        $signatureSnapshotId = $decoded['snapshot_id'];
+        $requestedSkuHash    = isset($payload['sku_hash']) ? (string) $payload['sku_hash'] : '';
+        $requestedSnapshotId = isset($payload['snapshot_id']) ? (string) $payload['snapshot_id'] : '';
 
         if ($signatureSkuHash !== $requestedSkuHash) {
             return $this->error(

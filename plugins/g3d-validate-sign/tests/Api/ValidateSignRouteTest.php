@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace G3D\ValidateSign\Tests\Api;
 
-use DateTimeImmutable;
-use DateTimeInterface;
 use G3D\ValidateSign\Api\ValidateSignController;
 use G3D\ValidateSign\Crypto\Signer;
-use G3D\ValidateSign\Domain\Expiry;
 use G3D\ValidateSign\Validation\RequestValidator;
+use G3D\VendorBase\Time\FixedClock;
 use PHPUnit\Framework\TestCase;
 use WP_Error;
 use WP_REST_Request;
@@ -33,13 +31,13 @@ final class ValidateSignRouteTest extends TestCase
     {
         $schemaPath = __DIR__ . '/../../schemas/validate-sign.request.schema.json';
         $validator  = new RequestValidator($schemaPath);
-        $fixedNow   = new DateTimeImmutable('2025-09-29T00:00:00+00:00');
-        $expiry     = $this->createExpiry($fixedNow, 30, false);
-        $signer     = new Signer('sig.v1');
+        $fixedNow   = new \DateTimeImmutable('2025-09-29T00:00:00+00:00');
+        $clock      = new FixedClock($fixedNow);
+        $signer     = new Signer('sig.v1', $clock);
         $keyPair    = sodium_crypto_sign_keypair();
         $privateKey = sodium_crypto_sign_secretkey($keyPair);
 
-        $controller = new ValidateSignController($validator, $signer, $expiry, $privateKey);
+        $controller = new ValidateSignController($validator, $signer, $privateKey);
 
         $payload = [
             'schema_version' => '1.0.0',
@@ -85,12 +83,12 @@ final class ValidateSignRouteTest extends TestCase
     {
         $schemaPath = __DIR__ . '/../../schemas/validate-sign.request.schema.json';
         $validator  = new RequestValidator($schemaPath);
-        $expiry     = $this->createExpiry(new DateTimeImmutable('2025-09-29T00:00:00+00:00'), 30, false);
-        $signer     = new Signer('sig.v1');
+        $clock      = new FixedClock(new \DateTimeImmutable('2025-09-29T00:00:00+00:00'));
+        $signer     = new Signer('sig.v1', $clock);
         $keyPair    = sodium_crypto_sign_keypair();
         $privateKey = sodium_crypto_sign_secretkey($keyPair);
 
-        $controller = new ValidateSignController($validator, $signer, $expiry, $privateKey);
+        $controller = new ValidateSignController($validator, $signer, $privateKey);
 
         $payload = [
             'schema_version' => '1.0.0',
@@ -119,12 +117,12 @@ final class ValidateSignRouteTest extends TestCase
     {
         $schemaPath = __DIR__ . '/../../schemas/validate-sign.request.schema.json';
         $validator  = new RequestValidator($schemaPath);
-        $expiry     = $this->createExpiry(new DateTimeImmutable('2025-09-29T00:00:00+00:00'), 30, false);
-        $signer     = new Signer('sig.v1');
+        $clock      = new FixedClock(new \DateTimeImmutable('2025-09-29T00:00:00+00:00'));
+        $signer     = new Signer('sig.v1', $clock);
         $keyPair    = sodium_crypto_sign_keypair();
         $privateKey = sodium_crypto_sign_secretkey($keyPair);
 
-        $controller = new ValidateSignController($validator, $signer, $expiry, $privateKey);
+        $controller = new ValidateSignController($validator, $signer, $privateKey);
 
         $payload = [
             'schema_version' => '1.0.0',
@@ -149,40 +147,5 @@ final class ValidateSignRouteTest extends TestCase
         self::assertArrayHasKey('request_id', $data);
         self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $data['request_id']);
         self::assertArrayHasKey('type_errors', $data);
-    }
-
-    private function createExpiry(DateTimeImmutable $now, int $ttlDays, bool $forceExpired): Expiry
-    {
-        return new class ($now, $ttlDays, $forceExpired) extends Expiry
-        {
-            private DateTimeImmutable $fixedNow;
-            private int $fixedTtl;
-            private bool $expired;
-
-            public function __construct(DateTimeImmutable $fixedNow, int $fixedTtl, bool $expired)
-            {
-                parent::__construct($fixedTtl);
-                $this->fixedNow = $fixedNow;
-                $this->fixedTtl = $fixedTtl;
-                $this->expired  = $expired;
-            }
-
-            public function calculate(?int $ttlDays = null, ?DateTimeImmutable $now = null): DateTimeImmutable
-            {
-                $days = $ttlDays ?? $this->fixedTtl;
-
-                return $this->fixedNow->modify(sprintf('+%d days', $days));
-            }
-
-            public function format(DateTimeImmutable $expiresAt): string
-            {
-                return $expiresAt->format(DateTimeInterface::ATOM);
-            }
-
-            public function isExpired(DateTimeImmutable $expiresAt, ?DateTimeImmutable $now = null): bool
-            {
-                return $this->expired;
-            }
-        };
     }
 }

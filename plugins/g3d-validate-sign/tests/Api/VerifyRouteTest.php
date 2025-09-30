@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace G3D\ValidateSign\Tests\Api;
 
-use DateTimeImmutable;
-use DateTimeInterface;
 use G3D\ValidateSign\Api\VerifyController;
 use G3D\ValidateSign\Crypto\Signer;
 use G3D\ValidateSign\Crypto\Verifier;
-use G3D\ValidateSign\Domain\Expiry;
 use G3D\ValidateSign\Validation\RequestValidator;
+use G3D\VendorBase\Time\FixedClock;
 use PHPUnit\Framework\TestCase;
 use WP_Error;
 use WP_REST_Request;
@@ -34,9 +32,9 @@ final class VerifyRouteTest extends TestCase
     {
         $schemaPath = __DIR__ . '/../../schemas/verify.request.schema.json';
         $validator  = new RequestValidator($schemaPath);
-        $verifier   = new Verifier(['sig.v1']);
-        $expiry     = $this->createExpiry(new DateTimeImmutable('2025-09-29T00:00:00+00:00'), 30, false);
-        $signer     = new Signer('sig.v1');
+        $clock      = new FixedClock(new \DateTimeImmutable('2025-09-29T00:00:00+00:00'));
+        $verifier   = new Verifier(['sig.v1'], $clock);
+        $signer     = new Signer('sig.v1', $clock);
         $keyPair    = sodium_crypto_sign_keypair();
         $privateKey = sodium_crypto_sign_secretkey($keyPair);
         $publicKey  = sodium_crypto_sign_publickey($keyPair);
@@ -48,10 +46,9 @@ final class VerifyRouteTest extends TestCase
             'state'          => [],
         ];
 
-        $expiresAt = new DateTimeImmutable('2025-10-29T00:00:00+00:00');
-        $signed    = $signer->sign($signingPayload, $privateKey, $expiresAt);
+        $signed = $signer->sign($signingPayload, $privateKey);
 
-        $controller = new VerifyController($validator, $verifier, $expiry, $publicKey);
+        $controller = new VerifyController($validator, $verifier, $publicKey);
 
         $requestPayload = [
             'sku_hash'      => $signed['sku_hash'],
@@ -76,9 +73,9 @@ final class VerifyRouteTest extends TestCase
     {
         $schemaPath = __DIR__ . '/../../schemas/verify.request.schema.json';
         $validator  = new RequestValidator($schemaPath);
-        $verifier   = new Verifier(['sig.v1']);
-        $expiry     = $this->createExpiry(new DateTimeImmutable('2025-09-29T00:00:00+00:00'), 30, true);
-        $signer     = new Signer('sig.v1');
+        $clock      = new FixedClock(new \DateTimeImmutable('2025-09-29T00:00:00+00:00'));
+        $verifier   = new Verifier(['sig.v1'], $clock);
+        $signer     = new Signer('sig.v1', $clock);
         $keyPair    = sodium_crypto_sign_keypair();
         $privateKey = sodium_crypto_sign_secretkey($keyPair);
         $publicKey  = sodium_crypto_sign_publickey($keyPair);
@@ -88,10 +85,11 @@ final class VerifyRouteTest extends TestCase
             'state'       => [],
         ];
 
-        $expiresAt = new DateTimeImmutable('2025-09-30T00:00:00+00:00');
-        $signed    = $signer->sign($signingPayload, $privateKey, $expiresAt);
+        $signed = $signer->sign($signingPayload, $privateKey);
 
-        $controller = new VerifyController($validator, $verifier, $expiry, $publicKey);
+        $clock->advance(new \DateInterval('P31D'));
+
+        $controller = new VerifyController($validator, $verifier, $publicKey);
         $request = new WP_REST_Request('POST', '/g3d/v1/verify');
         $request->set_header('Content-Type', 'application/json');
         $request->set_body((string) json_encode([
@@ -115,9 +113,9 @@ final class VerifyRouteTest extends TestCase
     {
         $schemaPath = __DIR__ . '/../../schemas/verify.request.schema.json';
         $validator  = new RequestValidator($schemaPath);
-        $verifier   = new Verifier(['sig.v1']);
-        $expiry     = $this->createExpiry(new DateTimeImmutable('2025-09-29T00:00:00+00:00'), 30, false);
-        $signer     = new Signer('sig.v1');
+        $clock      = new FixedClock(new \DateTimeImmutable('2025-09-29T00:00:00+00:00'));
+        $verifier   = new Verifier(['sig.v1'], $clock);
+        $signer     = new Signer('sig.v1', $clock);
         $keyPair    = sodium_crypto_sign_keypair();
         $privateKey = sodium_crypto_sign_secretkey($keyPair);
         $publicKey  = sodium_crypto_sign_publickey($keyPair);
@@ -127,10 +125,9 @@ final class VerifyRouteTest extends TestCase
             'state'       => [],
         ];
 
-        $expiresAt = new DateTimeImmutable('2025-10-29T00:00:00+00:00');
-        $signed    = $signer->sign($signingPayload, $privateKey, $expiresAt);
+        $signed = $signer->sign($signingPayload, $privateKey);
 
-        $controller = new VerifyController($validator, $verifier, $expiry, $publicKey);
+        $controller = new VerifyController($validator, $verifier, $publicKey);
         $request = new WP_REST_Request('POST', '/g3d/v1/verify');
         $request->set_header('Content-Type', 'application/json');
         $request->set_body((string) json_encode([
@@ -154,9 +151,9 @@ final class VerifyRouteTest extends TestCase
     {
         $schemaPath = __DIR__ . '/../../schemas/verify.request.schema.json';
         $validator  = new RequestValidator($schemaPath);
-        $verifier   = new Verifier(['sig.v1']);
-        $expiry     = $this->createExpiry(new DateTimeImmutable('2025-09-29T00:00:00+00:00'), 30, false);
-        $signer     = new Signer('sig.v1');
+        $clock      = new FixedClock(new \DateTimeImmutable('2025-09-29T00:00:00+00:00'));
+        $verifier   = new Verifier(['sig.v1'], $clock);
+        $signer     = new Signer('sig.v1', $clock);
         $keyPair    = sodium_crypto_sign_keypair();
         $privateKey = sodium_crypto_sign_secretkey($keyPair);
         $publicKey  = sodium_crypto_sign_publickey($keyPair);
@@ -166,11 +163,10 @@ final class VerifyRouteTest extends TestCase
             'state'       => [],
         ];
 
-        $expiresAt = new DateTimeImmutable('2025-10-29T00:00:00+00:00');
-        $signed    = $signer->sign($signingPayload, $privateKey, $expiresAt);
+        $signed = $signer->sign($signingPayload, $privateKey);
         $manipulatedSignature = (string) preg_replace('/^sig\\.v1/', 'sig.v2', $signed['signature']);
 
-        $controller = new VerifyController($validator, $verifier, $expiry, $publicKey);
+        $controller = new VerifyController($validator, $verifier, $publicKey);
         $request = new WP_REST_Request('POST', '/g3d/v1/verify');
         $request->set_header('Content-Type', 'application/json');
         $request->set_body((string) json_encode([
@@ -194,9 +190,9 @@ final class VerifyRouteTest extends TestCase
     {
         $schemaPath = __DIR__ . '/../../schemas/verify.request.schema.json';
         $validator  = new RequestValidator($schemaPath);
-        $verifier   = new Verifier(['sig.v1']);
-        $expiry     = $this->createExpiry(new DateTimeImmutable('2025-09-29T00:00:00+00:00'), 30, false);
-        $signer     = new Signer('sig.v1');
+        $clock      = new FixedClock(new \DateTimeImmutable('2025-09-29T00:00:00+00:00'));
+        $verifier   = new Verifier(['sig.v1'], $clock);
+        $signer     = new Signer('sig.v1', $clock);
         $keyPair    = sodium_crypto_sign_keypair();
         $privateKey = sodium_crypto_sign_secretkey($keyPair);
         $publicKey  = sodium_crypto_sign_publickey($keyPair);
@@ -206,10 +202,9 @@ final class VerifyRouteTest extends TestCase
             'state'       => [],
         ];
 
-        $expiresAt = new DateTimeImmutable('2025-10-29T00:00:00+00:00');
-        $signed    = $signer->sign($signingPayload, $privateKey, $expiresAt);
+        $signed = $signer->sign($signingPayload, $privateKey);
 
-        $controller = new VerifyController($validator, $verifier, $expiry, $publicKey);
+        $controller = new VerifyController($validator, $verifier, $publicKey);
         $request = new WP_REST_Request('POST', '/g3d/v1/verify');
         $request->set_header('Content-Type', 'application/json');
         $request->set_body((string) json_encode([
@@ -234,8 +229,7 @@ final class VerifyRouteTest extends TestCase
         $schemaPath = __DIR__ . '/../../schemas/verify.request.schema.json';
         $validator  = new RequestValidator($schemaPath);
         $verifier   = new Verifier(['sig.v1']);
-        $expiry     = $this->createExpiry(new DateTimeImmutable('2025-09-29T00:00:00+00:00'), 30, false);
-        $controller = new VerifyController($validator, $verifier, $expiry, 'public-key');
+        $controller = new VerifyController($validator, $verifier, 'public-key');
 
         $request = new WP_REST_Request('POST', '/g3d/v1/verify');
         $request->set_header('Content-Type', 'application/json');
@@ -261,8 +255,7 @@ final class VerifyRouteTest extends TestCase
         $schemaPath = __DIR__ . '/../../schemas/verify.request.schema.json';
         $validator  = new RequestValidator($schemaPath);
         $verifier   = new Verifier(['sig.v1']);
-        $expiry     = $this->createExpiry(new DateTimeImmutable('2025-09-29T00:00:00+00:00'), 30, false);
-        $controller = new VerifyController($validator, $verifier, $expiry, 'public-key');
+        $controller = new VerifyController($validator, $verifier, 'public-key');
 
         $request = new WP_REST_Request('POST', '/g3d/v1/verify');
         $request->set_header('Content-Type', 'application/json');
@@ -282,40 +275,5 @@ final class VerifyRouteTest extends TestCase
         self::assertSame(400, $data['status']);
         self::assertArrayHasKey('request_id', $data);
         self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $data['request_id']);
-    }
-
-    private function createExpiry(DateTimeImmutable $now, int $ttlDays, bool $forceExpired): Expiry
-    {
-        return new class ($now, $ttlDays, $forceExpired) extends Expiry
-        {
-            private DateTimeImmutable $fixedNow;
-            private int $fixedTtl;
-            private bool $expired;
-
-            public function __construct(DateTimeImmutable $fixedNow, int $fixedTtl, bool $expired)
-            {
-                parent::__construct($fixedTtl);
-                $this->fixedNow = $fixedNow;
-                $this->fixedTtl = $fixedTtl;
-                $this->expired  = $expired;
-            }
-
-            public function calculate(?int $ttlDays = null, ?DateTimeImmutable $now = null): DateTimeImmutable
-            {
-                $days = $ttlDays ?? $this->fixedTtl;
-
-                return $this->fixedNow->modify(sprintf('+%d days', $days));
-            }
-
-            public function format(DateTimeImmutable $expiresAt): string
-            {
-                return $expiresAt->format(DateTimeInterface::ATOM);
-            }
-
-            public function isExpired(DateTimeImmutable $expiresAt, ?DateTimeImmutable $now = null): bool
-            {
-                return $this->expired;
-            }
-        };
     }
 }
