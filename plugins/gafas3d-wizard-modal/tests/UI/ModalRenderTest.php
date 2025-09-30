@@ -22,6 +22,28 @@ final class ModalRenderTest extends TestCase
         self::assertStringContainsString('data-locale="', $output);
     }
 
+    public function testRenderContainsSinglePoliteMessageRegion(): void
+    {
+        ob_start();
+        Modal::render();
+        $output = (string) ob_get_clean();
+
+        $previous = libxml_use_internal_errors(true);
+        $document = new \DOMDocument();
+        $document->loadHTML('<?xml encoding="utf-8" ?>' . $output);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+
+        $xpath = new \DOMXPath($document);
+        $nodes = $xpath->query('//*[@class="g3d-wizard-modal__msg"]');
+
+        self::assertSame(1, $nodes->length);
+
+        $node = $nodes->item(0);
+        self::assertInstanceOf(\DOMElement::class, $node);
+        self::assertSame('polite', $node->getAttribute('aria-live'));
+    }
+
     public function testRenderOutputsTablistTabsAndPanels(): void
     {
         ob_start();
