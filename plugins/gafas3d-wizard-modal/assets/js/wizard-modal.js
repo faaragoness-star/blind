@@ -10,25 +10,75 @@
 
   global.G3DWIZARD = global.G3DWIZARD || {};
 
+  function setBusy(el, busy) {
+    if (!el) {
+      return;
+    }
+
+    el.setAttribute('aria-busy', busy ? 'true' : 'false');
+  }
+
+  function setText(el, s) {
+    if (!el) {
+      return;
+    }
+
+    el.textContent = s;
+  }
+
+  function disableBtn(btn, on, labelBusy) {
+    if (!btn) {
+      return function () {};
+    }
+
+    const previous = btn.textContent;
+    btn.disabled = !!on;
+    btn.setAttribute('aria-disabled', on ? 'true' : 'false');
+
+    if (on && labelBusy) {
+      setText(btn, labelBusy);
+    }
+
+    return function () {
+      btn.disabled = false;
+      btn.setAttribute('aria-disabled', 'false');
+      setText(btn, previous);
+    };
+  }
+
   global.G3DWIZARD.postJson = async function postJson(url, body) {
-    const res = await fetch(url, {
+    const options = arguments.length > 2 ? arguments[2] : null;
+    const init = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-WP-Nonce': (global.G3DWIZARD && global.G3DWIZARD.nonce) || '',
       },
       body: JSON.stringify(body || {}),
-    });
+    };
+
+    if (options && options.signal) {
+      init.signal = options.signal;
+    }
+
+    const res = await fetch(url, init);
 
     return res;
   };
 
   global.G3DWIZARD.getJSON = async function getJSON(url, params) {
+    const options = arguments.length > 2 ? arguments[2] : null;
     const qs =
       params && Object.keys(params).length
         ? '?' + new URLSearchParams(params).toString()
         : '';
-    const res = await fetch(url + qs, { method: 'GET' });
+    const init = { method: 'GET' };
+
+    if (options && options.signal) {
+      init.signal = options.signal;
+    }
+
+    const res = await fetch(url + qs, init);
 
     let payload = null;
 
@@ -96,13 +146,34 @@
     var statusMessage = '';
     var rulesSummaryMessage = '';
     var lastRules = null;
+    let currentAbort = null;
 
-    function setText(element, value) {
-      if (!element) {
-        return;
+    function startAbortableRequest() {
+      if (typeof AbortController !== 'function') {
+        if (currentAbort) {
+          currentAbort = null;
+        }
+
+        return null;
       }
 
-      element.textContent = value;
+      if (currentAbort) {
+        try {
+          currentAbort.abort();
+        } catch (abortError) {
+          // no-op
+        }
+      }
+
+      currentAbort = new AbortController();
+
+      return currentAbort;
+    }
+
+    function clearAbort(controller) {
+      if (controller && controller === currentAbort) {
+        currentAbort = null;
+      }
     }
 
     function updateLiveMessage() {
@@ -203,7 +274,7 @@
       return 'Reglas: error';
     }
 
-    async function fetchRules(params) {
+    async function fetchRules(params, options) {
       var wizard = global.G3DWIZARD || {};
       var api = wizard.api || {};
       var url = typeof api.rules === 'string' && api.rules ? api.rules : '';
@@ -215,7 +286,7 @@
         return Promise.reject(endpointError);
       }
 
-      return global.G3DWIZARD.getJSON(url, params || {});
+      return global.G3DWIZARD.getJSON(url, params || {}, options || {});
     }
 
     function audit(action, extras) {
@@ -474,11 +545,15 @@
         return;
       }
 
+      if (cta.disabled) {
+        return;
+      }
+
       var wizard = global.G3DWIZARD || {};
       var api = wizard.api || {};
 
       if (!api.validateSign || typeof wizard.postJson !== 'function') {
-        setStatusMessage(__('ERROR — endpoint no disponible', TEXT_DOMAIN));
+        setStatusMessage('ERROR — endpoint no disponible');
         return;
       }
 
@@ -509,18 +584,17 @@
         payload.locale = locale;
       }
 
-      var defaultLabel = cta.textContent;
-      cta.disabled = true;
-      cta.setAttribute('aria-busy', 'true');
-      setText(cta, __('Enviando…', TEXT_DOMAIN));
+      const controller = startAbortableRequest();
+      var signal = controller ? controller.signal : undefined;
+      const restoreButton = disableBtn(cta, true, __('Enviando…', TEXT_DOMAIN));
 
-      if (message) {
-        message.setAttribute('aria-busy', 'true');
-        setStatusMessage('');
-      }
+      setBusy(message, true);
+      setStatusMessage('');
 
       try {
-        var response = await wizard.postJson(api.validateSign, payload);
+        var response = await wizard.postJson(api.validateSign, payload, {
+          signal: signal,
+        });
         var data = null;
 
         try {
@@ -572,21 +646,26 @@
           }
 
           if (code === '-' && response.status) {
-            code = __('HTTP ', TEXT_DOMAIN) + response.status;
+            code = 'HTTP ' + response.status;
           }
 
-          setStatusMessage(__('ERROR — ', TEXT_DOMAIN) + code);
+          setStatusMessage('ERROR — ' + code);
         }
       } catch (error) {
-        setStatusMessage(__('ERROR — NETWORK', TEXT_DOMAIN));
-      } finally {
-        cta.disabled = false;
-        cta.removeAttribute('aria-busy');
-        setText(cta, defaultLabel);
-
-        if (message) {
-          message.removeAttribute('aria-busy');
+        if (error && error.name === 'AbortError') {
+          return;
         }
+
+        setStatusMessage('ERROR — NETWORK');
+      } finally {
+        restoreButton();
+        var shouldReleaseBusy = !currentAbort || currentAbort === controller;
+
+        if (shouldReleaseBusy) {
+          setBusy(message, false);
+        }
+
+        clearAbort(controller);
       }
     }
 
@@ -603,12 +682,12 @@
       var api = wizard.api || {};
 
       if (!api.verify || typeof wizard.postJson !== 'function') {
-        setStatusMessage(__('ERROR — endpoint no disponible', TEXT_DOMAIN));
+        setStatusMessage('ERROR — endpoint no disponible');
         return;
       }
 
       if (!lastValidation || !lastValidation.sku_hash || !lastValidation.sku_signature) {
-        setStatusMessage(__('ERROR — Primero valida y firma', TEXT_DOMAIN));
+        setStatusMessage('ERROR — Primero valida y firma');
         return;
       }
 
@@ -618,18 +697,21 @@
         snapshot_id: lastValidation.snapshot_id || '',
       };
 
-      var defaultLabel = verifyButton.textContent;
-      verifyButton.disabled = true;
-      verifyButton.setAttribute('aria-busy', 'true');
-      setText(verifyButton, __('Verificando…', TEXT_DOMAIN));
+      const controller = startAbortableRequest();
+      var signal = controller ? controller.signal : undefined;
+      const restoreVerify = disableBtn(
+        verifyButton,
+        true,
+        __('Verificando…', TEXT_DOMAIN)
+      );
 
-      if (message) {
-        message.setAttribute('aria-busy', 'true');
-        setStatusMessage('');
-      }
+      setBusy(message, true);
+      setStatusMessage('');
 
       try {
-        var response = await wizard.postJson(api.verify, payload);
+        var response = await wizard.postJson(api.verify, payload, {
+          signal: signal,
+        });
         var data = null;
 
         try {
@@ -665,25 +747,30 @@
           }
 
           if (!code && response.status) {
-            code = __('HTTP ', TEXT_DOMAIN) + response.status;
+            code = 'HTTP ' + response.status;
           }
 
           if (!code) {
             code = __('ERROR', TEXT_DOMAIN);
           }
 
-          setStatusMessage(__('ERROR — ', TEXT_DOMAIN) + code);
+          setStatusMessage('ERROR — ' + code);
         }
       } catch (error) {
-        setStatusMessage(__('ERROR — NETWORK', TEXT_DOMAIN));
-      } finally {
-        verifyButton.disabled = false;
-        verifyButton.removeAttribute('aria-busy');
-        setText(verifyButton, defaultLabel);
-
-        if (message) {
-          message.removeAttribute('aria-busy');
+        if (error && error.name === 'AbortError') {
+          return;
         }
+
+        setStatusMessage('ERROR — NETWORK');
+      } finally {
+        restoreVerify();
+        var shouldReleaseBusy = !currentAbort || currentAbort === controller;
+
+        if (shouldReleaseBusy) {
+          setBusy(message, false);
+        }
+
+        clearAbort(controller);
       }
     }
 
@@ -693,6 +780,65 @@
       }
 
       runVerifyRequest();
+    }
+
+    function loadRulesData(productoId, locale) {
+      setBusy(message, true);
+
+      if (rulesContainer) {
+        setBusy(rulesContainer, true);
+      }
+
+      if (!productoId) {
+        lastRules = null;
+        setRulesSummaryMessage('Reglas: error (missing producto_id)');
+        setBusy(message, false);
+
+        if (rulesContainer) {
+          setBusy(rulesContainer, false);
+        }
+
+        return;
+      }
+
+      var params = { producto_id: productoId };
+
+      if (locale) {
+        params.locale = locale;
+      }
+
+      setRulesSummaryMessage('Reglas: cargando…');
+
+      const controller = startAbortableRequest();
+      var signal = controller ? controller.signal : undefined;
+
+      fetchRules(params, { signal: signal })
+        .then(function (data) {
+          lastRules = data;
+          setRulesSummaryMessage(formatRulesSummary(data));
+        })
+        .catch(function (error) {
+          if (error && error.name === 'AbortError') {
+            return;
+          }
+
+          lastRules = null;
+          setRulesSummaryMessage(formatRulesError(error));
+          // TODO(Plugin 4 §controles de recarga).
+        })
+        .finally(function () {
+          var shouldReleaseBusy = !currentAbort || currentAbort === controller;
+
+          if (shouldReleaseBusy) {
+            setBusy(message, false);
+
+            if (rulesContainer) {
+              setBusy(rulesContainer, false);
+            }
+          }
+
+          clearAbort(controller);
+        });
     }
 
     function openModal(event) {
@@ -718,54 +864,7 @@
       setStatusMessage('');
       setSummaryMessage('');
 
-      var params = {};
-
-      if (message) {
-        message.setAttribute('aria-busy', 'true');
-      }
-
-      if (!productoId) {
-        lastRules = null;
-        setRulesSummaryMessage('Reglas: error (missing producto_id)');
-
-        if (message) {
-          message.removeAttribute('aria-busy');
-        }
-
-        return;
-      }
-
-      params.producto_id = productoId;
-
-      if (locale) {
-        params.locale = locale;
-      }
-
-      if (rulesContainer) {
-        rulesContainer.setAttribute('aria-busy', 'true');
-      }
-
-      setRulesSummaryMessage('Reglas: cargando…');
-
-      fetchRules(params)
-        .then(function (data) {
-          lastRules = data;
-          setRulesSummaryMessage(formatRulesSummary(data));
-        })
-        .catch(function (error) {
-          lastRules = null;
-          setRulesSummaryMessage(formatRulesError(error));
-          // TODO(Plugin 4 §controles de recarga).
-        })
-        .finally(function () {
-          if (message) {
-            message.removeAttribute('aria-busy');
-          }
-
-          if (rulesContainer) {
-            rulesContainer.removeAttribute('aria-busy');
-          }
-        });
+      loadRulesData(productoId, locale);
     }
 
     function closeModal(event) {
@@ -776,6 +875,16 @@
       overlay.setAttribute('hidden', '');
       document.body.classList.remove('g3d-wizard-open');
 
+      if (currentAbort) {
+        try {
+          currentAbort.abort();
+        } catch (abortError) {
+          // no-op
+        }
+
+        currentAbort = null;
+      }
+
       if (previousFocus && typeof previousFocus.focus === 'function') {
         previousFocus.focus();
       }
@@ -785,12 +894,10 @@
       setStatusMessage('');
       setRulesSummaryMessage('');
 
-      if (message) {
-        message.removeAttribute('aria-busy');
-      }
+      setBusy(message, false);
 
       if (rulesContainer) {
-        rulesContainer.removeAttribute('aria-busy');
+        setBusy(rulesContainer, false);
       }
     }
 
@@ -803,6 +910,28 @@
     closeButtons.forEach(function (button) {
       button.addEventListener('click', closeModal);
     });
+
+    var rulesRetryControl = overlay.querySelector(
+      '[data-g3d-wizard-retry-rules]'
+    );
+
+    if (rulesRetryControl) {
+      rulesRetryControl.addEventListener('click', function (event) {
+        if (event && typeof event.preventDefault === 'function') {
+          event.preventDefault();
+        }
+
+        var wizard = global.G3DWIZARD || {};
+        var modalData = getModalData();
+        var productoId = modalData.productoId;
+        var locale = modalData.locale || wizard.locale || '';
+
+        setStatusMessage('');
+        loadRulesData(productoId, locale);
+      });
+    } else {
+      // TODO(Plugin 4 §controles de recarga).
+    }
 
     if (tabElements.length && panelElements.length) {
       var initialTab = null;

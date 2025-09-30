@@ -58,13 +58,14 @@ body.g3d-wizard-open {
   min-height: 1.5em;
 }
 
-.g3d-wizard-modal__msg[aria-busy='true'] {
-  opacity: 0.8;
+.g3d-wizard-modal__msg[aria-busy="true"] {
+  opacity: .8;
 }
 
 .g3d-wizard-modal__verify {
   margin-top: 1rem;
   margin-right: 0.75rem;
+  margin-left: .5rem;
 }
 
 .g3d-wizard-modal__verify + .g3d-wizard-modal__cta {

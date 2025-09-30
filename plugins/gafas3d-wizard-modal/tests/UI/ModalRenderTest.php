@@ -43,6 +43,7 @@ final class ModalRenderTest extends TestCase
         $node = $nodes->item(0);
         self::assertInstanceOf(\DOMElement::class, $node);
         self::assertSame('polite', $node->getAttribute('aria-live'));
+        self::assertSame('', $node->getAttribute('aria-busy'));
     }
 
     public function testRenderOutputsTablistTabsAndPanels(): void
