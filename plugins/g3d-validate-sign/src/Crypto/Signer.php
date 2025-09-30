@@ -7,8 +7,19 @@ namespace G3D\ValidateSign\Crypto;
 use DateTimeImmutable;
 use DateTimeInterface;
 use DateTimeZone;
+use G3D\ValidateSign\Domain\Canonicalizer;
 use RuntimeException;
 
+/**
+ * @phpstan-type CanonicalSkuPayload array{
+ *     schema_version?: string,
+ *     snapshot_id?: string,
+ *     producto_id?: string,
+ *     locale?: string,
+ *     state?: array<string, mixed>,
+ *     flags?: array<string, mixed>
+ * }
+ */
 class Signer
 {
     /**
@@ -54,13 +65,8 @@ class Signer
     {
         $normalizedPrivateKey = $this->normalizePrivateKey($privateKey);
 
-        $state = [];
-
-        if (isset($payload['state']) && is_array($payload['state'])) {
-            $state = $payload['state'];
-        }
-
-        $skuHash    = $this->computeSkuHash($state);
+        $skuPayload = $this->extractCanonicalSkuPayload($payload);
+        $skuHash    = $this->computeSkuHash($skuPayload);
         $snapshotId = isset($payload['snapshot_id']) ? (string) $payload['snapshot_id'] : '';
         $locale     = isset($payload['locale']) ? (string) $payload['locale'] : '';
         $abVariant  = '';
@@ -79,7 +85,7 @@ class Signer
             'ab_variant'  => $abVariant,
         ];
 
-        $message   = $this->canonicalize($messagePayload);
+        $message   = Canonicalizer::canonicalize($messagePayload);
         $signature = sodium_crypto_sign_detached($message, $normalizedPrivateKey);
 
         return [
@@ -91,11 +97,11 @@ class Signer
     }
 
     /**
-     * @param array<mixed> $state
+     * @param CanonicalSkuPayload $payload
      */
-    private function computeSkuHash(array $state): string
+    private function computeSkuHash(array $payload): string
     {
-        $canonical = $this->canonicalize($state);
+        $canonical = Canonicalizer::canonicalize($payload);
 
         return hash('sha256', $canonical);
     }
@@ -110,53 +116,42 @@ class Signer
         );
     }
 
-    private function canonicalize(array $data): string
-    {
-        $normalized = $this->normalizeValue($data);
-        $encoded    = json_encode($normalized, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-
-        if ($encoded === false) {
-            throw new RuntimeException(
-                'No se pudo serializar JSON canónico (ver docs/plugin-3-g3d-validate-sign.md §6.1 y docs/Capa 1 '
-                . 'Identificadores Y Naming — Actualizada (slots Abiertos).md).'
-            );
-        }
-
-        return $encoded;
-    }
-
-    private function normalizeValue(mixed $value): mixed
-    {
-        if (is_array($value)) {
-            $isAssoc    = $this->isAssoc($value);
-            $normalized = [];
-
-            if ($isAssoc) {
-                ksort($value);
-            }
-
-            foreach ($value as $key => $item) {
-                if ($item === null) {
-                    continue;
-                }
-
-                $normalized[$key] = $this->normalizeValue($item);
-            }
-
-            return $isAssoc ? $normalized : array_values($normalized);
-        }
-
-        return $value;
-    }
-
     /**
-     * @param array<mixed> $value
+     * @param array<string, mixed> $payload
+     *
+     * @return CanonicalSkuPayload
      */
-    private function isAssoc(array $value): bool
+    private function extractCanonicalSkuPayload(array $payload): array
     {
-        $expected = range(0, count($value) - 1);
+        $canonical = [];
 
-        return array_keys($value) !== $expected;
+        if (isset($payload['schema_version']) && is_string($payload['schema_version'])) {
+            $canonical['schema_version'] = $payload['schema_version'];
+        }
+
+        if (isset($payload['snapshot_id']) && is_string($payload['snapshot_id'])) {
+            $canonical['snapshot_id'] = $payload['snapshot_id'];
+        }
+
+        if (isset($payload['producto_id']) && is_string($payload['producto_id'])) {
+            $canonical['producto_id'] = $payload['producto_id'];
+        }
+
+        if (isset($payload['locale']) && is_string($payload['locale'])) {
+            $canonical['locale'] = $payload['locale'];
+        }
+
+        if (isset($payload['state']) && is_array($payload['state'])) {
+            $canonical['state'] = $payload['state'];
+        }
+
+        if (isset($payload['flags']) && is_array($payload['flags'])) {
+            $canonical['flags'] = $payload['flags'];
+        }
+
+        // TODO(docs Capa 3 §canonicalización): confirmar si price/stock deben entrar en sku_hash.
+
+        return $canonical;
     }
 
     private function base64UrlEncode(string $value): string

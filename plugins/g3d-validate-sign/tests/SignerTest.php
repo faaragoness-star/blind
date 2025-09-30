@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace G3D\ValidateSign\Tests;
 
 use DateTimeImmutable;
+use G3D\ValidateSign\Domain\Canonicalizer;
 use G3D\ValidateSign\Crypto\Signer;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
@@ -97,8 +98,150 @@ final class SignerTest extends TestCase
         self::assertSame('2025-10-29T00:00:00+00:00', $messageData['expires_at']);
         self::assertSame('2025-10-29T00:00:00+00:00', $result['expires_at']);
 
-        $expectedSkuHash = hash('sha256', $this->canonicalize($payload['state']));
+        $canonicalPayload = $this->buildCanonicalSkuPayload($payload);
+        $expectedSkuHash = hash('sha256', Canonicalizer::canonicalize($canonicalPayload));
         self::assertSame($expectedSkuHash, $result['sku_hash']);
+    }
+
+    public function testSkuHashRemainsStableAcrossMapOrder(): void
+    {
+        $signer     = new Signer('sig.v1');
+        $keyPair    = sodium_crypto_sign_keypair();
+        $privateKey = sodium_crypto_sign_secretkey($keyPair);
+
+        $baseState = [
+            'pieza:moldura' => [
+                'mat'     => 'mat:acetato',
+                'acabado' => 'fin:clearcoat-high',
+                'modelos' => [
+                    [
+                        'modelo_id' => 'modelo:fr-m1',
+                        'colores'   => ['col:negro', 'col:azul'],
+                        'texturas'  => ['tex:acetato-base'],
+                    ],
+                ],
+            ],
+            'pieza:patilla' => [
+                'modelos' => [
+                    [
+                        'modelo_id' => 'modelo:tp-p2-l',
+                        'colores'   => ['col:negro'],
+                    ],
+                ],
+                'acabado' => 'fin:clearcoat-high',
+                'mat'     => 'mat:acetato',
+            ],
+        ];
+
+        $payloadA = [
+            'schema_version' => '1.0.0',
+            'snapshot_id'    => 'snap:2025-09-01',
+            'producto_id'    => 'prod:rx-classic',
+            'locale'         => 'es-ES',
+            'flags'          => [
+                'ab_variant' => 'checkout-a',
+                'beta'       => true,
+            ],
+            'state' => $baseState,
+        ];
+
+        $payloadB = [
+            'flags'          => [
+                'beta'       => true,
+                'ab_variant' => 'checkout-a',
+            ],
+            'locale'         => 'es-ES',
+            'producto_id'    => 'prod:rx-classic',
+            'schema_version' => '1.0.0',
+            'snapshot_id'    => 'snap:2025-09-01',
+            'state'          => [
+                'pieza:patilla' => [
+                    'mat'     => 'mat:acetato',
+                    'acabado' => 'fin:clearcoat-high',
+                    'modelos' => [
+                        [
+                            'colores'   => ['col:negro'],
+                            'modelo_id' => 'modelo:tp-p2-l',
+                        ],
+                    ],
+                ],
+                'pieza:moldura' => [
+                    'modelos' => [
+                        [
+                            'texturas'  => ['tex:acetato-base'],
+                            'colores'   => ['col:negro', 'col:azul'],
+                            'modelo_id' => 'modelo:fr-m1',
+                        ],
+                    ],
+                    'acabado' => 'fin:clearcoat-high',
+                    'mat'     => 'mat:acetato',
+                ],
+            ],
+        ];
+
+        $expiresAt = new DateTimeImmutable('2025-10-29T00:00:00+00:00');
+        $resultA   = $signer->sign($payloadA, $privateKey, $expiresAt);
+        $resultB   = $signer->sign($payloadB, $privateKey, $expiresAt);
+
+        self::assertSame($resultA['sku_hash'], $resultB['sku_hash']);
+        self::assertSame($resultA['message'], $resultB['message']);
+    }
+
+    public function testSequentialArrayOrderImpactsSkuHash(): void
+    {
+        $signer     = new Signer('sig.v1');
+        $keyPair    = sodium_crypto_sign_keypair();
+        $privateKey = sodium_crypto_sign_secretkey($keyPair);
+
+        $payload = [
+            'snapshot_id' => 'snap:2025-09-01',
+            'state'       => [
+                'pieza:moldura' => [
+                    'modelos' => [
+                        [
+                            'modelo_id' => 'modelo:fr-m1',
+                            'colores'   => ['col:negro', 'col:azul'],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $expiresAt      = new DateTimeImmutable('2025-10-29T00:00:00+00:00');
+        $signedOriginal = $signer->sign($payload, $privateKey, $expiresAt);
+
+        $tampered = $payload;
+        $tampered['state']['pieza:moldura']['modelos'][0]['colores'] = ['col:azul', 'col:negro'];
+
+        $tamperedCanonical = $this->buildCanonicalSkuPayload($tampered);
+        $tamperedHash      = hash('sha256', Canonicalizer::canonicalize($tamperedCanonical));
+
+        self::assertNotSame($signedOriginal['sku_hash'], $tamperedHash);
+    }
+
+    public function testSignHandlesMissingOptionalFields(): void
+    {
+        $signer     = new Signer('sig.v1');
+        $keyPair    = sodium_crypto_sign_keypair();
+        $privateKey = sodium_crypto_sign_secretkey($keyPair);
+
+        $payload = [
+            'snapshot_id' => 'snap:2025-09-01',
+            'state'       => [
+                'pieza:moldura' => [
+                    'modelos' => [],
+                ],
+            ],
+        ];
+
+        $expiresAt = new DateTimeImmutable('2025-10-29T00:00:00+00:00');
+        $signed    = $signer->sign($payload, $privateKey, $expiresAt);
+
+        $canonicalPayload = $this->buildCanonicalSkuPayload($payload);
+        $expectedSkuHash  = hash('sha256', Canonicalizer::canonicalize($canonicalPayload));
+
+        self::assertSame($expectedSkuHash, $signed['sku_hash']);
+        self::assertNotEmpty($signed['signature']);
     }
 
     public function testSignRejectsInvalidPrivateKeyLength(): void
@@ -112,37 +255,40 @@ final class SignerTest extends TestCase
         $signer->sign($payload, 'invalid-key', $expiresAt);
     }
 
-    private function canonicalize(array $data): string
+    /**
+     * @param array<string, mixed> $payload
+     *
+     * @return array<string, mixed>
+     */
+    private function buildCanonicalSkuPayload(array $payload): array
     {
-        $normalized = $this->normalizeValue($data);
+        $canonical = [];
 
-        return json_encode($normalized, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: '';
-    }
-
-    private function normalizeValue(mixed $value): mixed
-    {
-        if (is_array($value)) {
-            $isAssoc = array_keys($value) !== range(0, count($value) - 1);
-            $working = $value;
-
-            if ($isAssoc) {
-                ksort($working);
-            }
-
-            $normalized = [];
-
-            foreach ($working as $key => $item) {
-                if ($item === null) {
-                    continue;
-                }
-
-                $normalized[$key] = $this->normalizeValue($item);
-            }
-
-            return $isAssoc ? $normalized : array_values($normalized);
+        if (isset($payload['schema_version']) && is_string($payload['schema_version'])) {
+            $canonical['schema_version'] = $payload['schema_version'];
         }
 
-        return $value;
+        if (isset($payload['snapshot_id']) && is_string($payload['snapshot_id'])) {
+            $canonical['snapshot_id'] = $payload['snapshot_id'];
+        }
+
+        if (isset($payload['producto_id']) && is_string($payload['producto_id'])) {
+            $canonical['producto_id'] = $payload['producto_id'];
+        }
+
+        if (isset($payload['locale']) && is_string($payload['locale'])) {
+            $canonical['locale'] = $payload['locale'];
+        }
+
+        if (isset($payload['state']) && is_array($payload['state'])) {
+            $canonical['state'] = $payload['state'];
+        }
+
+        if (isset($payload['flags']) && is_array($payload['flags'])) {
+            $canonical['flags'] = $payload['flags'];
+        }
+
+        return $canonical;
     }
 
     private function base64UrlDecode(string $value): string|false

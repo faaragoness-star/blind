@@ -225,7 +225,7 @@ final class VerifyRouteTest extends TestCase
         $data = $response->get_data();
         self::assertFalse($data['ok']);
         self::assertSame('E_SIGN_INVALID', $data['code']);
-        self::assertSame('sign_invalid', $data['reason_key']);
+        self::assertSame('sign_hash_mismatch', $data['reason_key']);
         self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $data['request_id']);
     }
 

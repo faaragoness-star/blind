@@ -6,6 +6,7 @@ namespace G3D\ValidateSign\Crypto;
 
 use DateTimeImmutable;
 use DateTimeInterface;
+use G3D\ValidateSign\Domain\Canonicalizer;
 use RuntimeException;
 
 class Verifier
@@ -106,6 +107,16 @@ class Verifier
             );
         }
 
+        if (!array_key_exists('sku_hash', $decoded) || !array_key_exists('snapshot_id', $decoded)) {
+            return $this->error(
+                'E_SIGN_INVALID',
+                'sign_invalid',
+                'Campos obligatorios ausentes en firma (ver '
+                . 'docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
+                . '(slots Abiertos) — V2 (urls).md, sección SKU, firma y caducidad).'
+            );
+        }
+
         if (!array_key_exists('locale', $decoded) || !array_key_exists('ab_variant', $decoded)) {
             return $this->error(
                 'E_SIGN_INVALID',
@@ -116,7 +127,12 @@ class Verifier
             );
         }
 
-        if (!is_string($decoded['locale']) || !is_string($decoded['ab_variant'])) {
+        if (
+            !is_string($decoded['sku_hash'])
+            || !is_string($decoded['snapshot_id'])
+            || !is_string($decoded['locale'])
+            || !is_string($decoded['ab_variant'])
+        ) {
             return $this->error(
                 'E_SIGN_INVALID',
                 'sign_invalid',
@@ -142,15 +158,36 @@ class Verifier
             );
         }
 
-        $signatureSkuHash     = isset($decoded['sku_hash']) ? (string) $decoded['sku_hash'] : '';
-        $signatureSnapshotId  = isset($decoded['snapshot_id']) ? (string) $decoded['snapshot_id'] : '';
+        /** @var string $expiresAtString */
+        $expiresAtString = $decoded['expires_at'];
+
+        $expectedMessage = Canonicalizer::canonicalize([
+            'sku_hash'    => $decoded['sku_hash'],
+            'snapshot_id' => $decoded['snapshot_id'],
+            'expires_at'  => $expiresAtString,
+            'locale'      => $decoded['locale'],
+            'ab_variant'  => $decoded['ab_variant'],
+        ]);
+
+        if ($expectedMessage !== $message) {
+            return $this->error(
+                'E_SIGN_INVALID',
+                'sign_invalid',
+                'Payload de firma no canónico (ver '
+                . 'docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
+                . '(slots Abiertos) — V2 (urls).md, sección SKU, firma y caducidad).'
+            );
+        }
+
+        $signatureSkuHash     = $decoded['sku_hash'];
+        $signatureSnapshotId  = $decoded['snapshot_id'];
         $requestedSkuHash     = isset($payload['sku_hash']) ? (string) $payload['sku_hash'] : '';
         $requestedSnapshotId  = isset($payload['snapshot_id']) ? (string) $payload['snapshot_id'] : '';
 
         if ($signatureSkuHash !== $requestedSkuHash) {
             return $this->error(
                 'E_SIGN_INVALID',
-                'sign_invalid',
+                'sign_hash_mismatch',
                 'sku_hash no coincide con firma (ver '
                 . 'docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
                 . '(slots Abiertos) — V2 (urls).md).'

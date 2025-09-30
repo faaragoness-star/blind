@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace G3D\ValidateSign\Tests;
 
 use DateTimeImmutable;
+use G3D\ValidateSign\Domain\Canonicalizer;
 use G3D\ValidateSign\Crypto\Signer;
 use G3D\ValidateSign\Crypto\Verifier;
 use PHPUnit\Framework\TestCase;
@@ -202,8 +203,89 @@ final class VerifierTest extends TestCase
         self::assertSame('sign_invalid', $result['reason_key']);
     }
 
+    public function testVerifyRejectsTamperedSkuHash(): void
+    {
+        $signer   = new Signer('sig.v1');
+        $verifier = new Verifier(['sig.v1']);
+        $keyPair  = sodium_crypto_sign_keypair();
+        $privateKey = sodium_crypto_sign_secretkey($keyPair);
+        $publicKey  = sodium_crypto_sign_publickey($keyPair);
+
+        $payload = [
+            'snapshot_id' => 'snap:2025-09-01',
+            'state'       => [
+                'pieza:moldura' => [
+                    'modelos' => [
+                        [
+                            'modelo_id' => 'modelo:fr-m1',
+                            'colores'   => ['col:negro', 'col:azul'],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $expiresAt = new DateTimeImmutable('2025-10-29T00:00:00+00:00');
+        $signed    = $signer->sign($payload, $privateKey, $expiresAt);
+
+        $tampered = $payload;
+        $tampered['state']['pieza:moldura']['modelos'][0]['colores'] = ['col:azul', 'col:negro'];
+
+        $tamperedCanonical = $this->buildCanonicalSkuPayload($tampered);
+        $tamperedHash      = hash('sha256', Canonicalizer::canonicalize($tamperedCanonical));
+
+        $result = $verifier->verify(
+            [
+                'sku_hash'    => $tamperedHash,
+                'snapshot_id' => 'snap:2025-09-01',
+            ],
+            $signed['signature'],
+            $publicKey
+        );
+
+        self::assertFalse($result['ok']);
+        self::assertSame('E_SIGN_INVALID', $result['code']);
+        self::assertSame('sign_hash_mismatch', $result['reason_key']);
+    }
+
     private function base64UrlEncode(string $value): string
     {
         return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     *
+     * @return array<string, mixed>
+     */
+    private function buildCanonicalSkuPayload(array $payload): array
+    {
+        $canonical = [];
+
+        if (isset($payload['schema_version']) && is_string($payload['schema_version'])) {
+            $canonical['schema_version'] = $payload['schema_version'];
+        }
+
+        if (isset($payload['snapshot_id']) && is_string($payload['snapshot_id'])) {
+            $canonical['snapshot_id'] = $payload['snapshot_id'];
+        }
+
+        if (isset($payload['producto_id']) && is_string($payload['producto_id'])) {
+            $canonical['producto_id'] = $payload['producto_id'];
+        }
+
+        if (isset($payload['locale']) && is_string($payload['locale'])) {
+            $canonical['locale'] = $payload['locale'];
+        }
+
+        if (isset($payload['state']) && is_array($payload['state'])) {
+            $canonical['state'] = $payload['state'];
+        }
+
+        if (isset($payload['flags']) && is_array($payload['flags'])) {
+            $canonical['flags'] = $payload['flags'];
+        }
+
+        return $canonical;
     }
 }
