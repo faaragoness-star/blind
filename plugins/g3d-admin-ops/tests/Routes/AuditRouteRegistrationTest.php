@@ -6,17 +6,26 @@ namespace G3D\AdminOps\Tests\Routes;
 
 use PHPUnit\Framework\TestCase;
 
-require_once __DIR__ . '/../../../g3d-vendor-base-helper/tests/bootstrap.php';
-require_once __DIR__ . '/../../plugin.php';
-
 final class AuditRouteRegistrationTest extends TestCase
 {
+    public static function setUpBeforeClass(): void
+    {
+        parent::setUpBeforeClass();
+
+        require_once __DIR__ . '/../../../g3d-vendor-base-helper/tests/bootstrap.php';
+        require_once __DIR__ . '/../../plugin.php';
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
 
         /**
-         * @var list<array{namespace:string,route:string,args:array<string,mixed>}> $GLOBALS['g3d_tests_registered_rest_routes']
+         * @var list<array{
+         *   namespace:string,
+         *   route:string,
+         *   args:array<string,mixed>
+         * }> $GLOBALS['g3d_tests_registered_rest_routes']
          */
         $GLOBALS['g3d_tests_registered_rest_routes'] = [];
     }
