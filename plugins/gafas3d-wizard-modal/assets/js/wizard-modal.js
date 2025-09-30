@@ -76,7 +76,6 @@
       ? Array.prototype.slice.call(modal.querySelectorAll('[role="tabpanel"]'))
       : [];
     var lastValidation = null;
-    var autoVerify = overlay.getAttribute('data-auto-verify') === '1';
     var shouldAutoAudit = modal && modal.getAttribute('data-auto-audit') === '1';
     var previousFocus = null;
     var summaryMessage = '';
@@ -210,6 +209,12 @@
         query = '?' + new URLSearchParams(params).toString();
       }
 
+      var ctaWasDisabled = cta ? cta.disabled : false;
+
+      if (cta) {
+        cta.disabled = true;
+      }
+
       setSummaryMessage(__('Cargando reglas…', TEXT_DOMAIN));
 
       try {
@@ -245,6 +250,10 @@
         }
       } catch (error) {
         setSummaryMessage('ERROR — red');
+      }
+
+      if (cta) {
+        cta.disabled = ctaWasDisabled;
       }
     }
 
@@ -437,9 +446,8 @@
             });
           }
 
-          if (autoVerify) {
-            runVerifyRequest();
-          }
+          // TODO(plugin-4-gafas3d-wizard-modal.md §9): encadenar verify tras validate-sign.
+
         } else {
           var code = '-';
 
@@ -626,6 +634,12 @@
 
       previousFocus = null;
       rulesLoaded = false;
+      setSummaryMessage('');
+      setStatusMessage('');
+
+      if (message) {
+        message.removeAttribute('aria-busy');
+      }
     }
 
     var openButtons = document.querySelectorAll('[' + OPEN_ATTR + ']');
