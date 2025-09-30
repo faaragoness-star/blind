@@ -23,7 +23,10 @@ namespace G3D\CatalogRules\Tests\Routes {
         public function testRulesReadRouteIsRegistered(): void
         {
             \do_action('rest_api_init');
-            self::assertTrue(self::routeExists('g3d/v1', '/catalog/rules', 'GET'));
+
+            $route = '/catalog/rules';
+
+            self::assertTrue(self::routeExists('g3d/v1', $route, 'GET'));
         }
 
         private static function routeExists(string $ns, string $route, string $method): bool
@@ -33,6 +36,7 @@ namespace G3D\CatalogRules\Tests\Routes {
             foreach ($routes as $r) {
                 if ($r['namespace'] === $ns && $r['route'] === $route) {
                     $m = $r['args']['methods'] ?? '';
+
                     return \is_string($m) ? \str_contains($m, $method) : false;
                 }
             }
