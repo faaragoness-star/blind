@@ -16,13 +16,48 @@ namespace G3D\ModelsManager\Tests\Api {
 
     final class GlbIngestControllerBridgeTest extends TestCase
     {
-        private GlbIngestionServiceStub $service;
+        /** @var GlbIngestionService */
+        private $service;
 
         protected function setUp(): void
         {
             parent::setUp();
             $_FILES = [];
-            $this->service = new GlbIngestionServiceStub();
+
+            // Stub como clase anónima para cumplir PSR-12 (un archivo, una clase pública).
+            $this->service = new class extends GlbIngestionService {
+                public int $ingestCalls = 0;
+
+                /**
+                 * @var array{
+                 *   binding: array<string, mixed>,
+                 *   validation: array{
+                 *     ok: bool,
+                 *     missing: list<string>,
+                 *     type: list<array<string, string>>
+                 *   }
+                 * }
+                 */
+                public array $result = [
+                    'binding' => [],
+                    'validation' => [
+                        'ok' => true,
+                        'missing' => [],
+                        'type' => [],
+                    ],
+                ];
+
+                /** @var array<string, mixed>|null */
+                public ?array $lastFile = null;
+
+                public function ingest(array $file): array
+                {
+                    $this->ingestCalls++;
+                    $this->lastFile = $file;
+
+                    return $this->result;
+                }
+            };
         }
 
         protected function tearDown(): void
@@ -59,13 +94,13 @@ namespace G3D\ModelsManager\Tests\Api {
 
         public function testHandleDelegatesToServiceAndReturnsResult(): void
         {
-            $tmp = tempnam(sys_get_temp_dir(), 'glb');
+            $tmp = \tempnam(\sys_get_temp_dir(), 'glb');
             self::assertIsString($tmp);
 
-            $bytesWritten = file_put_contents($tmp, 'abc');
+            $bytesWritten = \file_put_contents($tmp, 'abc');
             self::assertNotFalse($bytesWritten);
 
-            $size = filesize($tmp);
+            $size = \filesize($tmp);
             self::assertIsInt($size);
 
             $_FILES['g3d_glb_file'] = [
@@ -105,45 +140,8 @@ namespace G3D\ModelsManager\Tests\Api {
                 self::assertSame($_FILES['g3d_glb_file'], $this->service->lastFile);
             } finally {
                 unset($_FILES['g3d_glb_file']);
-                @unlink($tmp);
+                @\unlink($tmp);
             }
-        }
-    }
-
-    final class GlbIngestionServiceStub extends GlbIngestionService
-    {
-        public int $ingestCalls = 0;
-
-        /**
-         * @var array{
-         *   binding: array<string, mixed>,
-         *   validation: array{
-         *     ok: bool,
-         *     missing: list<string>,
-         *     type: list<array<string, string>>
-         *   }
-         * }
-         */
-        public array $result = [
-            'binding' => [],
-            'validation' => [
-                'ok' => true,
-                'missing' => [],
-                'type' => [],
-            ],
-        ];
-
-        /**
-         * @var array<string, mixed>|null
-         */
-        public ?array $lastFile = null;
-
-        public function ingest(array $file): array
-        {
-            $this->ingestCalls++;
-            $this->lastFile = $file;
-
-            return $this->result;
         }
     }
 }
