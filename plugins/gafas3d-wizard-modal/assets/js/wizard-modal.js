@@ -1,6 +1,5 @@
 (function (global) {
   'use strict';
-
   var __ =
     global.wp && global.wp.i18n && typeof global.wp.i18n.__ === 'function'
       ? global.wp.i18n.__
@@ -25,9 +24,10 @@
   };
 
   global.G3DWIZARD.getJSON = async function getJSON(url, params) {
-    const qs = params && Object.keys(params).length
-      ? '?' + new URLSearchParams(params).toString()
-      : '';
+    const qs =
+      params && Object.keys(params).length
+        ? '?' + new URLSearchParams(params).toString()
+        : '';
     const res = await fetch(url + qs, {
       headers: {
         'X-WP-Nonce': (global.G3DWIZARD && global.G3DWIZARD.nonce) || '',
@@ -223,10 +223,7 @@
       var api = wizard.api || {};
 
       if (!api.validateSign || typeof wizard.postJson !== 'function') {
-        setText(
-          message,
-          __('ERROR — endpoint no disponible', TEXT_DOMAIN)
-        );
+        setText(message, __('ERROR — endpoint no disponible', TEXT_DOMAIN));
         return;
       }
 
@@ -367,22 +364,12 @@
       var api = wizard.api || {};
 
       if (!api.verify || typeof wizard.postJson !== 'function') {
-        setText(
-          message,
-          __('ERROR — endpoint no disponible', TEXT_DOMAIN)
-        );
+        setText(message, __('ERROR — endpoint no disponible', TEXT_DOMAIN));
         return;
       }
 
-      if (
-        !lastValidation ||
-        !lastValidation.sku_hash ||
-        !lastValidation.sku_signature
-      ) {
-        setText(
-          message,
-          __('ERROR — Primero valida y firma', TEXT_DOMAIN)
-        );
+      if (!lastValidation || !lastValidation.sku_hash || !lastValidation.sku_signature) {
+        setText(message, __('ERROR — Primero valida y firma', TEXT_DOMAIN));
         return;
       }
 
@@ -414,10 +401,7 @@
 
         if (response.ok && data && data.ok === true) {
           var requestId = data.request_id ? data.request_id : '-';
-          setText(
-            message,
-            __('Verificado OK — request_id: ', TEXT_DOMAIN) + requestId
-          );
+          setText(message, __('Verificado OK — request_id: ', TEXT_DOMAIN) + requestId);
 
           if (shouldAutoAudit) {
             audit('verify_success', {
@@ -471,7 +455,8 @@
         event.preventDefault();
       }
 
-      previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      previousFocus =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
       overlay.removeAttribute('hidden');
       document.body.classList.add('g3d-wizard-open');
@@ -490,10 +475,7 @@
         if (!productoId) {
           setText(
             rulesContainer,
-            __(
-              'TODO(plugin-2-g3d-catalog-rules.md §6): faltan parámetros.',
-              TEXT_DOMAIN
-            )
+            __('TODO(plugin-2-g3d-catalog-rules.md §6): faltan parámetros.', TEXT_DOMAIN)
           );
         } else {
           var params = {
