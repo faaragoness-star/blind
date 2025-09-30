@@ -39,7 +39,10 @@ namespace G3D\AdminOps\Tests\Api {
 
             self::assertInstanceOf(WP_REST_Response::class, $response);
             self::assertSame(201, $response->get_status());
-            self::assertSame(['ok' => true], $response->get_data());
+            self::assertSame([
+                'ok'    => true,
+                'saved' => true,
+            ], $response->get_data());
 
             $events = $logger->getEvents();
             self::assertCount(1, $events);

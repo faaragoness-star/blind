@@ -32,7 +32,6 @@ final class AuditRouteRegistrationTest extends TestCase
     public function testAuditWriteRouteRegistered(): void
     {
         \do_action('rest_api_init');
-
         self::assertTrue(self::routeExists('g3d/v1', '/audit', 'POST'));
     }
 
@@ -44,10 +43,13 @@ final class AuditRouteRegistrationTest extends TestCase
         $routes = $GLOBALS['g3d_tests_registered_rest_routes'];
 
         foreach ($routes as $r) {
-            if ($r['namespace'] === $ns && $r['route'] === $route) {
-                $methods = $r['args']['methods'] ?? '';
+            if ($r['namespace'] !== $ns || $r['route'] !== $route) {
+                continue;
+            }
 
-                return \is_string($methods) ? \str_contains($methods, $method) : false;
+            $methods = $r['args']['methods'] ?? '';
+            if (\is_string($methods) && \str_contains($methods, $method)) {
+                return true;
             }
         }
 

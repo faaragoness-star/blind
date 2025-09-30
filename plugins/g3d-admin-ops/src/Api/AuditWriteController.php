@@ -74,6 +74,6 @@ final class AuditWriteController
             return new WP_REST_Response($err, 400);
         }
 
-        return new WP_REST_Response(Responses::ok(), 201);
+        return new WP_REST_Response(Responses::ok(['saved' => true]), 201);
     }
 }

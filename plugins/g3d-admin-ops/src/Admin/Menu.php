@@ -142,7 +142,7 @@ final class Menu
         $this->renderPlaceholder('G3D Admin & Ops', 'Plugin5 §5');
     }
 
-    private function renderAuditTrail(): void
+    public function renderAuditTrail(): void
     {
         if (!$this->guard->can(Capabilities::CAP_MANAGE_PUBLICATION)) {
             echo '<div class="wrap">';
