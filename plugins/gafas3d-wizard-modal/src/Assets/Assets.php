@@ -69,6 +69,7 @@ final class Assets
                     'verify' => rest_url('g3d/v1/verify'),
                     'audit' => rest_url('g3d/v1/audit'),
                     'rules' => rest_url('g3d/v1/catalog/rules'),
+                    // TODO(plugin-2-g3d-catalog-rules.md §6): confirmar endpoint público exacto.
                 ],
                 'nonce' => wp_create_nonce('wp_rest'),
                 'locale' => get_locale(),
