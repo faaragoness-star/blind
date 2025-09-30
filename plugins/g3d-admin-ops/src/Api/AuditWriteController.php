@@ -66,6 +66,14 @@ final class AuditWriteController
             );
         }
 
+        $what = isset($context['what']) ? (string) $context['what'] : '';
+        if ($what === '') {
+            return new WP_REST_Response(
+                Responses::error('E_BAD_REQUEST', 'bad_request', 'Campos inválidos.'),
+                400
+            );
+        }
+
         try {
             $this->logger->logAction($actorId, $action, $context);
         } catch (\Throwable $e) {
@@ -76,6 +84,6 @@ final class AuditWriteController
         }
 
         // Éxito.
-        return new WP_REST_Response(Responses::ok(), 201);
+        return new WP_REST_Response(Responses::ok(['saved' => true]), 201);
     }
 }
