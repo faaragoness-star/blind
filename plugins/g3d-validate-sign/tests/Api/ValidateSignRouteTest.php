@@ -22,37 +22,40 @@ final class ValidateSignRouteTest extends TestCase
         parent::setUp();
 
         if (!function_exists('sodium_crypto_sign_keypair')) {
-            $this->markTestSkipped('ext-sodium requerida para las pruebas (ver docs/plugin-3-g3d-validate-sign.md §4.1).');
+            $this->markTestSkipped(
+                'ext-sodium requerida para las pruebas (ver '
+                . 'docs/plugin-3-g3d-validate-sign.md §4.1).'
+            );
         }
     }
 
     public function testHandleReturnsSignaturePayloadAlignedWithDocs(): void
     {
         $schemaPath = __DIR__ . '/../../schemas/validate-sign.request.schema.json';
-        $validator = new RequestValidator($schemaPath);
-        $fixedNow = new DateTimeImmutable('2025-09-29T00:00:00+00:00');
-        $expiry = $this->createExpiry($fixedNow, 30, false);
-        $signer = new Signer('sig.v1');
-        $keyPair = sodium_crypto_sign_keypair();
+        $validator  = new RequestValidator($schemaPath);
+        $fixedNow   = new DateTimeImmutable('2025-09-29T00:00:00+00:00');
+        $expiry     = $this->createExpiry($fixedNow, 30, false);
+        $signer     = new Signer('sig.v1');
+        $keyPair    = sodium_crypto_sign_keypair();
         $privateKey = sodium_crypto_sign_secretkey($keyPair);
 
         $controller = new ValidateSignController($validator, $signer, $expiry, $privateKey);
 
         $payload = [
             'schema_version' => '1.0.0',
-            'snapshot_id' => 'snap:2025-09-01',
-            'producto_id' => 'prod:rx-classic',
-            'locale' => 'es-ES',
-            'flags' => ['ab_variant' => 'checkout-a'],
-            'state' => [
+            'snapshot_id'    => 'snap:2025-09-01',
+            'producto_id'    => 'prod:rx-classic',
+            'locale'         => 'es-ES',
+            'flags'          => ['ab_variant' => 'checkout-a'],
+            'state'          => [
                 'pieza:moldura' => [
-                    'mat' => 'mat:acetato',
+                    'mat'     => 'mat:acetato',
                     'modelos' => [],
                     'acabado' => 'fin:clearcoat-high',
                 ],
             ],
-            'price' => 199.0,
-            'stock' => 5,
+            'price'     => 199.0,
+            'stock'     => 5,
             'photo_url' => 'https://cdn.example/snap.png',
         ];
 
@@ -81,19 +84,19 @@ final class ValidateSignRouteTest extends TestCase
     public function testHandleReturnsWpErrorWhenSchemaFieldsMissing(): void
     {
         $schemaPath = __DIR__ . '/../../schemas/validate-sign.request.schema.json';
-        $validator = new RequestValidator($schemaPath);
-        $expiry = $this->createExpiry(new DateTimeImmutable('2025-09-29T00:00:00+00:00'), 30, false);
-        $signer = new Signer('sig.v1');
-        $keyPair = sodium_crypto_sign_keypair();
+        $validator  = new RequestValidator($schemaPath);
+        $expiry     = $this->createExpiry(new DateTimeImmutable('2025-09-29T00:00:00+00:00'), 30, false);
+        $signer     = new Signer('sig.v1');
+        $keyPair    = sodium_crypto_sign_keypair();
         $privateKey = sodium_crypto_sign_secretkey($keyPair);
 
         $controller = new ValidateSignController($validator, $signer, $expiry, $privateKey);
 
         $payload = [
             'schema_version' => '1.0.0',
-            'producto_id' => 'prod:rx-classic',
-            'locale' => 'es-ES',
-            'state' => [],
+            'producto_id'    => 'prod:rx-classic',
+            'locale'         => 'es-ES',
+            'state'          => [],
         ];
 
         $request = new WP_REST_Request('POST', '/g3d/v1/validate-sign');
@@ -115,21 +118,21 @@ final class ValidateSignRouteTest extends TestCase
     public function testHandleReturnsWpErrorWhenTypeInvalid(): void
     {
         $schemaPath = __DIR__ . '/../../schemas/validate-sign.request.schema.json';
-        $validator = new RequestValidator($schemaPath);
-        $expiry = $this->createExpiry(new DateTimeImmutable('2025-09-29T00:00:00+00:00'), 30, false);
-        $signer = new Signer('sig.v1');
-        $keyPair = sodium_crypto_sign_keypair();
+        $validator  = new RequestValidator($schemaPath);
+        $expiry     = $this->createExpiry(new DateTimeImmutable('2025-09-29T00:00:00+00:00'), 30, false);
+        $signer     = new Signer('sig.v1');
+        $keyPair    = sodium_crypto_sign_keypair();
         $privateKey = sodium_crypto_sign_secretkey($keyPair);
 
         $controller = new ValidateSignController($validator, $signer, $expiry, $privateKey);
 
         $payload = [
             'schema_version' => '1.0.0',
-            'snapshot_id' => 'snap:2025-09-01',
-            'producto_id' => 'prod:rx-classic',
-            'locale' => 'es-ES',
-            'state' => [],
-            'flags' => 'no-es-un-objeto',
+            'snapshot_id'    => 'snap:2025-09-01',
+            'producto_id'    => 'prod:rx-classic',
+            'locale'         => 'es-ES',
+            'state'          => [],
+            'flags'          => 'no-es-un-objeto',
         ];
 
         $request = new WP_REST_Request('POST', '/g3d/v1/validate-sign');
@@ -161,7 +164,7 @@ final class ValidateSignRouteTest extends TestCase
                 parent::__construct($fixedTtl);
                 $this->fixedNow = $fixedNow;
                 $this->fixedTtl = $fixedTtl;
-                $this->expired = $expired;
+                $this->expired  = $expired;
             }
 
             public function calculate(?int $ttlDays = null, ?DateTimeImmutable $now = null): DateTimeImmutable
