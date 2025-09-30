@@ -16,7 +16,7 @@ use WP_REST_Request;
 use WP_REST_Response;
 
 /**
- * @phpstan-type VerifyRequest array{
+ * @phpstan-type VerifyPayload array{
  *   sku_hash?: string,
  *   sku_signature?: string,
  *   snapshot_id?: string
@@ -79,63 +79,62 @@ class VerifyController
         $validation = $this->validator->validate($payload);
 
         if (!empty($validation['missing'])) {
-            $error                = Responses::error(
-                'rest_missing_required_params',
-                'rest_missing_required_params',
+            $error = Responses::error(
+                'E_MISSING_REQUIRED',
+                'missing_required',
                 'Faltan campos requeridos.'
             );
-            $error['status']      = 400;
+            // TODO(doc §errores): documentar missing_fields en errores REST.
             $error['missing_fields'] = $validation['missing'];
-            $error['request_id']  = $requestId;
+            $error['request_id']     = $requestId;
 
             return new WP_REST_Response($error, 400);
         }
 
         if (!empty($validation['type'])) {
-            $error               = Responses::error(
-                'rest_invalid_param',
-                'rest_invalid_param',
+            $error = Responses::error(
+                'E_INVALID_PARAM',
+                'invalid_param',
                 'Tipos inválidos detectados.'
             );
-            $error['status']     = 400;
+            // TODO(doc §errores): documentar type_errors en errores REST.
             $error['type_errors'] = $validation['type'];
-            $error['request_id'] = $requestId;
+            $error['request_id']  = $requestId;
 
             return new WP_REST_Response($error, 400);
         }
 
         $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
-        /** @var VerifyRequest $sanitized */
+        /** @var VerifyPayload $sanitized */
         $sanitized = $this->sanitizePayload($payload);
 
         $signature    = (string) ($sanitized['sku_signature'] ?? '');
         $verification = $this->verifier->verify($sanitized, $signature, $this->publicKey);
 
         if (!$verification['ok']) {
-            $errorResponse              = Responses::error(
+            $status      = $verification['http_status'] ?? 400;
+            $errorDetail = $verification['detail'] ?? '';
+            $errorResponse = Responses::error(
                 $verification['code'],
                 $verification['reason_key'],
-                $verification['detail']
+                $errorDetail
             );
-            $errorResponse['status']    = 400;
             $errorResponse['request_id'] = $requestId;
 
-            return new WP_REST_Response($errorResponse, 400);
+            return new WP_REST_Response($errorResponse, $status);
         }
 
         $expiresAt = $verification['expires_at'];
 
         if ($this->expiry->isExpired($expiresAt, $now)) {
-            $errorResponse               = Responses::error(
-                'E_SIGN_EXPIRED',
-                'sign_expired',
-                'Caducidad agotada (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
-                . '(slots Abiertos) — V2 (urls).md).'
+            $errorResponse = Responses::error(
+                'E_EXPIRED',
+                'expired',
+                'Caducado.'
             );
-            $errorResponse['status']     = 400;
             $errorResponse['request_id'] = $requestId;
 
-            return new WP_REST_Response($errorResponse, 400);
+            return new WP_REST_Response($errorResponse, 409);
         }
 
         /** @var VerifyResponse $response */
@@ -154,7 +153,7 @@ class VerifyController
     /**
      * @param array<string, mixed> $payload
      *
-     * @return VerifyRequest
+     * @return VerifyPayload
      */
     private function sanitizePayload(array $payload): array
     {

@@ -96,9 +96,11 @@ final class ValidateSignRouteTest extends TestCase
         $data = $response->get_data();
         self::assertIsArray($data);
         self::assertFalse($data['ok']);
-        self::assertSame('rest_missing_required_params', $data['code']);
+        self::assertSame('E_MISSING_REQUIRED', $data['code']);
+        self::assertSame('missing_required', $data['reason_key']);
         self::assertSame('Faltan campos requeridos.', $data['detail']);
-        self::assertSame(400, $data['status']);
+        self::assertArrayHasKey('missing_fields', $data);
+        self::assertContains('snapshot_id', $data['missing_fields']);
         self::assertArrayHasKey('request_id', $data);
         self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $data['request_id']);
     }
@@ -133,9 +135,9 @@ final class ValidateSignRouteTest extends TestCase
         $data = $response->get_data();
         self::assertIsArray($data);
         self::assertFalse($data['ok']);
-        self::assertSame('rest_invalid_param', $data['code']);
+        self::assertSame('E_INVALID_PARAM', $data['code']);
+        self::assertSame('invalid_param', $data['reason_key']);
         self::assertArrayHasKey('type_errors', $data);
-        self::assertSame(400, $data['status']);
         self::assertArrayHasKey('request_id', $data);
         self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $data['request_id']);
     }

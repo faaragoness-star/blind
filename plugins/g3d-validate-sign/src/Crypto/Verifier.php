@@ -35,6 +35,7 @@ class Verifier
      *     code?: string,
      *     reason_key?: string,
      *     detail?: string,
+     *     http_status?: int,
      *     expires_at?: DateTimeImmutable,
      *     snapshot_id?: string
      * }
@@ -57,10 +58,11 @@ class Verifier
         $signatureEncoded = $parts[3];
 
         if (!in_array($prefix, $this->allowedPrefixes, true)) {
+            // TODO(doc §firma/prefijos): documentar código específico para prefijos inválidos.
             return $this->error(
-                'E_SIGN_INVALID',
-                'sign_invalid',
-                'Prefijo de firma no soportado (ver docs/plugin-3-g3d-validate-sign.md §4.1).'
+                'E_SIG_PREFIX',
+                'invalid_signature_prefix',
+                'Prefijo de firma no permitido.'
             );
         }
 
@@ -162,15 +164,16 @@ class Verifier
     }
 
     /**
-     * @return array{ok: false, code: string, reason_key: string, detail: string}
+     * @return array{ok: false, code: string, reason_key: string, detail: string, http_status: int}
      */
-    private function error(string $code, string $reasonKey, string $detail): array
+    private function error(string $code, string $reasonKey, string $detail, int $httpStatus = 400): array
     {
         return [
             'ok' => false,
             'code' => $code,
             'reason_key' => $reasonKey,
             'detail' => $detail,
+            'http_status' => $httpStatus,
         ];
     }
 
