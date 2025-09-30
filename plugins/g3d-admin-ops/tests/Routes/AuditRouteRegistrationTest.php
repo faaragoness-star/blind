@@ -12,7 +12,6 @@ final class AuditRouteRegistrationTest extends TestCase
     {
         parent::setUpBeforeClass();
 
-        // Carga bootstrap y el plugin dentro del ciclo de vida del test (sin efectos a nivel de archivo).
         require_once __DIR__ . '/../../../g3d-vendor-base-helper/tests/bootstrap.php';
         require_once __DIR__ . '/../../plugin.php';
     }
@@ -22,8 +21,6 @@ final class AuditRouteRegistrationTest extends TestCase
         parent::setUp();
 
         /**
-         * Reinicia la lista de rutas REST registradas capturadas por el bootstrap.
-         *
          * @var list<array{
          *   namespace:string,
          *   route:string,
@@ -47,16 +44,14 @@ final class AuditRouteRegistrationTest extends TestCase
         self::assertTrue(self::routeExists('g3d/v1', '/audit', 'POST'));
     }
 
-    private static function routeExists(string $ns, string $route, string $method): bool
+    private static function routeExists(string $namespace, string $route, string $method): bool
     {
-        /**
-         * @var list<array{namespace:string,route:string,args:array<string,mixed>}> $routes
-         */
+        /** @var list<array{namespace:string,route:string,args:array<string,mixed>}> $routes */
         $routes = $GLOBALS['g3d_tests_registered_rest_routes'] ?? [];
 
-        foreach ($routes as $r) {
-            if ($r['namespace'] === $ns && $r['route'] === $route) {
-                $methods = $r['args']['methods'] ?? '';
+        foreach ($routes as $registered) {
+            if ($registered['namespace'] === $namespace && $registered['route'] === $route) {
+                $methods = $registered['args']['methods'] ?? '';
 
                 return \is_string($methods) && \str_contains($methods, $method);
             }

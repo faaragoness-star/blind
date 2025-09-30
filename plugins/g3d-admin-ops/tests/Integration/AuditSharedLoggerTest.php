@@ -95,14 +95,14 @@ namespace G3D\AdminOps\Tests\Integration {
             self::assertIsArray($data);
             self::assertTrue($data['ok']);
 
-            $events = $data['events'] ?? [];
-            self::assertIsArray($events);
-            self::assertNotEmpty($events);
+            $items = $data['items'] ?? [];
+            self::assertIsArray($items);
+            self::assertNotEmpty($items);
 
             /**
              * @var array{actor_id:string,action:string,what:string,occurred_at:string} $event
              */
-            $event = $events[0];
+            $event = $items[0];
             self::assertSame('user:editor', $event['actor_id']);
             self::assertSame('publish', $event['action']);
             self::assertSame('prod:rx-1', $event['what']);
