@@ -97,15 +97,14 @@ final class RulesReadController
         $productoId = isset($params['producto_id']) ? (string) $params['producto_id'] : '';
 
         if ($productoId === '') {
-            return new WP_REST_Response(
-                Responses::error(
-                    'g3d_catalog_rules_missing_producto_id',
-                    'g3d_catalog_rules_missing_producto_id',
-                    'Missing required query parameter: producto_id.',
-                    ['status' => 400]
-                ),
-                400
+            $error = Responses::error(
+                'g3d_catalog_rules_missing_producto_id',
+                'g3d_catalog_rules_missing_producto_id',
+                'Missing required query parameter: producto_id.'
             );
+            $error['status'] = 400;
+
+            return new WP_REST_Response($error, 400);
         }
 
         $locale = isset($params['locale']) ? (string) $params['locale'] : null;
