@@ -1,6 +1,6 @@
+<?php // phpcs:ignoreFile ?>
 (function (global) {
   'use strict';
-
   var __ =
     global.wp && global.wp.i18n && typeof global.wp.i18n.__ === 'function'
       ? global.wp.i18n.__
