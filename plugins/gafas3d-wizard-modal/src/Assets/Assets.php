@@ -6,7 +6,10 @@ namespace Gafas3d\WizardModal\Assets;
 
 use function add_action;
 use function dirname;
+use function get_locale;
 use function plugins_url;
+use function rest_url;
+use function wp_create_nonce;
 use function wp_enqueue_script;
 use function wp_enqueue_style;
 use function wp_localize_script;
@@ -52,9 +55,11 @@ final class Assets
             'G3DWIZARD',
             [
                 'api' => [
-                    'validateSign' => '/wp-json/g3d/v1/validate-sign',
-                    'verify' => '/wp-json/g3d/v1/verify',
+                    'validateSign' => rest_url('g3d/v1/validate-sign'),
+                    'verify' => rest_url('g3d/v1/verify'),
                 ],
+                'nonce' => wp_create_nonce('wp_rest'),
+                'locale' => get_locale(),
             ]
         );
 

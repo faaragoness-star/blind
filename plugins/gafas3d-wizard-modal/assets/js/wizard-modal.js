@@ -3,6 +3,19 @@
 
   global.G3DWIZARD = global.G3DWIZARD || {};
 
+  global.G3DWIZARD.postJson = async function postJson(url, body) {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-WP-Nonce': (global.G3DWIZARD && global.G3DWIZARD.nonce) || '',
+      },
+      body: JSON.stringify(body || {}),
+    });
+
+    return res;
+  };
+
   if (global.console && typeof global.console.log === 'function') {
     global.console.log(global.G3DWIZARD.api);
   }
