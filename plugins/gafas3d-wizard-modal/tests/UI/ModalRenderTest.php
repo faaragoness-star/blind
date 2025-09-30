@@ -21,4 +21,51 @@ final class ModalRenderTest extends TestCase
         self::assertStringContainsString('data-producto-id=""', $output);
         self::assertStringContainsString('data-locale="', $output);
     }
+
+    public function testRenderOutputsTablistTabsAndPanels(): void
+    {
+        ob_start();
+        Modal::render();
+        $output = (string) ob_get_clean();
+
+        self::assertStringContainsString('role="tablist"', $output);
+
+        $previous = libxml_use_internal_errors(true);
+        $document = new \DOMDocument();
+        $document->loadHTML('<?xml encoding="utf-8" ?>' . $output);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+
+        $xpath = new \DOMXPath($document);
+
+        $tablists = $xpath->query('//*[@role="tablist"]');
+        self::assertGreaterThan(0, $tablists->length);
+
+        $tabs = $xpath->query('//*[@role="tab"]');
+        self::assertGreaterThan(0, $tabs->length);
+
+        $panels = $xpath->query('//*[@role="tabpanel"]');
+        self::assertGreaterThan(0, $panels->length);
+
+        $panelIds = [];
+
+        foreach ($panels as $panel) {
+            if (! $panel instanceof \DOMElement) {
+                continue;
+            }
+
+            $panelIds[$panel->getAttribute('id')] = true;
+        }
+
+        foreach ($tabs as $tab) {
+            if (! $tab instanceof \DOMElement) {
+                continue;
+            }
+
+            $controls = $tab->getAttribute('aria-controls');
+
+            self::assertNotSame('', $controls);
+            self::assertArrayHasKey($controls, $panelIds);
+        }
+    }
 }
