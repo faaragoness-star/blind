@@ -6,6 +6,8 @@ namespace G3D\AdminOps\Tests\Routes;
 
 use PHPUnit\Framework\TestCase;
 
+require_once __DIR__ . '/../../../g3d-vendor-base-helper/tests/bootstrap.php';
+
 final class AuditRouteRegistrationTest extends TestCase
 {
     public static function setUpBeforeClass(): void
@@ -19,19 +21,23 @@ final class AuditRouteRegistrationTest extends TestCase
     {
         parent::setUp();
 
+        /**
+         * @var list<array{namespace:string,route:string,args:array<string,mixed>}> $GLOBALS['g3d_tests_registered_rest_routes']
+         */
         $GLOBALS['g3d_tests_registered_rest_routes'] = [];
     }
 
-    public function testAuditReadRouteRegistered(): void
+    public function testAuditReadRouteIsRegistered(): void
     {
         \do_action('rest_api_init');
 
         self::assertTrue(self::routeExists('g3d/v1', '/audit', 'GET'));
     }
 
-    public function testAuditWriteRouteRegistered(): void
+    public function testAuditWriteRouteIsRegistered(): void
     {
         \do_action('rest_api_init');
+
         self::assertTrue(self::routeExists('g3d/v1', '/audit', 'POST'));
     }
 
@@ -40,16 +46,13 @@ final class AuditRouteRegistrationTest extends TestCase
         /**
          * @var list<array{namespace:string,route:string,args:array<string,mixed>}> $routes
          */
-        $routes = $GLOBALS['g3d_tests_registered_rest_routes'];
+        $routes = $GLOBALS['g3d_tests_registered_rest_routes'] ?? [];
 
         foreach ($routes as $r) {
-            if ($r['namespace'] !== $ns || $r['route'] !== $route) {
-                continue;
-            }
+            if ($r['namespace'] === $ns && $r['route'] === $route) {
+                $methods = $r['args']['methods'] ?? '';
 
-            $methods = $r['args']['methods'] ?? '';
-            if (\is_string($methods) && \str_contains($methods, $method)) {
-                return true;
+                return \is_string($methods) && \str_contains($methods, $method);
             }
         }
 
