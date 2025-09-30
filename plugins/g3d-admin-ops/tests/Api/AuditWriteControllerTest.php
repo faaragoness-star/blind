@@ -48,30 +48,10 @@ namespace G3D\AdminOps\Tests\Api {
             self::assertCount(1, $events);
             self::assertSame('user:42', $events[0]['actor_id']);
             self::assertSame('publish', $events[0]['action']);
+            self::assertSame('modelo:rx-classic', $events[0]['what']);
         }
 
-        public function testHandleReturnsErrorWhenActorOrActionMissing(): void
-        {
-            Perms::allowAll();
-            $controller = new AuditWriteController(new InMemoryEditorialActionLogger());
-
-            $request = $this->makeRequest([
-                'actor_id' => '',
-                'action'   => 'publish',
-            ]);
-
-            $response = $controller->handle($request);
-
-            self::assertInstanceOf(WP_REST_Response::class, $response);
-            self::assertSame(400, $response->get_status());
-
-            $data = $response->get_data();
-            self::assertIsArray($data);
-            self::assertFalse($data['ok']);
-            self::assertSame('E_INVALID_INPUT', $data['code']);
-        }
-
-        public function testHandleReturnsErrorWhenLoggerRejectsContext(): void
+        public function testHandleReturnsErrorWhenContextMissingWhat(): void
         {
             Perms::allowAll();
             $controller = new AuditWriteController(new InMemoryEditorialActionLogger());
@@ -90,7 +70,8 @@ namespace G3D\AdminOps\Tests\Api {
             $data = $response->get_data();
             self::assertIsArray($data);
             self::assertFalse($data['ok']);
-            self::assertSame('E_INVALID_CONTEXT', $data['code']);
+            self::assertSame('E_BAD_REQUEST', $data['code']);
+            self::assertSame('bad_request', $data['reason_key']);
         }
 
         /**

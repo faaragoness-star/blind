@@ -13,8 +13,6 @@
 
 declare(strict_types=1);
 
-use G3D\AdminOps\Audit\AuditLogReader;
-use G3D\AdminOps\Audit\EditorialActionLogger;
 use G3D\AdminOps\Plugin;
 use G3D\AdminOps\Services\Registry;
 
@@ -56,12 +54,40 @@ register_activation_hook(__FILE__, static function (): void {
 });
 
 add_action('rest_api_init', static function (): void {
-    $service = Registry::instance()->get(Registry::S_AUDIT_LOGGER);
+    $logger = null;
 
-    if ($service instanceof AuditLogReader && $service instanceof EditorialActionLogger) {
-        (new \G3D\AdminOps\Api\AuditReadController($service))->registerRoutes();
-        (new \G3D\AdminOps\Api\AuditWriteController($service))->registerRoutes();
-    } else {
-        // TODO(doc §bootstrap): inyectar servicios reales; por ahora no-op para no romper.
+    // 1) Intentar resolver desde el contenedor (si existe).
+    if (class_exists(\G3D\AdminOps\Services\Registry::class)) {
+        $service = Registry::instance()->get(Registry::S_AUDIT_LOGGER);
+
+        if (
+            $service instanceof \G3D\AdminOps\Audit\AuditLogReader
+            && $service instanceof \G3D\AdminOps\Audit\EditorialActionLogger
+        ) {
+            $logger = $service;
+        }
     }
+
+    // 2) Intentar globals (por compat).
+    if ($logger === null) {
+        $candidate = $GLOBALS['g3d_admin_ops_audit_writer'] ?? ($GLOBALS['g3d_admin_ops_audit_reader'] ?? null);
+
+        if (
+            $candidate instanceof \G3D\AdminOps\Audit\AuditLogReader
+            && $candidate instanceof \G3D\AdminOps\Audit\EditorialActionLogger
+        ) {
+            $logger = $candidate;
+        }
+    }
+
+    // 3) Fallback en memoria y exponer globals para compatibilidad.
+    if ($logger === null) {
+        $logger = new \G3D\AdminOps\Audit\InMemoryEditorialActionLogger();
+        // TODO(doc §bootstrap): mover a contenedor cuando tengamos DI real.
+        $GLOBALS['g3d_admin_ops_audit_reader'] = $logger;
+        $GLOBALS['g3d_admin_ops_audit_writer'] = $logger;
+    }
+
+    (new \G3D\AdminOps\Api\AuditWriteController($logger))->registerRoutes();
+    (new \G3D\AdminOps\Api\AuditReadController($logger))->registerRoutes();
 });
