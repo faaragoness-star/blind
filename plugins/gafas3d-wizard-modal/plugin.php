@@ -13,6 +13,8 @@
 
 declare(strict_types=1);
 
+use Gafas3d\WizardModal\Admin\Assets as AdminAssets;
+use Gafas3d\WizardModal\Admin\Page as AdminPage;
 use Gafas3d\WizardModal\PublicAssets\Assets;
 use Gafas3d\WizardModal\Shortcode\WizardShortcode;
 
@@ -39,6 +41,14 @@ spl_autoload_register(static function (string $class): void {
 add_action('init', static function (): void {
     load_plugin_textdomain('gafas3d-wizard-modal', false, dirname(plugin_basename(__FILE__)) . '/languages');
     WizardShortcode::register();
+});
+
+add_action('admin_menu', static function (): void {
+    AdminPage::register();
+});
+
+add_action('plugins_loaded', static function (): void {
+    (new AdminAssets())->register();
 });
 
 add_action('wp_enqueue_scripts', [Assets::class, 'register']);

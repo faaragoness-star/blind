@@ -14,7 +14,8 @@
         "phpstan": "vendor/bin/phpstan analyse --memory-limit=512M",
         "test": [
             "vendor/bin/phpunit --configuration plugins/g3d-catalog-rules/phpunit.xml.dist",
-            "vendor/bin/phpunit --configuration plugins/g3d-vendor-base-helper/phpunit.xml.dist"
+            "vendor/bin/phpunit --configuration plugins/g3d-vendor-base-helper/phpunit.xml.dist",
+            "vendor/bin/phpunit --configuration plugins/gafas3d-wizard-modal/phpunit.xml.dist"
         ]
     }
 }
