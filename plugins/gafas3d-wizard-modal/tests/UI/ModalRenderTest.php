@@ -1,6 +1,4 @@
 <?php
-
-
 declare(strict_types=1);
 
 namespace Gafas3d\WizardModal\Tests\UI;
