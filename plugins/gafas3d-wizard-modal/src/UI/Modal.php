@@ -8,6 +8,7 @@ use function esc_attr;
 use function esc_attr__;
 use function esc_html;
 use function esc_html__;
+use function get_locale;
 use function printf;
 
 final class Modal
@@ -36,9 +37,12 @@ final class Modal
 
         echo '<div class="g3d-wizard-modal__overlay" data-g3d-wizard-modal-overlay hidden>';
 
+        $locale = esc_attr(get_locale());
+
         echo '<div class="g3d-wizard-modal" role="dialog" tabindex="-1" aria-modal="true" '
             . 'aria-labelledby="g3d-wizard-modal-title" '
-            . 'aria-describedby="g3d-wizard-modal-description">';
+            . 'aria-describedby="g3d-wizard-modal-description" '
+            . 'data-snapshot-id="" data-producto-id="" data-locale="' . $locale . '">';
 
         echo '<div tabindex="0" data-g3d-wizard-focus-guard="start"></div>';
         echo '<div class="g3d-wizard-modal__content">';
@@ -127,6 +131,8 @@ final class Modal
             'gafas3d-wizard-modal'
         );
         echo '</div>';
+
+        echo '<div class="g3d-wizard-modal__msg" aria-live="polite"></div>';
 
         echo '<button type="button" class="g3d-wizard-modal__cta" data-g3d-wizard-modal-cta>';
         echo esc_html__(
