@@ -32,7 +32,130 @@
     }
 
     var dialog = overlay.querySelector('[role="dialog"]');
+    var modal = overlay.querySelector('.g3d-wizard-modal');
+    var cta = overlay.querySelector('[data-g3d-wizard-modal-cta]');
+    var message = overlay.querySelector('.g3d-wizard-modal__msg');
     var previousFocus = null;
+
+    function setText(element, value) {
+      if (!element) {
+        return;
+      }
+
+      element.textContent = value;
+    }
+
+    async function handleCtaClick(event) {
+      if (event && typeof event.preventDefault === 'function') {
+        event.preventDefault();
+      }
+
+      if (!cta) {
+        return;
+      }
+
+      var wizard = global.G3DWIZARD || {};
+      var api = wizard.api || {};
+
+      if (!api.validateSign || typeof wizard.postJson !== 'function') {
+        setText(message, 'ERROR — endpoint no disponible');
+        return;
+      }
+
+      var snapshotId = '';
+      var productoId = '';
+      var locale = '';
+
+      if (modal) {
+        snapshotId = modal.getAttribute('data-snapshot-id') || '';
+        productoId = modal.getAttribute('data-producto-id') || '';
+        locale = modal.getAttribute('data-locale') || '';
+      }
+
+      if (!locale && wizard.locale) {
+        locale = wizard.locale;
+      }
+
+      var payload = {
+        state: {},
+      };
+
+      if (snapshotId) {
+        payload.snapshot_id = snapshotId;
+      }
+
+      if (productoId) {
+        payload.producto_id = productoId;
+      }
+
+      if (locale) {
+        payload.locale = locale;
+      }
+
+      var defaultLabel = cta.textContent;
+      cta.disabled = true;
+      setText(cta, 'Enviando…');
+      setText(message, '');
+
+      try {
+        var response = await wizard.postJson(api.validateSign, payload);
+        var data = null;
+
+        try {
+          data = await response.json();
+        } catch (jsonError) {
+          data = null;
+        }
+
+        if (response.ok) {
+          var okValue = data && data.ok !== undefined ? data.ok : response.ok;
+          var hash = data && data.sku_hash ? data.sku_hash : '-';
+          var expires = data && data.expires_at ? data.expires_at : '-';
+          var snapshot = data && data.snapshot_id ? data.snapshot_id : snapshotId || '-';
+          var signature = '-';
+
+          if (data && typeof data.sku_signature === 'string' && data.sku_signature) {
+            var truncated = data.sku_signature.slice(0, 16);
+            signature = truncated + '…';
+          }
+
+          var successMessage =
+            'OK — ok: ' +
+            String(okValue) +
+            ' | hash: ' +
+            hash +
+            ' | expira: ' +
+            expires +
+            ' | snapshot: ' +
+            snapshot +
+            ' | sig: ' +
+            signature;
+
+          setText(message, successMessage);
+        } else {
+          var code = '-';
+
+          if (data) {
+            if (data.reason_key) {
+              code = data.reason_key;
+            } else if (data.code) {
+              code = data.code;
+            }
+          }
+
+          if (code === '-' && response.status) {
+            code = 'HTTP ' + response.status;
+          }
+
+          setText(message, 'ERROR — ' + code);
+        }
+      } catch (error) {
+        setText(message, 'ERROR — fallo de red');
+      } finally {
+        cta.disabled = false;
+        setText(cta, defaultLabel);
+      }
+    }
 
     function openModal(event) {
       if (event && typeof event.preventDefault === 'function') {
@@ -73,6 +196,10 @@
     closeButtons.forEach(function (button) {
       button.addEventListener('click', closeModal);
     });
+
+    if (cta) {
+      cta.addEventListener('click', handleCtaClick);
+    }
 
     overlay.addEventListener('click', function (event) {
       if (event.target === overlay) {

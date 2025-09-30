@@ -19,5 +19,9 @@ final class ModalRenderTest extends TestCase
         self::assertStringContainsString('data-g3d-wizard-modal-open', $output);
         self::assertStringContainsString('data-g3d-wizard-modal-overlay', $output);
         self::assertStringContainsString('data-g3d-wizard-modal-close', $output);
+        self::assertStringContainsString('data-snapshot-id=""', $output);
+        self::assertStringContainsString('data-producto-id=""', $output);
+        self::assertStringContainsString('data-locale="', $output);
+        self::assertStringContainsString('class="g3d-wizard-modal__msg"', $output);
     }
 }
