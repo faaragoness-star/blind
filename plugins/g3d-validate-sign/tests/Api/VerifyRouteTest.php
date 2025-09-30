@@ -95,6 +95,7 @@ final class VerifyRouteTest extends TestCase
         self::assertFalse($data['ok']);
         self::assertSame('E_SIGN_EXPIRED', $data['code']);
         self::assertSame('sign_expired', $data['reason_key']);
+        self::assertSame(400, $data['status']);
         self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $data['request_id']);
     }
 
@@ -134,6 +135,7 @@ final class VerifyRouteTest extends TestCase
         self::assertFalse($data['ok']);
         self::assertSame('E_SIGN_SNAPSHOT_MISMATCH', $data['code']);
         self::assertSame('sign_snapshot_mismatch', $data['reason_key']);
+        self::assertSame(400, $data['status']);
         self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $data['request_id']);
     }
 
@@ -174,6 +176,7 @@ final class VerifyRouteTest extends TestCase
         self::assertFalse($data['ok']);
         self::assertSame('E_SIGN_INVALID', $data['code']);
         self::assertSame('sign_invalid', $data['reason_key']);
+        self::assertSame(400, $data['status']);
         self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $data['request_id']);
     }
 
@@ -213,6 +216,59 @@ final class VerifyRouteTest extends TestCase
         self::assertFalse($data['ok']);
         self::assertSame('E_SIGN_INVALID', $data['code']);
         self::assertSame('sign_invalid', $data['reason_key']);
+        self::assertSame(400, $data['status']);
+        self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $data['request_id']);
+    }
+
+    public function testHandleReturnsWpErrorWhenSchemaFieldsMissing(): void
+    {
+        $schemaPath = __DIR__ . '/../../schemas/verify.request.schema.json';
+        $validator = new RequestValidator($schemaPath);
+        $verifier = new Verifier(['sig.v1']);
+        $expiry = $this->createExpiry(new DateTimeImmutable('2025-09-29T00:00:00+00:00'), 30, false);
+        $controller = new VerifyController($validator, $verifier, $expiry, 'public-key');
+
+        $request = new WP_REST_Request('POST', '/g3d/v1/verify');
+        $request->set_header('Content-Type', 'application/json');
+        $request->set_body((string) json_encode([
+            'sku_hash' => 'hash:missing-signature',
+        ]));
+
+        $response = $controller->handle($request);
+
+        self::assertInstanceOf(WP_REST_Response::class, $response);
+        self::assertSame(400, $response->get_status());
+        $data = $response->get_data();
+        self::assertFalse($data['ok']);
+        self::assertSame('rest_missing_required_params', $data['code']);
+        self::assertSame(400, $data['status']);
+        self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $data['request_id']);
+    }
+
+    public function testHandleReturnsWpErrorWhenTypeInvalid(): void
+    {
+        $schemaPath = __DIR__ . '/../../schemas/verify.request.schema.json';
+        $validator = new RequestValidator($schemaPath);
+        $verifier = new Verifier(['sig.v1']);
+        $expiry = $this->createExpiry(new DateTimeImmutable('2025-09-29T00:00:00+00:00'), 30, false);
+        $controller = new VerifyController($validator, $verifier, $expiry, 'public-key');
+
+        $request = new WP_REST_Request('POST', '/g3d/v1/verify');
+        $request->set_header('Content-Type', 'application/json');
+        $request->set_body((string) json_encode([
+            'sku_hash' => 123,
+            'sku_signature' => 'sig.v1.payload.signature',
+            'snapshot_id' => 'snap:2025-09-01',
+        ]));
+
+        $response = $controller->handle($request);
+
+        self::assertInstanceOf(WP_REST_Response::class, $response);
+        self::assertSame(400, $response->get_status());
+        $data = $response->get_data();
+        self::assertFalse($data['ok']);
+        self::assertSame('rest_invalid_param', $data['code']);
+        self::assertSame(400, $data['status']);
         self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $data['request_id']);
     }
 

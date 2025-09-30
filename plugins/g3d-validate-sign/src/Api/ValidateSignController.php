@@ -9,7 +9,6 @@ use DateTimeZone;
 use G3D\ValidateSign\Crypto\Signer;
 use G3D\ValidateSign\Domain\Expiry;
 use G3D\ValidateSign\Validation\RequestValidator;
-use G3D\VendorBase\Auth\RestPerms;
 use G3D\VendorBase\Rest\Responses;
 use G3D\VendorBase\Rest\Security;
 use WP_Error;
@@ -17,17 +16,31 @@ use WP_REST_Request;
 use WP_REST_Response;
 
 /**
- * REST controller to sign SKU payloads.
+ * @phpstan-type ValidateRequest array{
+ *   schema_version?: string,
+ *   snapshot_id?: string,
+ *   producto_id?: string,
+ *   locale?: string,
+ *   state?: array<string, mixed>,
+ *   flags?: array<string, mixed>
+ * }
+ * @phpstan-type ValidateResponse array{
+ *   ok: true,
+ *   sku_hash: string,
+ *   sku_signature: string,
+ *   expires_at: string,
+ *   snapshot_id?: string,
+ *   summary?: string,
+ *   price?: float|int|string,
+ *   stock?: mixed,
+ *   photo_url?: mixed,
+ *   request_id: string
+ * }
  *
- * Requires the CAP_USE_API capability to access the REST endpoint.
+ * REST controller to sign SKU payloads.
  */
 class ValidateSignController
 {
-    /**
-     * Capability required to consume the Validate & Sign REST API.
-     */
-    public const CAP_USE_API = 'g3d_validate_use_api';
-
     private RequestValidator $validator;
     private Signer $signer;
     private Expiry $expiry;
@@ -39,9 +52,9 @@ class ValidateSignController
         Expiry $expiry,
         string $privateKey
     ) {
-        $this->validator = $validator;
-        $this->signer = $signer;
-        $this->expiry = $expiry;
+        $this->validator  = $validator;
+        $this->signer     = $signer;
+        $this->expiry     = $expiry;
         $this->privateKey = $privateKey;
     }
 
@@ -51,11 +64,11 @@ class ValidateSignController
             'g3d/v1',
             '/validate-sign',
             [
-                'methods' => 'POST',
+                'methods'  => 'POST',
                 'callback' => [$this, 'handle'],
-                'permission_callback' => static function (WP_REST_Request $request): bool {
-                    return RestPerms::canUse(self::CAP_USE_API, $request);
-                },
+                // público según docs/Capa 3 — Validación, Firma y Caducidad — Actualizada
+                // (slots Abiertos) — V2 (urls).md §2.1.
+                'permission_callback' => static fn (): bool => true,
             ]
         );
     }
@@ -68,7 +81,7 @@ class ValidateSignController
         }
 
         $requestId = $this->generateRequestId();
-        $payload = $request->get_json_params();
+        $payload   = $request->get_json_params();
 
         if (!is_array($payload)) {
             $payload = [];
@@ -77,50 +90,53 @@ class ValidateSignController
         $validation = $this->validator->validate($payload);
 
         if (!empty($validation['missing'])) {
-            $error = Responses::error(
+            $error                   = Responses::error(
                 'rest_missing_required_params',
                 'rest_missing_required_params',
                 'Faltan campos requeridos.'
             );
-            $error['status'] = 400;
+            $error['status']         = 400;
             $error['missing_fields'] = $validation['missing'];
-            $error['request_id'] = $requestId;
+            $error['request_id']     = $requestId;
 
             return new WP_REST_Response($error, 400);
         }
 
         if (!empty($validation['type'])) {
-            $error = Responses::error(
+            $error               = Responses::error(
                 'rest_invalid_param',
                 'rest_invalid_param',
                 'Tipos inválidos detectados.'
             );
-            $error['status'] = 400;
+            $error['status']     = 400;
             $error['type_errors'] = $validation['type'];
             $error['request_id'] = $requestId;
 
             return new WP_REST_Response($error, 400);
         }
 
-        // TODO: Validar snapshot, IDs y reglas de catálogo según docs/plugin-3-g3d-validate-sign.md §6.1.
+        /** @var ValidateRequest $sanitized */
+        $sanitized = $this->sanitizePayload($payload);
 
-        $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+        // TODO(plugin-3-g3d-validate-sign.md §6.1): Validar snapshot, IDs y reglas de catálogo.
+
+        $now       = new DateTimeImmutable('now', new DateTimeZone('UTC'));
         $expiresAt = $this->expiry->calculate(null, $now);
-        $signing = $this->signer->sign($payload, $this->privateKey, $expiresAt);
+        $signing   = $this->signer->sign($sanitized, $this->privateKey, $expiresAt);
 
-        $snapshotId = isset($payload['snapshot_id']) ? (string) $payload['snapshot_id'] : '';
+        $snapshotId = isset($sanitized['snapshot_id']) ? (string) $sanitized['snapshot_id'] : '';
 
         $summary = $payload['summary'] ?? '{{pieza}} · {{material}} — {{color}} · {{textura}} · {{acabado}}';
-// TODO: Calcular summary real (docs/Capa 1 Identificadores Y Naming —
-// Actualizada (slots Abiertos).md, plantilla resumen).
+        // TODO(Capa 1 Identificadores Y Naming — Actualizada (slots Abiertos).md §resumen): calcular summary real.
 
+        /** @var ValidateResponse $response */
         $response = Responses::ok([
-            'sku_hash' => $signing['sku_hash'],
+            'sku_hash'      => $signing['sku_hash'],
             'sku_signature' => $signing['signature'],
-            'expires_at' => $this->expiry->format($expiresAt),
-            'snapshot_id' => $snapshotId,
-            'summary' => $summary,
-            'request_id' => $requestId,
+            'expires_at'    => $this->expiry->format($expiresAt),
+            'snapshot_id'   => $snapshotId,
+            'summary'       => $summary,
+            'request_id'    => $requestId,
         ]);
 
         if (array_key_exists('price', $payload)) {
@@ -141,5 +157,41 @@ class ValidateSignController
     private function generateRequestId(): string
     {
         return bin2hex(random_bytes(16));
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     *
+     * @return ValidateRequest
+     */
+    private function sanitizePayload(array $payload): array
+    {
+        $sanitized = [];
+
+        if (isset($payload['schema_version']) && is_string($payload['schema_version'])) {
+            $sanitized['schema_version'] = $payload['schema_version'];
+        }
+
+        if (isset($payload['snapshot_id']) && is_string($payload['snapshot_id'])) {
+            $sanitized['snapshot_id'] = $payload['snapshot_id'];
+        }
+
+        if (isset($payload['producto_id']) && is_string($payload['producto_id'])) {
+            $sanitized['producto_id'] = $payload['producto_id'];
+        }
+
+        if (isset($payload['locale']) && is_string($payload['locale'])) {
+            $sanitized['locale'] = $payload['locale'];
+        }
+
+        if (isset($payload['state']) && is_array($payload['state'])) {
+            $sanitized['state'] = $payload['state'];
+        }
+
+        if (isset($payload['flags']) && is_array($payload['flags'])) {
+            $sanitized['flags'] = $payload['flags'];
+        }
+
+        return $sanitized;
     }
 }
