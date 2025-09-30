@@ -8,7 +8,6 @@ use DOMDocument;
 use DOMElement;
 use DOMXPath;
 use Gafas3d\WizardModal\UI\Modal;
-
 use PHPUnit\Framework\TestCase;
 use function libxml_clear_errors;
 use function libxml_use_internal_errors;
