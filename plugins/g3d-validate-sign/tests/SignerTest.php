@@ -11,46 +11,57 @@ use RuntimeException;
 
 final class SignerTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        if (!function_exists('sodium_crypto_sign_keypair')) {
+            $this->markTestSkipped(
+                'ext-sodium requerida para las pruebas (ver docs/plugin-3-g3d-validate-sign.md §4.1).'
+            );
+        }
+    }
+
     public function testSignProducesDeterministicSignatureWithDocsContract(): void
     {
-        $signer = new Signer('sig.v1');
-        $keyPair = sodium_crypto_sign_keypair();
+        $signer     = new Signer('sig.v1');
+        $keyPair    = sodium_crypto_sign_keypair();
         $privateKey = sodium_crypto_sign_secretkey($keyPair);
-        $publicKey = sodium_crypto_sign_publickey($keyPair);
+        $publicKey  = sodium_crypto_sign_publickey($keyPair);
 
         $payload = [
             'schema_version' => '1.0.0',
-            'snapshot_id' => 'snap:2025-09-01',
-            'producto_id' => 'prod:rx-classic',
-            'locale' => 'es-ES',
-            'flags' => [
+            'snapshot_id'    => 'snap:2025-09-01',
+            'producto_id'    => 'prod:rx-classic',
+            'locale'         => 'es-ES',
+            'flags'          => [
                 'ab_variant' => 'checkout-a',
             ],
             'state' => [
                 'pieza:moldura' => [
-                    'mat' => 'mat:acetato',
+                    'mat'     => 'mat:acetato',
                     'modelos' => [
                         [
                             'modelo_id' => 'modelo:fr-m1',
-                            'colores' => [
+                            'colores'   => [
                                 'col:negro',
                                 null,
                                 'col:azul',
                             ],
-                            'texturas' => [
+                            'texturas'  => [
                                 'tex:acetato-base',
                             ],
                         ],
                     ],
                     'acabado' => 'fin:clearcoat-high',
-                    'morphs' => null,
+                    'morphs'  => null,
                 ],
                 'pieza:patilla' => [
-                    'mat' => 'mat:acetato',
+                    'mat'     => 'mat:acetato',
                     'modelos' => [
                         [
                             'modelo_id' => 'modelo:tp-p2-l',
-                            'colores' => [
+                            'colores'   => [
                                 'col:negro',
                             ],
                         ],
@@ -61,14 +72,14 @@ final class SignerTest extends TestCase
         ];
 
         $expiresAt = new DateTimeImmutable('2025-10-29T00:00:00+00:00');
-        $result = $signer->sign($payload, $privateKey, $expiresAt);
+        $result    = $signer->sign($payload, $privateKey, $expiresAt);
 
         $signatureParts = explode('.', $result['signature']);
         self::assertCount(4, $signatureParts);
         self::assertSame('sig', $signatureParts[0]);
         self::assertSame('v1', $signatureParts[1]);
 
-        $message = $result['message'];
+        $message        = $result['message'];
         $decodedMessage = $this->base64UrlDecode($signatureParts[2]);
         self::assertSame($message, $decodedMessage);
 
@@ -84,6 +95,7 @@ final class SignerTest extends TestCase
         self::assertSame('es-ES', $messageData['locale']);
         self::assertSame('checkout-a', $messageData['ab_variant']);
         self::assertSame('2025-10-29T00:00:00+00:00', $messageData['expires_at']);
+        self::assertSame('2025-10-29T00:00:00+00:00', $result['expires_at']);
 
         $expectedSkuHash = hash('sha256', $this->canonicalize($payload['state']));
         self::assertSame($expectedSkuHash, $result['sku_hash']);
@@ -91,10 +103,8 @@ final class SignerTest extends TestCase
 
     public function testSignRejectsInvalidPrivateKeyLength(): void
     {
-        $signer = new Signer();
-        $payload = [
-            'state' => [],
-        ];
+        $signer   = new Signer();
+        $payload  = ['state' => []];
         $expiresAt = new DateTimeImmutable('now');
 
         $this->expectException(RuntimeException::class);

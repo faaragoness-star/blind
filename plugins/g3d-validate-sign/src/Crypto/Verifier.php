@@ -15,12 +15,13 @@ class Verifier
      */
     private array $allowedPrefixes;
 
-    public function __construct(array $allowedPrefixes = ['sig.v1'])
+    public function __construct(array $allowedPrefixes = Signer::ALLOWED_SIGNATURE_PREFIXES)
     {
         if (!function_exists('sodium_crypto_sign_verify_detached')) {
             throw new RuntimeException(
-                'ext-sodium requerida (ver docs/plugin-3-g3d-validate-sign.md §4.1 y docs/Capa 3 — Validación, Firma '
-                . 'Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md).'
+                'ext-sodium requerida (ver docs/plugin-3-g3d-validate-sign.md §4.1 y '
+                . 'docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
+                . '(slots Abiertos) — V2 (urls).md).'
             );
         }
 
@@ -48,32 +49,35 @@ class Verifier
             return $this->error(
                 'E_SIGN_INVALID',
                 'sign_invalid',
-                'Formato de firma inválido (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
+                'Formato de firma inválido (ver '
+                . 'docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
                 . '(slots Abiertos) — V2 (urls).md).'
             );
         }
 
-        $prefix = $parts[0] . '.' . $parts[1];
-        $messageEncoded = $parts[2];
+        $prefix           = $parts[0] . '.' . $parts[1];
+        $messageEncoded   = $parts[2];
         $signatureEncoded = $parts[3];
 
         if (!in_array($prefix, $this->allowedPrefixes, true)) {
-            // TODO(doc §firma/prefijos): documentar código específico para prefijos inválidos.
             return $this->error(
-                'E_SIG_PREFIX',
-                'invalid_signature_prefix',
-                'Prefijo de firma no permitido.'
+                'E_SIGN_INVALID',
+                'sign_invalid_prefix',
+                'Prefijo de firma no permitido según '
+                . 'docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
+                . '(slots Abiertos) — V2 (urls).md).'
             );
         }
 
-        $message = $this->base64UrlDecode($messageEncoded);
+        $message      = $this->base64UrlDecode($messageEncoded);
         $rawSignature = $this->base64UrlDecode($signatureEncoded);
 
         if ($message === null || $rawSignature === null) {
             return $this->error(
                 'E_SIGN_INVALID',
                 'sign_invalid',
-                'Firma corrupta (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
+                'Firma corrupta (ver '
+                . 'docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
                 . '(slots Abiertos) — V2 (urls).md).'
             );
         }
@@ -84,7 +88,8 @@ class Verifier
             return $this->error(
                 'E_SIGN_INVALID',
                 'sign_invalid',
-                'Firma Ed25519 inválida (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
+                'Firma Ed25519 inválida (ver '
+                . 'docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
                 . '(slots Abiertos) — V2 (urls).md).'
             );
         }
@@ -95,7 +100,8 @@ class Verifier
             return $this->error(
                 'E_SIGN_INVALID',
                 'sign_invalid',
-                'Payload de firma inválido (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
+                'Payload de firma inválido (ver '
+                . 'docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
                 . '(slots Abiertos) — V2 (urls).md).'
             );
         }
@@ -104,7 +110,8 @@ class Verifier
             return $this->error(
                 'E_SIGN_INVALID',
                 'sign_invalid',
-                'Campos obligatorios ausentes en firma (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
+                'Campos obligatorios ausentes en firma (ver '
+                . 'docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
                 . '(slots Abiertos) — V2 (urls).md, sección SKU, firma y caducidad).'
             );
         }
@@ -113,7 +120,8 @@ class Verifier
             return $this->error(
                 'E_SIGN_INVALID',
                 'sign_invalid',
-                'Tipos inválidos en firma (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
+                'Tipos inválidos en firma (ver '
+                . 'docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
                 . '(slots Abiertos) — V2 (urls).md, sección SKU, firma y caducidad).'
             );
         }
@@ -128,21 +136,23 @@ class Verifier
             return $this->error(
                 'E_SIGN_INVALID',
                 'sign_invalid',
-                'Expiración ausente en firma (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
+                'Expiración ausente en firma (ver '
+                . 'docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
                 . '(slots Abiertos) — V2 (urls).md).'
             );
         }
 
-        $signatureSkuHash = isset($decoded['sku_hash']) ? (string) $decoded['sku_hash'] : '';
-        $signatureSnapshotId = isset($decoded['snapshot_id']) ? (string) $decoded['snapshot_id'] : '';
-        $requestedSkuHash = isset($payload['sku_hash']) ? (string) $payload['sku_hash'] : '';
-        $requestedSnapshotId = isset($payload['snapshot_id']) ? (string) $payload['snapshot_id'] : '';
+        $signatureSkuHash     = isset($decoded['sku_hash']) ? (string) $decoded['sku_hash'] : '';
+        $signatureSnapshotId  = isset($decoded['snapshot_id']) ? (string) $decoded['snapshot_id'] : '';
+        $requestedSkuHash     = isset($payload['sku_hash']) ? (string) $payload['sku_hash'] : '';
+        $requestedSnapshotId  = isset($payload['snapshot_id']) ? (string) $payload['snapshot_id'] : '';
 
         if ($signatureSkuHash !== $requestedSkuHash) {
             return $this->error(
                 'E_SIGN_INVALID',
                 'sign_invalid',
-                'sku_hash no coincide con firma (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
+                'sku_hash no coincide con firma (ver '
+                . 'docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
                 . '(slots Abiertos) — V2 (urls).md).'
             );
         }
@@ -151,14 +161,15 @@ class Verifier
             return $this->error(
                 'E_SIGN_SNAPSHOT_MISMATCH',
                 'sign_snapshot_mismatch',
-                'snapshot_id no coincide con firma (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
+                'snapshot_id no coincide con firma (ver '
+                . 'docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
                 . '(slots Abiertos) — V2 (urls).md).'
             );
         }
 
         return [
-            'ok' => true,
-            'expires_at' => $expiresAt,
+            'ok'          => true,
+            'expires_at'  => $expiresAt,
             'snapshot_id' => $signatureSnapshotId,
         ];
     }
@@ -169,10 +180,10 @@ class Verifier
     private function error(string $code, string $reasonKey, string $detail, int $httpStatus = 400): array
     {
         return [
-            'ok' => false,
-            'code' => $code,
-            'reason_key' => $reasonKey,
-            'detail' => $detail,
+            'ok'          => false,
+            'code'        => $code,
+            'reason_key'  => $reasonKey,
+            'detail'      => $detail,
             'http_status' => $httpStatus,
         ];
     }

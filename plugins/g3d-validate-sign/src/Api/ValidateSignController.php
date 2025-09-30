@@ -9,7 +9,6 @@ use DateTimeZone;
 use G3D\ValidateSign\Crypto\Signer;
 use G3D\ValidateSign\Domain\Expiry;
 use G3D\ValidateSign\Validation\RequestValidator;
-use G3D\VendorBase\Rest\Responses;
 use G3D\VendorBase\Rest\Security;
 use WP_Error;
 use WP_REST_Request;
@@ -90,29 +89,29 @@ class ValidateSignController
         $validation = $this->validator->validate($payload);
 
         if (!empty($validation['missing'])) {
-            $error = Responses::error(
-                'E_MISSING_REQUIRED',
-                'missing_required',
-                'Faltan campos requeridos.'
-            );
             // TODO(doc §errores): documentar missing_fields en errores REST.
-            $error['missing_fields'] = $validation['missing'];
-            $error['request_id']     = $requestId;
-
-            return new WP_REST_Response($error, 400);
+            return new WP_Error(
+                'rest_missing_required_params',
+                'Faltan campos requeridos.',
+                [
+                    'status' => 400,
+                    'request_id' => $requestId,
+                    'missing_fields' => $validation['missing'],
+                ]
+            );
         }
 
         if (!empty($validation['type'])) {
-            $error = Responses::error(
-                'E_INVALID_PARAM',
-                'invalid_param',
-                'Tipos inválidos detectados.'
-            );
             // TODO(doc §errores): documentar type_errors en errores REST.
-            $error['type_errors'] = $validation['type'];
-            $error['request_id']  = $requestId;
-
-            return new WP_REST_Response($error, 400);
+            return new WP_Error(
+                'rest_invalid_param',
+                'Tipos inválidos detectados.',
+                [
+                    'status' => 400,
+                    'request_id' => $requestId,
+                    'type_errors' => $validation['type'],
+                ]
+            );
         }
 
         /** @var ValidateSignPayload $sanitized */
@@ -130,14 +129,15 @@ class ValidateSignController
         // TODO(Capa 1 Identificadores Y Naming — Actualizada (slots Abiertos).md §resumen): calcular summary real.
 
         /** @var ValidateResponse $response */
-        $response = Responses::ok([
-            'sku_hash'      => $signing['sku_hash'],
+        $response = [
+            'ok' => true,
+            'sku_hash' => $signing['sku_hash'],
             'sku_signature' => $signing['signature'],
-            'expires_at'    => $this->expiry->format($expiresAt),
-            'snapshot_id'   => $snapshotId,
-            'summary'       => $summary,
-            'request_id'    => $requestId,
-        ]);
+            'expires_at' => $signing['expires_at'],
+            'snapshot_id' => $snapshotId,
+            'summary' => $summary,
+            'request_id' => $requestId,
+        ];
 
         if (array_key_exists('price', $payload)) {
             $response['price'] = is_numeric($payload['price']) ? (float) $payload['price'] : $payload['price'];
