@@ -994,6 +994,10 @@
 
       var params = { producto_id: productoId };
 
+      if (snapshotId) {
+        params.snapshot_id = snapshotId;
+      }
+
       if (locale) {
         params.locale = locale;
       }
