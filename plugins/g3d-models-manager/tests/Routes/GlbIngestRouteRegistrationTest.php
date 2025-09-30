@@ -29,7 +29,11 @@ namespace G3D\ModelsManager\Tests\Routes {
             /** @var list<array{namespace:string,route:string,args:array<string,mixed>}> $routes */
             $routes = $GLOBALS['g3d_tests_registered_rest_routes'];
             self::assertIsArray($routes);
-            self::assertTrue(self::routeExists('g3d/v1', '/glb-ingest', 'POST'), 'Debe registrar POST /g3d/v1/glb-ingest.');
+
+            self::assertTrue(
+                self::routeExists('g3d/v1', '/glb-ingest', 'POST'),
+                'Debe registrar POST /g3d/v1/glb-ingest.'
+            );
         }
 
         private static function routeExists(string $ns, string $route, string $method): bool
