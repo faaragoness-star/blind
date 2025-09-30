@@ -10,6 +10,30 @@
 
   global.G3DWIZARD = global.G3DWIZARD || {};
 
+  function getJSON(url, params, options) {
+    var query = '';
+
+    if (params && Object.keys(params).length) {
+      query =
+        '?' +
+        Object.keys(params)
+          .map(function (key) {
+            return (
+              encodeURIComponent(key) + '=' + encodeURIComponent(params[key])
+            );
+          })
+          .join('&');
+    }
+
+    var init = { method: 'GET' };
+
+    if (options && options.signal) {
+      init.signal = options.signal;
+    }
+
+    return fetch(url + query, init);
+  }
+
   global.G3DWIZARD.getJson =
     global.G3DWIZARD.getJson ||
     (async function (url, params, options) {
@@ -974,25 +998,13 @@
         setBusy(rulesContainer, true);
       }
 
-      if (!productoId) {
-        lastRules = null;
-        setRulesSummaryMessage('Reglas ERROR — missing producto_id');
-        // TODO(docs/plugin-2-g3d-catalog-rules.md §6 APIs / Contratos (lectura))
-        // confirmar parámetros requeridos.
+      var params = {};
 
-        releaseButtons();
-        setBusy(message, false);
-
-        if (rulesContainer) {
-          setBusy(rulesContainer, false);
-        }
-
-        gateCtasByRules(lastRules);
-
-        return;
+      if (productoId) {
+        // TODO(docs/plugin-2-g3d-catalog-rules.md §6 APIs / Contratos (lectura)):
+        // confirmar si el parámetro usa snake_case exacto.
+        params.producto_id = productoId;
       }
-
-      var params = { producto_id: productoId };
 
       if (snapshotId) {
         params.snapshot_id = snapshotId;
@@ -1025,7 +1037,7 @@
       var signal = controller ? controller.signal : undefined;
 
       try {
-        var response = await global.G3DWIZARD.getJson(url, params, {
+        var response = await getJSON(url, params, {
           signal: signal,
         });
 
