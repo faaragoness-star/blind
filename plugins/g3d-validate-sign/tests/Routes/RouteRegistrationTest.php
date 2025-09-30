@@ -12,7 +12,7 @@ final class RouteRegistrationTest extends TestCase
     {
         parent::setUpBeforeClass();
 
-        // Carga bootstrap y plugin sin producir efectos a nivel de archivo.
+        // Carga bootstrap y plugin sin efectos a nivel de archivo (evita side-effects en PSR-12).
         require_once __DIR__ . '/../../../g3d-vendor-base-helper/tests/bootstrap.php';
         require_once __DIR__ . '/../../plugin.php';
     }
