@@ -64,35 +64,29 @@ class ValidateSignController
         $validation = $this->validator->validate($payload);
 
         if (!empty($validation['missing'])) {
-            return new WP_REST_Response(
-                Responses::error(
-                    'rest_missing_required_params',
-                    'rest_missing_required_params',
-                    'Faltan campos requeridos.',
-                    [
-                        'status' => 400,
-                        'missing_fields' => $validation['missing'],
-                        'request_id' => $requestId,
-                    ]
-                ),
-                400
+            $error = Responses::error(
+                'rest_missing_required_params',
+                'rest_missing_required_params',
+                'Faltan campos requeridos.'
             );
+            $error['status'] = 400;
+            $error['missing_fields'] = $validation['missing'];
+            $error['request_id'] = $requestId;
+
+            return new WP_REST_Response($error, 400);
         }
 
         if (!empty($validation['type'])) {
-            return new WP_REST_Response(
-                Responses::error(
-                    'rest_invalid_param',
-                    'rest_invalid_param',
-                    'Tipos inválidos detectados.',
-                    [
-                        'status' => 400,
-                        'type_errors' => $validation['type'],
-                        'request_id' => $requestId,
-                    ]
-                ),
-                400
+            $error = Responses::error(
+                'rest_invalid_param',
+                'rest_invalid_param',
+                'Tipos inválidos detectados.'
             );
+            $error['status'] = 400;
+            $error['type_errors'] = $validation['type'];
+            $error['request_id'] = $requestId;
+
+            return new WP_REST_Response($error, 400);
         }
 
         // TODO: Validar snapshot, IDs y reglas de catálogo según docs/plugin-3-g3d-validate-sign.md §6.1.
@@ -107,15 +101,14 @@ class ValidateSignController
 // TODO: Calcular summary real (docs/Capa 1 Identificadores Y Naming —
 // Actualizada (slots Abiertos).md, plantilla resumen).
 
-        $response = [
-            'ok' => true,
+        $response = Responses::ok([
             'sku_hash' => $signing['sku_hash'],
             'sku_signature' => $signing['signature'],
             'expires_at' => $this->expiry->format($expiresAt),
             'snapshot_id' => $snapshotId,
             'summary' => $summary,
             'request_id' => $requestId,
-        ];
+        ]);
 
         if (array_key_exists('price', $payload)) {
             $response['price'] = is_numeric($payload['price']) ? (float) $payload['price'] : $payload['price'];

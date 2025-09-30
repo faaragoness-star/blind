@@ -260,14 +260,33 @@ if (!function_exists('current_user_can')) {
 if (!function_exists('wp_verify_nonce')) {
     function wp_verify_nonce(string $nonce, string $action = 'wp_rest'): bool
     {
-        // TODO(doc §auth)
-        return true;
+        return \Test_Env\Nonce::verify($nonce, $action);
     }
 }
 
 }
 
 namespace Test_Env {
+    final class Nonce
+    {
+        private static bool $allow = true;
+
+        public static function allow(): void
+        {
+            self::$allow = true;
+        }
+
+        public static function deny(): void
+        {
+            self::$allow = false;
+        }
+
+        public static function verify(string $nonce, string $action): bool
+        {
+            return self::$allow;
+        }
+    }
+
     final class Perms
     {
         private static bool $allow = true;

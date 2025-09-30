@@ -7,18 +7,24 @@ namespace G3D\VendorBase\Rest;
 final class Responses
 {
     /**
-     * Normaliza payload de error para consistencia entre controladores.
-     *
-     * @param array<string,mixed> $extra
+     * @param array<string,mixed> $data
      * @return array<string,mixed>
      */
-    public static function error(string $code, string $reasonKey, string $detail, array $extra = []): array
+    public static function ok(array $data = []): array
     {
-        return \array_merge([
+        return ['ok' => true] + $data;
+    }
+
+    /**
+     * @return array{ok:false,code:string,reason_key:string,detail:string}
+     */
+    public static function error(string $code, string $reasonKey, string $detail): array
+    {
+        return [
             'ok'         => false,
             'code'       => $code,
             'reason_key' => $reasonKey,
             'detail'     => $detail,
-        ], $extra);
+        ];
     }
 }

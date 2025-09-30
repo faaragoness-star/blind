@@ -64,35 +64,29 @@ class VerifyController
         $validation = $this->validator->validate($payload);
 
         if (!empty($validation['missing'])) {
-            return new WP_REST_Response(
-                Responses::error(
-                    'rest_missing_required_params',
-                    'rest_missing_required_params',
-                    'Faltan campos requeridos.',
-                    [
-                        'status' => 400,
-                        'missing_fields' => $validation['missing'],
-                        'request_id' => $requestId,
-                    ]
-                ),
-                400
+            $error = Responses::error(
+                'rest_missing_required_params',
+                'rest_missing_required_params',
+                'Faltan campos requeridos.'
             );
+            $error['status'] = 400;
+            $error['missing_fields'] = $validation['missing'];
+            $error['request_id'] = $requestId;
+
+            return new WP_REST_Response($error, 400);
         }
 
         if (!empty($validation['type'])) {
-            return new WP_REST_Response(
-                Responses::error(
-                    'rest_invalid_param',
-                    'rest_invalid_param',
-                    'Tipos inválidos detectados.',
-                    [
-                        'status' => 400,
-                        'type_errors' => $validation['type'],
-                        'request_id' => $requestId,
-                    ]
-                ),
-                400
+            $error = Responses::error(
+                'rest_invalid_param',
+                'rest_invalid_param',
+                'Tipos inválidos detectados.'
             );
+            $error['status'] = 400;
+            $error['type_errors'] = $validation['type'];
+            $error['request_id'] = $requestId;
+
+            return new WP_REST_Response($error, 400);
         }
 
         $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
@@ -103,9 +97,9 @@ class VerifyController
             $errorResponse = Responses::error(
                 $verification['code'],
                 $verification['reason_key'],
-                $verification['detail'],
-                ['request_id' => $requestId]
+                $verification['detail']
             );
+            $errorResponse['request_id'] = $requestId;
 
             return new WP_REST_Response($errorResponse, 400);
         }
@@ -117,17 +111,16 @@ class VerifyController
                 'E_SIGN_EXPIRED',
                 'sign_expired',
                 'Caducidad agotada (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
-                    . '(slots Abiertos) — V2 (urls).md).',
-                ['request_id' => $requestId]
+                    . '(slots Abiertos) — V2 (urls).md).'
             );
+            $errorResponse['request_id'] = $requestId;
 
             return new WP_REST_Response($errorResponse, 400);
         }
 
-        $response = [
-            'ok' => true,
+        $response = Responses::ok([
             'request_id' => $requestId,
-        ];
+        ]);
 
         return new WP_REST_Response($response, 200);
     }
