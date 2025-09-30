@@ -50,4 +50,3 @@ add_action('admin_menu', static function (): void {
 add_action('plugins_loaded', static function (): void {
     (new AdminAssets(__FILE__))->register();
 });
-
