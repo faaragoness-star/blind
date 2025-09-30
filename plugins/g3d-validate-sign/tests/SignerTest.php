@@ -11,6 +11,15 @@ use RuntimeException;
 
 final class SignerTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        if (!function_exists('sodium_crypto_sign_keypair')) {
+            $this->markTestSkipped('ext-sodium requerida para las pruebas (ver docs/plugin-3-g3d-validate-sign.md §4.1).');
+        }
+    }
+
     public function testSignProducesDeterministicSignatureWithDocsContract(): void
     {
         $signer = new Signer('sig.v1');
@@ -84,6 +93,7 @@ final class SignerTest extends TestCase
         self::assertSame('es-ES', $messageData['locale']);
         self::assertSame('checkout-a', $messageData['ab_variant']);
         self::assertSame('2025-10-29T00:00:00+00:00', $messageData['expires_at']);
+        self::assertSame('2025-10-29T00:00:00+00:00', $result['expires_at']);
 
         $expectedSkuHash = hash('sha256', $this->canonicalize($payload['state']));
         self::assertSame($expectedSkuHash, $result['sku_hash']);

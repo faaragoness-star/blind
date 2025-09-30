@@ -12,11 +12,21 @@ use G3D\ValidateSign\Crypto\Verifier;
 use G3D\ValidateSign\Domain\Expiry;
 use G3D\ValidateSign\Validation\RequestValidator;
 use PHPUnit\Framework\TestCase;
+use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
 
 final class VerifyRouteTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        if (!function_exists('sodium_crypto_sign_keypair')) {
+            $this->markTestSkipped('ext-sodium requerida para las pruebas (ver docs/plugin-3-g3d-validate-sign.md §4.1).');
+        }
+    }
+
     public function testHandleReturnsOkResponseWhenSignatureValidAndFresh(): void
     {
         $schemaPath = __DIR__ . '/../../schemas/verify.request.schema.json';
@@ -90,11 +100,11 @@ final class VerifyRouteTest extends TestCase
         $response = $controller->handle($request);
 
         self::assertInstanceOf(WP_REST_Response::class, $response);
-        self::assertSame(409, $response->get_status());
+        self::assertSame(400, $response->get_status());
         $data = $response->get_data();
         self::assertFalse($data['ok']);
-        self::assertSame('E_EXPIRED', $data['code']);
-        self::assertSame('expired', $data['reason_key']);
+        self::assertSame('E_SIGN_EXPIRED', $data['code']);
+        self::assertSame('sign_expired', $data['reason_key']);
         self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $data['request_id']);
     }
 
@@ -172,8 +182,8 @@ final class VerifyRouteTest extends TestCase
         self::assertSame(400, $response->get_status());
         $data = $response->get_data();
         self::assertFalse($data['ok']);
-        self::assertSame('E_SIG_PREFIX', $data['code']);
-        self::assertSame('invalid_signature_prefix', $data['reason_key']);
+        self::assertSame('E_SIGN_INVALID', $data['code']);
+        self::assertSame('sign_invalid_prefix', $data['reason_key']);
         self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $data['request_id']);
     }
 
@@ -232,13 +242,14 @@ final class VerifyRouteTest extends TestCase
 
         $response = $controller->handle($request);
 
-        self::assertInstanceOf(WP_REST_Response::class, $response);
-        self::assertSame(400, $response->get_status());
-        $data = $response->get_data();
-        self::assertFalse($data['ok']);
-        self::assertSame('E_MISSING_REQUIRED', $data['code']);
-        self::assertSame('missing_required', $data['reason_key']);
+        self::assertInstanceOf(WP_Error::class, $response);
+        self::assertSame('rest_missing_required_params', $response->get_error_code());
+        self::assertSame('Faltan campos requeridos.', $response->get_error_message());
+        $data = $response->get_error_data();
+        self::assertIsArray($data);
+        self::assertSame(400, $data['status']);
         self::assertArrayHasKey('missing_fields', $data);
+        self::assertArrayHasKey('request_id', $data);
         self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $data['request_id']);
     }
 
@@ -260,12 +271,13 @@ final class VerifyRouteTest extends TestCase
 
         $response = $controller->handle($request);
 
-        self::assertInstanceOf(WP_REST_Response::class, $response);
-        self::assertSame(400, $response->get_status());
-        $data = $response->get_data();
-        self::assertFalse($data['ok']);
-        self::assertSame('E_INVALID_PARAM', $data['code']);
-        self::assertSame('invalid_param', $data['reason_key']);
+        self::assertInstanceOf(WP_Error::class, $response);
+        self::assertSame('rest_invalid_param', $response->get_error_code());
+        self::assertSame('Tipos inválidos detectados.', $response->get_error_message());
+        $data = $response->get_error_data();
+        self::assertIsArray($data);
+        self::assertSame(400, $data['status']);
+        self::assertArrayHasKey('request_id', $data);
         self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $data['request_id']);
     }
 

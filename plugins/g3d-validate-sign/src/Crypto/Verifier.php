@@ -15,7 +15,7 @@ class Verifier
      */
     private array $allowedPrefixes;
 
-    public function __construct(array $allowedPrefixes = ['sig.v1'])
+    public function __construct(array $allowedPrefixes = Signer::ALLOWED_SIGNATURE_PREFIXES)
     {
         if (!function_exists('sodium_crypto_sign_verify_detached')) {
             throw new RuntimeException(
@@ -58,11 +58,11 @@ class Verifier
         $signatureEncoded = $parts[3];
 
         if (!in_array($prefix, $this->allowedPrefixes, true)) {
-            // TODO(doc §firma/prefijos): documentar código específico para prefijos inválidos.
             return $this->error(
-                'E_SIG_PREFIX',
-                'invalid_signature_prefix',
-                'Prefijo de firma no permitido.'
+                'E_SIGN_INVALID',
+                'sign_invalid_prefix',
+                'Prefijo de firma no permitido según docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada '
+                . '(slots Abiertos) — V2 (urls).md).'
             );
         }
 

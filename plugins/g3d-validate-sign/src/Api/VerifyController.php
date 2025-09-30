@@ -79,29 +79,29 @@ class VerifyController
         $validation = $this->validator->validate($payload);
 
         if (!empty($validation['missing'])) {
-            $error = Responses::error(
-                'E_MISSING_REQUIRED',
-                'missing_required',
-                'Faltan campos requeridos.'
-            );
             // TODO(doc §errores): documentar missing_fields en errores REST.
-            $error['missing_fields'] = $validation['missing'];
-            $error['request_id']     = $requestId;
-
-            return new WP_REST_Response($error, 400);
+            return new WP_Error(
+                'rest_missing_required_params',
+                'Faltan campos requeridos.',
+                [
+                    'status' => 400,
+                    'request_id' => $requestId,
+                    'missing_fields' => $validation['missing'],
+                ]
+            );
         }
 
         if (!empty($validation['type'])) {
-            $error = Responses::error(
-                'E_INVALID_PARAM',
-                'invalid_param',
-                'Tipos inválidos detectados.'
-            );
             // TODO(doc §errores): documentar type_errors en errores REST.
-            $error['type_errors'] = $validation['type'];
-            $error['request_id']  = $requestId;
-
-            return new WP_REST_Response($error, 400);
+            return new WP_Error(
+                'rest_invalid_param',
+                'Tipos inválidos detectados.',
+                [
+                    'status' => 400,
+                    'request_id' => $requestId,
+                    'type_errors' => $validation['type'],
+                ]
+            );
         }
 
         $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
@@ -128,13 +128,13 @@ class VerifyController
 
         if ($this->expiry->isExpired($expiresAt, $now)) {
             $errorResponse = Responses::error(
-                'E_EXPIRED',
-                'expired',
-                'Caducado.'
+                'E_SIGN_EXPIRED',
+                'sign_expired',
+                'Firma caducada según docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md.'
             );
             $errorResponse['request_id'] = $requestId;
 
-            return new WP_REST_Response($errorResponse, 409);
+            return new WP_REST_Response($errorResponse, 400);
         }
 
         /** @var VerifyResponse $response */

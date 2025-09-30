@@ -35,6 +35,6 @@ class Expiry
     {
         $reference = $now ?? new DateTimeImmutable('now', new DateTimeZone('UTC'));
 
-        return $expiresAt <= $reference;
+        return $expiresAt < $reference;
     }
 }
