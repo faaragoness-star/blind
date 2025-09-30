@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace G3D\CatalogRules\Api;
 
+use G3D\VendorBase\Rest\Responses;
+use G3D\VendorBase\Rest\Security;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -74,19 +76,28 @@ final class RulesReadController
 
     public function handle(WP_REST_Request $request): WP_REST_Response|WP_Error
     {
+        $nonceCheck = Security::checkOptionalNonce($request);
+
+        if ($nonceCheck instanceof WP_Error) {
+            // TODO(docs/plugin-2-g3d-catalog-rules.md §12 Seguridad): confirmar bloqueo ante nonce inválido.
+        }
+
         $productoIdParam = $request->get_param('producto_id');
         $productoId      = is_string($productoIdParam) ? trim($productoIdParam) : '';
 
+        // TODO(docs/plugin-2-g3d-catalog-rules.md §6 APIs / Contratos (lectura)):
+        // confirmar lista y obligatoriedad de parámetros.
         if ($productoId === '') {
-            return new WP_Error(
-                'rest_missing_required_params',
-                'Missing required parameter(s): producto_id.',
-                [
-                    'status' => 400,
-                    'params' => ['producto_id'],
-                ]
+            return new WP_REST_Response(
+                Responses::error('E_MISSING_PARAM', 'missing_param', 'Faltan parámetros requeridos.'),
+                400
             );
         }
+
+        $snapshotIdParam = $request->get_param('snapshot_id');
+        $snapshotId      = is_string($snapshotIdParam) && $snapshotIdParam !== '' ? $snapshotIdParam : null;
+        // TODO(docs/plugin-2-g3d-catalog-rules.md §6 APIs / Contratos (lectura)):
+        // definir uso de snapshot_id cuando aplique.
 
         $localeParam = $request->get_param('locale');
         $locale      = is_string($localeParam) && $localeParam !== '' ? $localeParam : null;

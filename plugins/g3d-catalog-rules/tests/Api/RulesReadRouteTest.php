@@ -6,7 +6,6 @@ namespace G3D\CatalogRules\Tests\Api;
 
 use G3D\CatalogRules\Api\RulesReadController;
 use PHPUnit\Framework\TestCase;
-use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
 
@@ -87,11 +86,18 @@ final class RulesReadRouteTest extends TestCase
 
         $response = $controller->handle($request);
 
-        self::assertInstanceOf(WP_Error::class, $response);
-        self::assertSame('rest_missing_required_params', $response->get_error_code());
+        self::assertInstanceOf(WP_REST_Response::class, $response);
+        self::assertSame(400, $response->get_status());
+
+        $data = $response->get_data();
         self::assertSame(
-            ['status' => 400, 'params' => ['producto_id']],
-            $response->get_error_data()
+            [
+                'ok' => false,
+                'code' => 'E_MISSING_PARAM',
+                'reason_key' => 'missing_param',
+                'detail' => 'Faltan parámetros requeridos.',
+            ],
+            $data
         );
     }
 }

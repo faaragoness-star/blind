@@ -177,6 +177,8 @@
     function buildRulesParams(productoId, snapshotId, locale) {
       var params = {};
 
+      // TODO(docs/plugin-2-g3d-catalog-rules.md §6): confirmar lista definitiva de parámetros públicos.
+
       if (productoId) {
         params.producto_id = productoId;
       }
