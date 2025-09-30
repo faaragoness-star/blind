@@ -88,6 +88,32 @@ if (!function_exists('register_rest_route')) {
     }
 }
 
+// --- Hooks WP mínimos para pruebas ---
+if (!isset($GLOBALS['g3d_tests_wp_actions'])) {
+    /** @var array<string, array<int, array{priority:int, cb:callable}>> $GLOBALS['g3d_tests_wp_actions'] */
+    $GLOBALS['g3d_tests_wp_actions'] = [];
+}
+
+if (!function_exists('add_action')) {
+    function add_action(string $hook, callable $cb, int $priority = 10, int $args = 1): void
+    {
+        $GLOBALS['g3d_tests_wp_actions'][$hook] ??= [];
+        $GLOBALS['g3d_tests_wp_actions'][$hook][] = ['priority' => $priority, 'cb' => $cb];
+    }
+}
+
+if (!function_exists('do_action')) {
+    function do_action(string $hook, mixed ...$params): void
+    {
+        $list = $GLOBALS['g3d_tests_wp_actions'][$hook] ?? [];
+        usort($list, static fn($a, $b) => $a['priority'] <=> $b['priority']);
+
+        foreach ($list as $item) {
+            ($item['cb'])(...$params);
+        }
+    }
+}
+
 if (!class_exists('WP_REST_Request')) {
     class WP_REST_Request
     {
