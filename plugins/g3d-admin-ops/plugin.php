@@ -58,14 +58,20 @@ register_activation_hook(__FILE__, static function (): void {
 add_action('rest_api_init', static function (): void {
     $logger = $GLOBALS['g3d_admin_ops_audit_writer'] ?? null;
 
-    if (!($logger instanceof \G3D\AdminOps\Audit\EditorialActionLogger
-        && $logger instanceof \G3D\AdminOps\Audit\AuditLogReader)
+    if (
+        !(
+            $logger instanceof \G3D\AdminOps\Audit\EditorialActionLogger
+            && $logger instanceof \G3D\AdminOps\Audit\AuditLogReader
+        )
     ) {
         $logger = $GLOBALS['g3d_admin_ops_audit_reader'] ?? null;
     }
 
-    if (!($logger instanceof \G3D\AdminOps\Audit\EditorialActionLogger
-        && $logger instanceof \G3D\AdminOps\Audit\AuditLogReader)
+    if (
+        !(
+            $logger instanceof \G3D\AdminOps\Audit\EditorialActionLogger
+            && $logger instanceof \G3D\AdminOps\Audit\AuditLogReader
+        )
     ) {
         $logger = new \G3D\AdminOps\Audit\InMemoryEditorialActionLogger();
         // TODO(doc §bootstrap): mover a contenedor cuando tengamos DI real.
