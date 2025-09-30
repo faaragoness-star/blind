@@ -124,6 +124,8 @@ final class Modal
             echo '</section>';
         }
 
+        echo '<div class="g3d-wizard-modal__rules" aria-live="polite"></div>';
+
         echo '<footer class="g3d-wizard-modal__footer">';
         echo '<div class="g3d-wizard-modal__summary" aria-live="polite">';
         echo esc_html__(

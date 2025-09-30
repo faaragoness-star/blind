@@ -16,6 +16,15 @@
     return res;
   };
 
+  global.G3DWIZARD.getJson = async function getJson(url, params) {
+    const qs = params && Object.keys(params).length
+      ? '?' + new URLSearchParams(params).toString()
+      : '';
+    const res = await fetch(url + qs, { method: 'GET' });
+
+    return res;
+  };
+
   if (global.console && typeof global.console.log === 'function') {
     global.console.log(global.G3DWIZARD.api);
   }
@@ -31,11 +40,13 @@
       return;
     }
 
-    var dialog = overlay.querySelector('[role="dialog"]');
-    var modal = overlay.querySelector('.g3d-wizard-modal');
+    var root = overlay;
+    var modal = root.querySelector('.g3d-wizard-modal');
+    var dialog = root.querySelector('[role="dialog"]');
     var cta = overlay.querySelector('[data-g3d-wizard-modal-cta]');
     var verifyButton = overlay.querySelector('[data-g3d-wizard-modal-verify]');
     var message = overlay.querySelector('.g3d-wizard-modal__msg');
+    var rulesContainer = modal ? modal.querySelector('.g3d-wizard-modal__rules') : null;
     var lastValidation = null;
     var autoVerify = overlay.getAttribute('data-auto-verify') === '1';
     var previousFocus = null;
@@ -46,6 +57,24 @@
       }
 
       element.textContent = value;
+    }
+
+    function getModalData() {
+      var snapshotId = '';
+      var productoId = '';
+      var locale = '';
+
+      if (modal) {
+        snapshotId = modal.getAttribute('data-snapshot-id') || '';
+        productoId = modal.getAttribute('data-producto-id') || '';
+        locale = modal.getAttribute('data-locale') || '';
+      }
+
+      return {
+        snapshotId: snapshotId,
+        productoId: productoId,
+        locale: locale,
+      };
     }
 
     async function handleCtaClick(event) {
@@ -67,15 +96,10 @@
 
       lastValidation = null;
 
-      var snapshotId = '';
-      var productoId = '';
-      var locale = '';
-
-      if (modal) {
-        snapshotId = modal.getAttribute('data-snapshot-id') || '';
-        productoId = modal.getAttribute('data-producto-id') || '';
-        locale = modal.getAttribute('data-locale') || '';
-      }
+      var modalData = getModalData();
+      var snapshotId = modalData.snapshotId;
+      var productoId = modalData.productoId;
+      var locale = modalData.locale;
 
       if (!locale && wizard.locale) {
         locale = wizard.locale;
@@ -264,6 +288,106 @@
       runVerifyRequest();
     }
 
+    async function fetchRules() {
+      if (!rulesContainer) {
+        return;
+      }
+
+      var wizard = global.G3DWIZARD || {};
+      var api = wizard.api || {};
+
+      if (!api.rules || typeof global.G3DWIZARD.getJson !== 'function') {
+        setText(rulesContainer, 'ERROR — endpoint no disponible');
+
+        return;
+      }
+
+      var modalData = getModalData();
+      var productoId = modalData.productoId;
+      var locale = modalData.locale || wizard.locale || '';
+
+      if (!productoId) {
+        setText(rulesContainer, 'Sin producto configurado');
+
+        return;
+      }
+
+      var params = {
+        producto_id: productoId,
+      };
+
+      if (locale) {
+        params.locale = locale;
+      }
+
+      setText(rulesContainer, 'Cargando reglas…');
+
+      try {
+        var response = await global.G3DWIZARD.getJson(api.rules, params);
+        var data = null;
+
+        try {
+          data = await response.json();
+        } catch (jsonError) {
+          data = null;
+        }
+
+        if (response.ok) {
+          var rules = data && data.rules ? data.rules : null;
+          var sections = rules ? Object.keys(rules) : [];
+          var summaryParts = [];
+
+          if (rules && rules.material_to_modelos) {
+            summaryParts.push(
+              'material_to_modelos:' + Object.keys(rules.material_to_modelos).length
+            );
+          }
+
+          if (rules && rules.material_to_colores) {
+            summaryParts.push(
+              'material_to_colores:' + Object.keys(rules.material_to_colores).length
+            );
+          }
+
+          if (rules && rules.material_to_texturas) {
+            summaryParts.push(
+              'material_to_texturas:' + Object.keys(rules.material_to_texturas).length
+            );
+          }
+
+          var summary = 'Reglas cargadas (' + sections.length + ' secciones)';
+
+          if (sections.length > 0) {
+            summary += ' — ' + sections.join(', ');
+          }
+
+          if (summaryParts.length > 0) {
+            summary += ' | ' + summaryParts.join(' · ');
+          }
+
+          setText(rulesContainer, summary);
+        } else {
+          var code = null;
+
+          if (data) {
+            if (data.reason_key) {
+              code = data.reason_key;
+            } else if (data.code) {
+              code = data.code;
+            }
+          }
+
+          if (!code && response.status) {
+            code = 'HTTP ' + response.status;
+          }
+
+          setText(rulesContainer, 'ERROR — ' + (code || 'desconocido'));
+        }
+      } catch (error) {
+        setText(rulesContainer, 'ERROR — fallo de red');
+      }
+    }
+
     function openModal(event) {
       if (event && typeof event.preventDefault === 'function') {
         event.preventDefault();
@@ -276,6 +400,10 @@
 
       if (dialog && typeof dialog.focus === 'function') {
         dialog.focus();
+      }
+
+      if (rulesContainer) {
+        fetchRules();
       }
     }
 
