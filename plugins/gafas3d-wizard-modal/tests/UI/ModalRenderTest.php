@@ -22,6 +22,8 @@ final class ModalRenderTest extends TestCase
         self::assertStringContainsString('data-snapshot-id=""', $output);
         self::assertStringContainsString('data-producto-id=""', $output);
         self::assertStringContainsString('data-locale="', $output);
+        self::assertStringContainsString('data-actor-id=""', $output);
+        self::assertStringContainsString('data-what=""', $output);
         self::assertMatchesRegularExpression(
             '/<footer[^>]*>.*class="g3d-wizard-modal__rules"/s',
             $output

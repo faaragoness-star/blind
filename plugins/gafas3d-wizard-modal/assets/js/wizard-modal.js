@@ -53,6 +53,7 @@
     var rulesContainer = modal ? modal.querySelector('.g3d-wizard-modal__rules') : null;
     var lastValidation = null;
     var autoVerify = overlay.getAttribute('data-auto-verify') === '1';
+    var shouldAutoAudit = modal && modal.getAttribute('data-auto-audit') === '1';
     var previousFocus = null;
 
     function setText(element, value) {
@@ -61,6 +62,57 @@
       }
 
       element.textContent = value;
+    }
+
+    function audit(action, extras) {
+      try {
+        if (!modal) {
+          return;
+        }
+
+        var wizard = global.G3DWIZARD || {};
+        var api = wizard.api || {};
+
+        if (!api.audit || typeof wizard.postJson !== 'function') {
+          return;
+        }
+
+        var actor = modal.getAttribute('data-actor-id') || '';
+        var what = modal.getAttribute('data-what') || '';
+
+        if (!actor || !what) {
+          return;
+        }
+
+        var payload = {
+          actor_id: actor,
+          action: action,
+          context: Object.assign({ what: what }, extras || {}),
+        };
+
+        wizard
+          .postJson(api.audit, payload)
+          .then(function (response) {
+            if (
+              response &&
+              (response.status === 401 || response.status === 403) &&
+              global.console &&
+              typeof global.console.debug === 'function'
+            ) {
+              // TODO(doc §RBAC): revisar permisos para /audit.
+              global.console.debug('Audit endpoint denied access.');
+            }
+
+            return response;
+          })
+          .catch(function () {
+            if (global.console && typeof global.console.debug === 'function') {
+              global.console.debug('Audit request failed.');
+            }
+          });
+      } catch (error) {
+        // no-op
+      }
     }
 
     function getModalData() {
@@ -174,8 +226,15 @@
               data && typeof data.sku_signature === 'string'
                 ? data.sku_signature
                 : '',
-            snapshot_id: snapshotValue,
+            snapshot_id: snapshotValue || '',
           };
+
+          if (shouldAutoAudit) {
+            audit('validate_sign_success', {
+              snapshot_id: lastValidation.snapshot_id || '',
+              // TODO(Plugin 5 §Auditoría): campos adicionales permitidos
+            });
+          }
 
           if (autoVerify) {
             runVerifyRequest();
@@ -255,6 +314,12 @@
         if (response.ok && data && data.ok === true) {
           var requestId = data.request_id ? data.request_id : '-';
           setText(message, 'Verificado OK — request_id: ' + requestId);
+
+          if (shouldAutoAudit) {
+            audit('verify_success', {
+              snapshot_id: (lastValidation && lastValidation.snapshot_id) || '',
+            });
+          }
         } else {
           var code = null;
 
