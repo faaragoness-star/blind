@@ -148,5 +148,4 @@ final class ValidateSignRouteTest extends TestCase
         self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $data['request_id']);
         self::assertArrayHasKey('type_errors', $data);
     }
-
 }
