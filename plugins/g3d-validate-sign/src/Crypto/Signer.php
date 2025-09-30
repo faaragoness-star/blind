@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace G3D\ValidateSign\Crypto;
 
 use DateTimeImmutable;
+use DateTimeInterface;
+use DateTimeZone;
 use RuntimeException;
 
 class Signer
@@ -49,10 +51,12 @@ class Signer
             $abVariant = (string) $payload['flags']['ab_variant'];
         }
 
+        $expiresAtUtc = $expiresAt->setTimezone(new DateTimeZone('UTC'));
+
         $messagePayload = [
             'sku_hash' => $skuHash,
             'snapshot_id' => $snapshotId,
-            'expires_at' => $expiresAt->format(DATE_ATOM),
+            'expires_at' => $expiresAtUtc->format(DateTimeInterface::ATOM),
             'locale' => $locale,
             'ab_variant' => $abVariant,
         ];

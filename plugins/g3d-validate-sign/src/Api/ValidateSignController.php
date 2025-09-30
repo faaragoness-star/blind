@@ -16,7 +16,7 @@ use WP_REST_Request;
 use WP_REST_Response;
 
 /**
- * @phpstan-type ValidateRequest array{
+ * @phpstan-type ValidateSignPayload array{
  *   schema_version?: string,
  *   snapshot_id?: string,
  *   producto_id?: string,
@@ -90,12 +90,12 @@ class ValidateSignController
         $validation = $this->validator->validate($payload);
 
         if (!empty($validation['missing'])) {
-            $error                   = Responses::error(
-                'rest_missing_required_params',
-                'rest_missing_required_params',
+            $error = Responses::error(
+                'E_MISSING_REQUIRED',
+                'missing_required',
                 'Faltan campos requeridos.'
             );
-            $error['status']         = 400;
+            // TODO(doc §errores): documentar missing_fields en errores REST.
             $error['missing_fields'] = $validation['missing'];
             $error['request_id']     = $requestId;
 
@@ -103,19 +103,19 @@ class ValidateSignController
         }
 
         if (!empty($validation['type'])) {
-            $error               = Responses::error(
-                'rest_invalid_param',
-                'rest_invalid_param',
+            $error = Responses::error(
+                'E_INVALID_PARAM',
+                'invalid_param',
                 'Tipos inválidos detectados.'
             );
-            $error['status']     = 400;
+            // TODO(doc §errores): documentar type_errors en errores REST.
             $error['type_errors'] = $validation['type'];
-            $error['request_id'] = $requestId;
+            $error['request_id']  = $requestId;
 
             return new WP_REST_Response($error, 400);
         }
 
-        /** @var ValidateRequest $sanitized */
+        /** @var ValidateSignPayload $sanitized */
         $sanitized = $this->sanitizePayload($payload);
 
         // TODO(plugin-3-g3d-validate-sign.md §6.1): Validar snapshot, IDs y reglas de catálogo.
@@ -162,7 +162,7 @@ class ValidateSignController
     /**
      * @param array<string, mixed> $payload
      *
-     * @return ValidateRequest
+     * @return ValidateSignPayload
      */
     private function sanitizePayload(array $payload): array
     {
