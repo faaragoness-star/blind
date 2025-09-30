@@ -3,7 +3,34 @@
 declare(strict_types=1);
 
 namespace {
-    require __DIR__ . '/../vendor/autoload.php';
+    $vendorBaseBootstrap = __DIR__ . '/../../g3d-vendor-base-helper/tests/bootstrap.php';
+    if (is_file($vendorBaseBootstrap)) {
+        require_once $vendorBaseBootstrap;
+    }
+
+    $autoload = __DIR__ . '/../vendor/autoload.php';
+    if (is_file($autoload)) {
+        require $autoload;
+    }
+
+    $rootAutoload = __DIR__ . '/../../vendor/autoload.php';
+    if (is_file($rootAutoload)) {
+        require $rootAutoload;
+    }
+
+    spl_autoload_register(static function (string $class): void {
+        if (!str_starts_with($class, 'G3D\\ModelsManager\\')) {
+            return;
+        }
+
+        $relative     = substr($class, strlen('G3D\\ModelsManager\\'));
+        $relativePath = str_replace('\\', '/', $relative);
+        $file         = __DIR__ . '/../src/' . $relativePath . '.php';
+
+        if (is_file($file)) {
+            require_once $file;
+        }
+    });
 
     if (!function_exists('register_rest_route')) {
         function register_rest_route(string $namespace, string $route, array $args): void
@@ -136,23 +163,25 @@ namespace {
 }
 
 namespace Test_Env {
-    final class Perms
-    {
-        private static bool $allowAll = false;
-
-        public static function allows(string $cap): bool
+    if (!class_exists(Perms::class)) {
+        final class Perms
         {
-            return self::$allowAll;
-        }
+            private static bool $allowAll = false;
 
-        public static function allowAll(): void
-        {
-            self::$allowAll = true;
-        }
+            public static function allows(string $cap): bool
+            {
+                return self::$allowAll;
+            }
 
-        public static function denyAll(): void
-        {
-            self::$allowAll = false;
+            public static function allowAll(): void
+            {
+                self::$allowAll = true;
+            }
+
+            public static function denyAll(): void
+            {
+                self::$allowAll = false;
+            }
         }
     }
 }
