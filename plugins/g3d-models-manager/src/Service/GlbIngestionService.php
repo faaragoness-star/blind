@@ -18,7 +18,7 @@ use RuntimeException;
  *   validation: Validation
  * }
  */
-final class GlbIngestionService
+class GlbIngestionService
 {
     /**
      * @param array<string,mixed> $file  $_FILES['...']-like: tmp_name, name, size, error
