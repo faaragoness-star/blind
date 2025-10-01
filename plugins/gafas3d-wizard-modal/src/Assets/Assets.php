@@ -67,6 +67,7 @@ final class Assets
                 'api' => [
                     'validateSign' => rest_url('g3d/v1/validate-sign'),
                     'verify' => rest_url('g3d/v1/verify'),
+                    // TODO(plugin-2-g3d-catalog-rules.md §6): confirmar ruta pública.
                     'rules' => rest_url('g3d/v1/catalog/rules'),
                 ],
                 'nonce' => wp_create_nonce('wp_rest'),

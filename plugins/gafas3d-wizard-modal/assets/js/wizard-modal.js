@@ -10,17 +10,9 @@
 
   global.G3DWIZARD = global.G3DWIZARD || {};
 
-  global.G3DWIZARD.getJson = async function getJson(url, params) {
-    const qs = params && Object.keys(params).length
-      ? '?' + new URLSearchParams(params).toString()
-      : '';
-    const res = await fetch(url + qs, {
-      method: 'GET',
-      headers: {
-        'X-WP-Nonce': (global.G3DWIZARD && global.G3DWIZARD.nonce) || ''
-      }
-    });
-
+  global.G3DWIZARD.getJson = async function getJson(url, query) {
+    const qs = query ? '?' + new URLSearchParams(query).toString() : '';
+    const res = await fetch(url + qs, { method: 'GET' });
     return res;
   };
 
@@ -805,7 +797,11 @@
       var payload = data && typeof data === 'object' ? data : {};
       var rulesList = Array.isArray(payload.rules) ? payload.rules : [];
 
-      return 'Reglas cargadas: ' + String(rulesList.length);
+      return (
+        'Reglas cargadas (' +
+        String(rulesList.length) +
+        ') — TODO(plugin-4-gafas3d-wizard-modal.md §5.6).'
+      );
     }
 
     function formatRulesError(response, payload) {
@@ -1308,6 +1304,7 @@
       rulesPromise = getJSON(endpoint, params);
 
       setRulesBusyState(true);
+      setRulesSummaryMessage(__('Cargando…', TEXT_DOMAIN));
 
       try {
         var result = await rulesPromise;
