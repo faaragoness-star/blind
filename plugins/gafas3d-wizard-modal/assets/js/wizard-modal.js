@@ -172,18 +172,6 @@
     el.textContent = s;
   }
 
-  function isHorizontal(list) {
-    return (list.getAttribute('aria-orientation') || 'horizontal') === 'horizontal';
-  }
-
-  function tabsAndPanels(root) {
-    var list = root.querySelector('[role="tablist"]');
-    var tabs = list ? list.querySelectorAll('[role="tab"]') : [];
-    var panels = root.querySelectorAll('[role="tabpanel"]');
-
-    return { list: list, tabs: tabs, panels: panels };
-  }
-
   function findPanelById(panels, id) {
     var panel = null;
 
@@ -194,64 +182,6 @@
     });
 
     return panel;
-  }
-
-  function setActive(tab, tabs, panels) {
-    if (!tab) {
-      return;
-    }
-
-    if (tab.disabled) {
-      return;
-    }
-
-    if (tab.hasAttribute('aria-disabled')) {
-      var disabledValue = tab.getAttribute('aria-disabled');
-
-      if (disabledValue === 'true' || disabledValue === '1') {
-        return;
-      }
-    }
-
-    var target = tab.getAttribute('aria-controls');
-    var shouldFocus = arguments.length < 4 ? true : !!arguments[3];
-    var panel = null;
-
-    if (!target) {
-      if (global.console && typeof global.console.warn === 'function') {
-        global.console.warn('G3DWIZARD: tab sin aria-controls.');
-      }
-
-      // TODO(doc §estructura tabs)
-      return;
-    }
-
-    panel = findPanelById(panels, target);
-
-    if (!panel) {
-      if (global.console && typeof global.console.warn === 'function') {
-        global.console.warn(
-          'G3DWIZARD: aria-controls="' + target + '" sin <tabpanel> asociado.'
-        );
-      }
-
-      // TODO(doc §estructura tabs)
-      return;
-    }
-
-    Array.prototype.forEach.call(tabs, function (t) {
-      var sel = t === tab;
-      t.setAttribute('aria-selected', sel ? 'true' : 'false');
-      t.setAttribute('tabindex', sel ? '0' : '-1');
-    });
-
-    Array.prototype.forEach.call(panels, function (p) {
-      p.hidden = p.id !== target;
-    });
-
-    if (shouldFocus && typeof tab.focus === 'function') {
-      tab.focus();
-    }
   }
 
   global.G3DWIZARD.postJson = async function postJson(url, body) {
@@ -302,10 +232,78 @@
     var rulesContainer = modal
       ? modal.querySelector('[data-g3d-wizard-rules]')
       : null;
-    var tabSetup = tabsAndPanels(root);
-    var tablist = tabSetup.list;
-    var tabs = tabSetup.tabs;
-    var panels = tabSetup.panels;
+    var tablist = root.querySelector('[role="tablist"]');
+    var tabs = root.querySelectorAll('[role="tab"]');
+    var panels = root.querySelectorAll('[role="tabpanel"]');
+
+    function getTabIndex(el) {
+      return Array.prototype.indexOf.call(tabs, el);
+    }
+
+    function activateTab(tabEl) {
+      if (!tabEl) {
+        return;
+      }
+
+      if (tabEl.disabled) {
+        return;
+      }
+
+      if (tabEl.hasAttribute('aria-disabled')) {
+        var disabledValue = tabEl.getAttribute('aria-disabled');
+
+        if (disabledValue === 'true' || disabledValue === '1') {
+          return;
+        }
+      }
+
+      var target = tabEl.getAttribute('aria-controls');
+
+      if (!target) {
+        if (global.console && typeof global.console.warn === 'function') {
+          global.console.warn('G3DWIZARD: tab sin aria-controls.');
+        }
+
+        // TODO(doc §estructura tabs)
+        return;
+      }
+
+      var panel = findPanelById(panels, target);
+
+      if (!panel) {
+        if (global.console && typeof global.console.warn === 'function') {
+          global.console.warn(
+            'G3DWIZARD: aria-controls="' + target + '" sin <tabpanel> asociado.'
+          );
+        }
+
+        // TODO(doc §estructura tabs)
+        return;
+      }
+
+      Array.prototype.forEach.call(tabs, function (t) {
+        if (!t) {
+          return;
+        }
+
+        var active = t === tabEl;
+
+        t.setAttribute('aria-selected', active ? 'true' : 'false');
+        t.setAttribute('tabindex', active ? '0' : '-1');
+      });
+
+      Array.prototype.forEach.call(panels, function (p) {
+        if (!p) {
+          return;
+        }
+
+        p.hidden = p !== panel;
+      });
+
+      if (typeof tabEl.focus === 'function') {
+        tabEl.focus();
+      }
+    }
     var shouldAutoAudit = modal && modal.getAttribute('data-auto-audit') === '1';
     var previousFocus = null;
     var summaryMessage = '';
@@ -756,83 +754,6 @@
       return value === 'true' || value === '1';
     }
 
-    function setRovingFocus(tabEl) {
-      if (!tabEl || isTabDisabled(tabEl)) {
-        return;
-      }
-
-      Array.prototype.forEach.call(tabs, function (candidate) {
-        if (!candidate) {
-          return;
-        }
-
-        candidate.setAttribute('tabindex', candidate === tabEl ? '0' : '-1');
-      });
-
-      if (typeof tabEl.focus === 'function') {
-        tabEl.focus();
-      }
-    }
-
-    function findNextFocusable(current, step) {
-      if (!tabs || !tabs.length) {
-        return null;
-      }
-
-      var index = Array.prototype.indexOf.call(tabs, current);
-
-      if (index < 0) {
-        return null;
-      }
-
-      var len = tabs.length;
-      var next = index;
-
-      for (var attempt = 0; attempt < len; attempt += 1) {
-        next = (next + step + len) % len;
-        var candidate = tabs[next];
-
-        if (!candidate || isTabDisabled(candidate)) {
-          continue;
-        }
-
-        return candidate;
-      }
-
-      return null;
-    }
-
-    function focusEdge(first) {
-      if (!tabs || !tabs.length) {
-        return;
-      }
-
-      var candidate = null;
-
-      if (first) {
-        Array.prototype.forEach.call(tabs, function (tab) {
-          if (candidate || !tab || isTabDisabled(tab)) {
-            return;
-          }
-
-          candidate = tab;
-        });
-      } else {
-        for (var i = tabs.length - 1; i >= 0; i -= 1) {
-          var tab = tabs[i];
-
-          if (tab && !isTabDisabled(tab)) {
-            candidate = tab;
-            break;
-          }
-        }
-      }
-
-      if (candidate) {
-        setRovingFocus(candidate);
-      }
-    }
-
     function ensureInitialTabsState() {
       if (!tablist || !tabs || !tabs.length) {
         return;
@@ -845,12 +766,20 @@
           return;
         }
 
-        if (tab.getAttribute('aria-selected') === 'true') {
-          var panel = findPanelById(panels, tab.getAttribute('aria-controls'));
+        if (tab.getAttribute('aria-selected') !== 'true') {
+          return;
+        }
 
-          if (panel) {
-            activeTab = tab;
-          }
+        var controlsId = tab.getAttribute('aria-controls');
+
+        if (!controlsId) {
+          return;
+        }
+
+        var panel = findPanelById(panels, controlsId);
+
+        if (panel) {
+          activeTab = tab;
         }
       });
 
@@ -860,7 +789,13 @@
             return;
           }
 
-          var panel = findPanelById(panels, tab.getAttribute('aria-controls'));
+          var controlsId = tab.getAttribute('aria-controls');
+
+          if (!controlsId) {
+            return;
+          }
+
+          var panel = findPanelById(panels, controlsId);
 
           if (panel) {
             activeTab = tab;
@@ -868,13 +803,13 @@
         });
       }
 
-      if (activeTab) {
-        setActive(activeTab, tabs, panels, false);
-      }
-
       if (!activeTab && tabs.length) {
         activeTab = tabs[0];
       }
+
+      var activeControls = activeTab
+        ? activeTab.getAttribute('aria-controls') || ''
+        : '';
 
       Array.prototype.forEach.call(tabs, function (tab) {
         if (!tab) {
@@ -883,8 +818,8 @@
 
         var isActive = tab === activeTab;
 
-        tab.setAttribute('tabindex', isActive ? '0' : '-1');
         tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        tab.setAttribute('tabindex', isActive ? '0' : '-1');
       });
 
       Array.prototype.forEach.call(panels, function (panel) {
@@ -892,16 +827,105 @@
           return;
         }
 
-        if (!activeTab) {
+        if (!activeControls) {
           panel.hidden = true;
 
           return;
         }
 
-        var controls = activeTab.getAttribute('aria-controls');
-
-        panel.hidden = panel.id !== controls;
+        panel.hidden = panel.id !== activeControls;
       });
+    }
+
+    function onTabKeydown(e) {
+      if (!e) {
+        return;
+      }
+
+      var current = e.currentTarget;
+
+      if (!current || isTabDisabled(current)) {
+        return;
+      }
+
+      var total = tabs.length || 0;
+
+      if (!total) {
+        return;
+      }
+
+      var idx = getTabIndex(current);
+
+      if (idx < 0) {
+        return;
+      }
+
+      var next = null;
+      var key = e.key;
+
+      switch (key) {
+        case 'ArrowRight':
+          for (var step = 1; step <= total; step += 1) {
+            var candidateRight = tabs[(idx + step) % total];
+
+            if (candidateRight && !isTabDisabled(candidateRight)) {
+              next = candidateRight;
+              break;
+            }
+          }
+
+          break;
+        case 'ArrowLeft':
+          for (var stepLeft = 1; stepLeft <= total; stepLeft += 1) {
+            var candidateLeft = tabs[(idx - stepLeft + total) % total];
+
+            if (candidateLeft && !isTabDisabled(candidateLeft)) {
+              next = candidateLeft;
+              break;
+            }
+          }
+
+          break;
+        case 'Home':
+          for (var i = 0; i < total; i += 1) {
+            var first = tabs[i];
+
+            if (first && !isTabDisabled(first)) {
+              next = first;
+              break;
+            }
+          }
+
+          break;
+        case 'End':
+          for (var j = total - 1; j >= 0; j -= 1) {
+            var last = tabs[j];
+
+            if (last && !isTabDisabled(last)) {
+              next = last;
+              break;
+            }
+          }
+
+          break;
+        case 'Enter':
+        case ' ':
+        case 'Space':
+        case 'Spacebar':
+          e.preventDefault();
+          activateTab(current);
+
+          return;
+        default:
+          return;
+      }
+
+      if (!next) {
+        return;
+      }
+
+      e.preventDefault();
+      activateTab(next);
     }
 
     ensureInitialTabsState();
@@ -1612,91 +1636,13 @@
     }
 
     if (tablist && tabs.length && panels.length) {
-      tablist.addEventListener('keydown', function (event) {
-        if (!event) {
-          return;
-        }
-
-        var target = event.target;
-
-        if (!target || target.getAttribute('role') !== 'tab') {
-          return;
-        }
-
-        var key = event.key;
-        var horizontal = isHorizontal(tablist);
-        var next = null;
-
-        if (horizontal && key === 'ArrowRight') {
-          event.preventDefault();
-          next = findNextFocusable(target, 1);
-
-          if (next) {
-            setRovingFocus(next);
-          }
-
-          return;
-        }
-
-        if (horizontal && key === 'ArrowLeft') {
-          event.preventDefault();
-          next = findNextFocusable(target, -1);
-
-          if (next) {
-            setRovingFocus(next);
-          }
-
-          return;
-        }
-
-        if (!horizontal && key === 'ArrowDown') {
-          event.preventDefault();
-          next = findNextFocusable(target, 1);
-
-          if (next) {
-            setRovingFocus(next);
-          }
-
-          return;
-        }
-
-        if (!horizontal && key === 'ArrowUp') {
-          event.preventDefault();
-          next = findNextFocusable(target, -1);
-
-          if (next) {
-            setRovingFocus(next);
-          }
-
-          return;
-        }
-
-        if (key === 'Home') {
-          event.preventDefault();
-          focusEdge(true);
-
-          return;
-        }
-
-        if (key === 'End') {
-          event.preventDefault();
-          focusEdge(false);
-
-          return;
-        }
-
-        if (key === 'Enter' || key === ' ' || key === 'Space' || key === 'Spacebar') {
-          event.preventDefault();
-
-          if (isTabDisabled(target)) {
-            return;
-          }
-
-          setActive(target, tabs, panels);
-        }
-      });
-
       Array.prototype.forEach.call(tabs, function (tab) {
+        if (!tab) {
+          return;
+        }
+
+        tab.addEventListener('keydown', onTabKeydown);
+
         tab.addEventListener('click', function (event) {
           if (event && typeof event.preventDefault === 'function') {
             event.preventDefault();
@@ -1706,11 +1652,7 @@
             return;
           }
 
-          setActive(tab, tabs, panels);
-        });
-
-        tab.addEventListener('focus', function () {
-          setRovingFocus(tab);
+          activateTab(tab);
         });
       });
     }
