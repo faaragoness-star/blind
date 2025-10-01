@@ -347,58 +347,18 @@
     }
 
     function gateCtasByRules(rulesPayload) {
-      var payload =
-        rulesPayload && typeof rulesPayload === 'object' ? rulesPayload : null;
+      var enable = true;
 
-      if (!payload) {
-        setButtonEnabledState(cta, false);
-        setButtonEnabledState(verifyButton, false);
-
-        return;
+      if (
+        rulesPayload &&
+        typeof rulesPayload === 'object' &&
+        Object.prototype.hasOwnProperty.call(rulesPayload, 'ok')
+      ) {
+        enable = rulesPayload.ok === true;
       }
 
-      var missing = [];
-
-      if (typeof payload.id !== 'string' || payload.id === '') {
-        missing.push('id');
-      }
-
-      if (typeof payload.producto_id !== 'string' || payload.producto_id === '') {
-        missing.push('producto_id');
-      }
-
-      if (!payload.rules || typeof payload.rules !== 'object') {
-        missing.push('rules');
-      }
-
-      if (missing.length) {
-        setButtonEnabledState(cta, false);
-        setButtonEnabledState(verifyButton, false);
-        setRulesSummaryMessage(
-          'Reglas ERROR — Faltan campos requeridos: ' + missing.join(', ')
-        );
-        // TODO(docs/plugin-2-g3d-catalog-rules.md §6 APIs / Contratos (lectura)):
-        // confirmar parámetros requeridos para habilitar CTA.
-
-        return;
-      }
-
-      if (Object.prototype.hasOwnProperty.call(payload, 'ok')) {
-        if (payload.ok === true) {
-          setButtonEnabledState(cta, true);
-          setButtonEnabledState(verifyButton, true);
-        } else {
-          setButtonEnabledState(cta, false);
-          setButtonEnabledState(verifyButton, false);
-        }
-
-        return;
-      }
-
-      // TODO(docs/plugin-4-gafas3d-wizard-modal.md §5.6 CTA Add to Cart):
-      // confirmar gating exacto para CTAs ante reglas cargadas.
-      setButtonEnabledState(cta, true);
-      setButtonEnabledState(verifyButton, true);
+      setButtonEnabledState(cta, enable);
+      setButtonEnabledState(verifyButton, enable);
     }
 
     function setStatusMessage(value) {
@@ -408,78 +368,77 @@
 
     function formatRulesSummary(data, fallbackSnapshotId) {
       var payload = data && typeof data === 'object' ? data : {};
-      var details = [];
       var snapshotValue = '';
+      var meta = [];
 
-      if (typeof payload.id === 'string' && payload.id) {
-        snapshotValue = payload.id;
-      } else if (
-        typeof payload.snapshot_id === 'string' &&
-        payload.snapshot_id
-      ) {
+      if (typeof payload.snapshot_id === 'string' && payload.snapshot_id) {
         snapshotValue = payload.snapshot_id;
-      } else if (typeof fallbackSnapshotId === 'string' && fallbackSnapshotId) {
+      } else if (
+        typeof fallbackSnapshotId === 'string' &&
+        fallbackSnapshotId
+      ) {
         snapshotValue = fallbackSnapshotId;
       }
 
       if (snapshotValue) {
-        details.push('snapshot: ' + snapshotValue);
+        meta.push('snap: ' + snapshotValue);
       }
 
-      if (typeof payload.ver === 'string' && payload.ver) {
-        details.push('version: ' + payload.ver);
+      if (typeof payload.version === 'string' && payload.version) {
+        meta.push('ver: ' + payload.version);
       }
 
-      var total = 0;
+      var rulesList = Array.isArray(payload.rules) ? payload.rules : [];
+      var message = 'Reglas cargadas: ' + String(rulesList.length);
 
-      if (Array.isArray(payload.rules)) {
-        total = payload.rules.length;
-      } else if (payload.rules && typeof payload.rules === 'object') {
-        total = Object.keys(payload.rules).length;
+      if (meta.length) {
+        message += ' (' + meta.join(' | ') + ')';
       }
 
-      details.push('total: ' + String(total));
-
-      return details.length
-        ? 'Reglas OK — ' + details.join(' | ')
-        : 'Reglas OK';
+      return message;
     }
 
-    function formatRulesError(status, payload) {
-      var detail = '';
-
-      if (payload && typeof payload === 'object') {
-        if (payload.reason_key) {
-          detail = String(payload.reason_key);
-        } else if (payload.code) {
-          detail = String(payload.code);
-        }
-      }
-
-      if (!detail && typeof status === 'number' && status > 0) {
-        detail = 'HTTP ' + String(status);
-      }
-
-      if (!detail) {
-        detail = 'desconocido';
-      }
-
-      return 'Reglas ERROR — ' + detail;
+    function formatRulesError() {
+      return 'Sin reglas';
     }
 
     function formatRulesNetworkError() {
-      return 'Reglas ERROR — NETWORK';
+      return 'Sin reglas';
     }
 
     function getRulesEndpoint() {
       var wizard = global.G3DWIZARD || {};
       var api = wizard.api || {};
 
+      if (typeof api.catalogRules === 'string' && api.catalogRules) {
+        return api.catalogRules;
+      }
+
       if (typeof api.rules === 'string' && api.rules) {
         return api.rules;
       }
 
       return '/wp-json/g3d/v1/catalog/rules';
+    }
+
+    function fetchRules(params, options) {
+      var url = getRulesEndpoint();
+
+      if (!url) {
+        throw new Error('Missing catalog rules endpoint');
+      }
+
+      var query =
+        params && Object.keys(params).length
+          ? '?' + new URLSearchParams(params).toString()
+          : '';
+      var init = { method: 'GET' };
+
+      if (options && options.signal) {
+        init.signal = options.signal;
+      }
+
+      return fetch(url + query, init);
     }
 
     function audit(action, extras) {
@@ -963,11 +922,46 @@
         setBusy(rulesContainer, true);
       }
 
+      var missing = [];
+
+      if (!productoId) {
+        missing.push('producto_id');
+      }
+
+      if (!snapshotId) {
+        missing.push('snapshot_id');
+      }
+
+      if (!locale) {
+        missing.push('locale');
+      }
+
+      if (missing.length) {
+        lastRules = null;
+        setRulesSummaryMessage(
+          'TODO(docs/plugin-2-g3d-catalog-rules.md §6 APIs / Contratos (lectura)): falta ' +
+            missing.join(', ')
+        );
+        setBusy(message, false);
+
+        if (rulesContainer) {
+          setBusy(rulesContainer, false);
+        }
+
+        disableBtn(cta, false);
+
+        if (verifyButton) {
+          disableBtn(verifyButton, false);
+        }
+
+        gateCtasByRules(lastRules);
+
+        return;
+      }
+
       var params = {};
 
       if (productoId) {
-        // TODO(docs/plugin-2-g3d-catalog-rules.md §6 APIs / Contratos (lectura)):
-        // confirmar si el parámetro usa snake_case exacto.
         params.producto_id = productoId;
       }
 
@@ -981,37 +975,11 @@
 
       setRulesSummaryMessage(__('Reglas: cargando…', TEXT_DOMAIN));
 
-      var url = getRulesEndpoint();
-
-      if (!url) {
-        lastRules = null;
-        setRulesSummaryMessage('Reglas ERROR — missing endpoint');
-        setBusy(message, false);
-
-        if (rulesContainer) {
-          setBusy(rulesContainer, false);
-        }
-
-        disableBtn(cta, false);
-
-        if (verifyButton) {
-          disableBtn(verifyButton, false);
-        }
-
-        if (modal) {
-          modal.setAttribute('data-ready', '1');
-        }
-
-        gateCtasByRules(lastRules);
-
-        return;
-      }
-
       const controller = startAbortableRequest();
       var signal = controller ? controller.signal : undefined;
 
       try {
-        var response = await getJSON(url, params, {
+        var response = await fetchRules(params, {
           signal: signal,
         });
 
@@ -1024,21 +992,12 @@
             data = null;
           }
 
-          lastRules = data;
-          setRulesSummaryMessage(formatRulesSummary(data || {}, snapshotId));
+          var parsed = data && typeof data === 'object' ? data : {};
+          lastRules = parsed;
+          setRulesSummaryMessage(formatRulesSummary(parsed, snapshotId));
         } else {
-          var errorPayload = null;
-
-          try {
-            errorPayload = response ? await response.json() : null;
-          } catch (parseError) {
-            errorPayload = null;
-          }
-
           lastRules = null;
-          setRulesSummaryMessage(
-            formatRulesError(response ? response.status : 0, errorPayload)
-          );
+          setRulesSummaryMessage(formatRulesError());
         }
       } catch (error) {
         if (error && error.name === 'AbortError') {

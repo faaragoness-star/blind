@@ -56,6 +56,11 @@ final class AssetsTest extends TestCase
             'http://example.test/wp-json/g3d/v1/audit',
             $localized['api']['audit'] ?? null
         );
+        self::assertArrayHasKey('catalogRules', $localized['api']);
+        self::assertSame(
+            'http://example.test/wp-json/g3d/v1/catalog/rules',
+            $localized['api']['catalogRules'] ?? null
+        );
         self::assertArrayHasKey('rules', $localized['api']);
         self::assertSame(
             'http://example.test/wp-json/g3d/v1/catalog/rules',
