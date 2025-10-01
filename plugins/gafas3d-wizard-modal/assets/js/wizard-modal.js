@@ -11,6 +11,32 @@
   global.G3DWIZARD = global.G3DWIZARD || {};
   global.G3DWIZARD.last = global.G3DWIZARD.last || null;
 
+  global.G3DWIZARD.getJson = async function getJson(url) {
+    if (!url) {
+      return {};
+    }
+
+    try {
+      const res = await fetch(url, {
+        headers: {
+          'X-WP-Nonce': (global.G3DWIZARD && global.G3DWIZARD.nonce) || '',
+        },
+      });
+
+      if (!res.ok) {
+        return {};
+      }
+
+      try {
+        return await res.json();
+      } catch (parseError) {
+        return {};
+      }
+    } catch (requestError) {
+      return {};
+    }
+  };
+
   function readValue(el) {
     if (!el) {
       return undefined;
@@ -173,7 +199,6 @@
   };
 
   global.G3DWIZARD.getJSON = global.G3DWIZARD.getJSON || getJSON;
-  global.G3DWIZARD.getJson = global.G3DWIZARD.getJson || getJSON;
 
   if (global.console && typeof global.console.log === 'function') {
     global.console.log(global.G3DWIZARD.api);
@@ -183,7 +208,7 @@
   var CLOSE_ATTR = 'data-g3d-wizard-modal-close';
   var OVERLAY_ATTR = 'data-g3d-wizard-modal-overlay';
 
-  function init() {
+  async function init() {
     var rootContainer = document.getElementById('gafas3d-wizard-modal-root');
     var overlay = rootContainer
       ? rootContainer.querySelector('[' + OVERLAY_ATTR + ']')
@@ -215,6 +240,37 @@
     var lastRules = null;
     var rulesSelection = {};
     let currentAbort = null;
+
+    const msg = message;
+    const rulesUrl =
+      (global.G3DWIZARD &&
+        global.G3DWIZARD.api &&
+        global.G3DWIZARD.api.rules) ||
+      '';
+
+    if (rulesUrl) {
+      try {
+        const r = await global.G3DWIZARD.getJson(rulesUrl);
+        lastRules = r;
+        const count = r && Array.isArray(r.rules) ? r.rules.length : 0;
+
+        if (msg && count) {
+          msg.textContent = 'Reglas cargadas: ' + String(count);
+        }
+
+        const modalData = getModalData();
+
+        if (
+          (!modalData.productoId || !modalData.snapshotId) &&
+          r &&
+          typeof r === 'object'
+        ) {
+          // TODO(Plugin 4 §pre-fill): definir prellenado cuando se documente.
+        }
+      } catch (rulesError) {
+        // Best effort; sin bloquear.
+      }
+    }
 
     function startAbortableRequest() {
       if (typeof AbortController !== 'function') {
