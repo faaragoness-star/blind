@@ -65,10 +65,10 @@ final class Assets
             'G3DWIZARD',
             [
                 'api' => [
-                    'validateSign' => rest_url('g3d/v1/validate-sign'),
-                    'verify' => rest_url('g3d/v1/verify'),
                     // Público según docs/plugin-2-g3d-catalog-rules.md §2 Visibilidad.
                     'rules' => rest_url('g3d/v1/catalog/rules'),
+                    'validateSign' => rest_url('g3d/v1/validate-sign'),
+                    'verify' => rest_url('g3d/v1/verify'),
                 ],
                 'nonce' => wp_create_nonce('wp_rest'),
                 'locale' => get_locale(),
