@@ -144,6 +144,26 @@
     return query;
   }
 
+  function getJson(url, params) {
+    var qs =
+      params && Object.keys(params).length
+        ? '?' + new URLSearchParams(params).toString()
+        : '';
+    var headers = {
+      'X-WP-Nonce': (global.G3DWIZARD && global.G3DWIZARD.nonce) || '',
+    };
+    var options = {
+      method: 'GET',
+      headers: headers,
+    };
+
+    if (netCtl && netCtl.signal) {
+      options.signal = netCtl.signal;
+    }
+
+    return fetch(url + qs, options);
+  }
+
   function readValue(el) {
     if (!el) {
       return undefined;
@@ -600,20 +620,29 @@
     }
 
     function showRulesError(status, payload) {
-      var code = '';
       var data = payload && typeof payload === 'object' ? payload : {};
+      var statusLabel = 'HTTP 0';
+      var tags = [];
 
-      if (data.code) {
-        code = data.code;
-      } else if (typeof status === 'number') {
-        code = 'HTTP ' + status;
+      if (typeof status === 'number' && status > 0) {
+        statusLabel = 'HTTP ' + status;
       }
 
-      if (!code) {
-        code = 'HTTP 0';
+      if (typeof data.reason_key === 'string' && data.reason_key) {
+        tags.push(data.reason_key);
       }
 
-      setRulesSummaryMessage('ERROR — ' + code);
+      if (typeof data.code === 'string' && data.code) {
+        tags.push(data.code);
+      }
+
+      var message = 'ERROR — ' + statusLabel;
+
+      if (tags.length) {
+        message += ' ' + tags.join(' ');
+      }
+
+      setRulesSummaryMessage(message);
       setRulesListContent('');
     }
 
@@ -1333,7 +1362,7 @@
       var query = {};
 
       if (snapshotId) {
-        query.snapshot_id = snapshotId; // docs/plugin-2-g3d-catalog-rules.md §5 Modelo de datos.
+        query.snapshot_id = snapshotId; // TODO(plugin-2-g3d-catalog-rules.md §6 APIs / Contratos): documentar snapshot_id.
       }
 
       if (productoId) {
@@ -1341,7 +1370,7 @@
       }
 
       if (locale) {
-        query.locale = locale; // docs/plugin-2-g3d-catalog-rules.md §5 Modelo de datos.
+        query.locale = locale; // docs/plugin-2-g3d-catalog-rules.md §6 APIs / Contratos.
       }
 
       var params = buildQuery(query);
@@ -1356,21 +1385,26 @@
       rulesAttempted = false;
       rulesLoaded = false;
 
-      rulesPromise = global.G3DWIZARD.getJsonWithParams(endpoint, params);
+      if (cta) {
+        setButtonEnabledState(cta, false);
+      }
+
+      var request = getJson(endpoint, params);
+      rulesPromise = request;
 
       setRulesBusyState(true);
       showRulesLoading();
 
       try {
-        var response = await rulesPromise;
-        var ok = response && response.ok;
-        var status = response && typeof response.status === 'number' ? response.status : 0;
-        var payload =
-          response && response.data && typeof response.data === 'object'
-            ? response.data
-            : {};
+        var response = await request;
+        var status = typeof response.status === 'number' ? response.status : 0;
+        var payload = await response
+          .json()
+          .catch(function () {
+            return {};
+          });
 
-        if (!ok) {
+        if (!response.ok) {
           rulesAttempted = true;
           rulesLoaded = false;
           wizard.rules = null;
@@ -1381,7 +1415,7 @@
           return;
         }
 
-        var normalized = payload;
+        var normalized = payload && typeof payload === 'object' ? payload : {};
         var rulesField = normalized.rules;
         var hasShape =
           Array.isArray(rulesField) ||
@@ -1434,6 +1468,7 @@
         if (computedCount === 0) {
           rulesLoaded = true;
           showRulesEmpty();
+          setButtonEnabledState(cta, true);
 
           return;
         }
@@ -1441,13 +1476,19 @@
         rulesLoaded = true;
         setRulesSummaryMessage(formatRulesSummary(normalized));
         showRulesList(rulesField);
+        setButtonEnabledState(cta, true);
       } catch (rulesError) {
         rulesAttempted = true;
         rulesLoaded = false;
         wizard.rules = null;
         lastRules = null;
         wizard.lastRules = null;
-        showRulesError(undefined, { code: 'NETWORK' });
+
+        if (rulesError && rulesError.name === 'AbortError') {
+          showRulesError(0, { code: 'ABORT' });
+        } else {
+          showRulesError(0, { code: 'NETWORK' });
+        }
       } finally {
         rulesPromise = null;
         setRulesBusyState(false);
@@ -1482,6 +1523,10 @@
       setSummaryMessage('');
       setRulesSummaryMessage('');
 
+      if (cta) {
+        setButtonEnabledState(cta, false);
+      }
+
       var existingState = wizard.lastRules;
       var wizardRules = wizard.rules;
       var shouldFetchRules = true;
@@ -1498,10 +1543,16 @@
         if (existingState.count === 0) {
           rulesLoaded = true;
           showRulesEmpty();
+          if (cta) {
+            setButtonEnabledState(cta, true);
+          }
         } else if (wizardRules && wizardRules.rules) {
           rulesLoaded = true;
           setRulesSummaryMessage(formatRulesSummary(wizardRules));
           showRulesList(wizardRules.rules);
+          if (cta) {
+            setButtonEnabledState(cta, true);
+          }
         } else {
           rulesLoaded = false;
           showRulesError();
