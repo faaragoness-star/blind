@@ -6,7 +6,6 @@ namespace G3D\CatalogRules\Api;
 
 use G3D\VendorBase\Rest\Responses;
 use G3D\VendorBase\Rest\Security;
-use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
 
@@ -54,11 +53,8 @@ final class RulesReadController
 
     public function handle(WP_REST_Request $request): WP_REST_Response
     {
-        $nonceCheck = Security::checkOptionalNonce($request);
-
-        if ($nonceCheck instanceof WP_Error) {
-            // TODO(docs/plugin-2-g3d-catalog-rules.md §12 Seguridad): confirmar bloqueo ante nonce inválido.
-        }
+        // TODO(plugin-2-g3d-catalog-rules.md §12 Seguridad): definir manejo ante nonce inválido.
+        Security::checkOptionalNonce($request);
 
         $missingParams = [];
         $invalidTypes  = [];
@@ -89,7 +85,7 @@ final class RulesReadController
                 Responses::error(
                     'E_MISSING_PARAMS',
                     'missing_params',
-                    'Faltan parámetros requeridos.'
+                    'Faltan campos requeridos.'
                 ),
                 400
             );

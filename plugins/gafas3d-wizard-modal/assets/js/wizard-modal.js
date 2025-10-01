@@ -11,17 +11,41 @@
   global.G3DWIZARD = global.G3DWIZARD || {};
   global.G3DWIZARD.last = global.G3DWIZARD.last || null;
 
-  global.G3DWIZARD.getJson = async function getJson(url) {
+  function buildQuery(base, params) {
+    const entries = Object.keys(params || {})
+      .filter(function (key) {
+        return params[key] !== '' && params[key] !== undefined;
+      })
+      .map(function (key) {
+        return (
+          encodeURIComponent(key) + '=' + encodeURIComponent(String(params[key]))
+        );
+      });
+
+    if (!entries.length) {
+      return base;
+    }
+
+    return base + '?' + entries.join('&');
+  }
+
+  global.G3DWIZARD.getJson = async function getJson(url, options) {
     if (!url) {
       return {};
     }
 
     try {
-      const res = await fetch(url, {
+      const init = {
         headers: {
           'X-WP-Nonce': (global.G3DWIZARD && global.G3DWIZARD.nonce) || '',
         },
-      });
+      };
+
+      if (options && options.signal) {
+        init.signal = options.signal;
+      }
+
+      const res = await fetch(url, init);
 
       if (!res.ok) {
         return {};
@@ -142,34 +166,6 @@
     }
   }
 
-  async function getJSON(url, params, options) {
-    var query = '';
-
-    if (params && Object.keys(params).length) {
-      query = '?' + new URLSearchParams(params).toString();
-    }
-
-    var init = { method: 'GET' };
-
-    if (options && options.signal) {
-      init.signal = options.signal;
-    }
-
-    var response = await fetch(url + query, init);
-
-    if (!response.ok) {
-      var requestError = new Error('Request failed');
-      requestError.status = response.status;
-      throw requestError;
-    }
-
-    try {
-      return await response.json();
-    } catch (parseError) {
-      return {};
-    }
-  }
-
   function setText(el, s) {
     if (!el) {
       return;
@@ -197,8 +193,6 @@
 
     return res;
   };
-
-  global.G3DWIZARD.getJSON = global.G3DWIZARD.getJSON || getJSON;
 
   if (global.console && typeof global.console.log === 'function') {
     global.console.log(global.G3DWIZARD.api);
@@ -247,10 +241,22 @@
         global.G3DWIZARD.api &&
         global.G3DWIZARD.api.rules) ||
       '';
+    const initialModalData = getModalData();
+    const wizard = global.G3DWIZARD || {};
+    const initialProductoId = initialModalData.productoId || '';
+    const initialSnapshotId = initialModalData.snapshotId || '';
+    const initialLocale =
+      initialModalData.locale || wizard.locale || '';
 
     if (rulesUrl) {
       try {
-        const r = await global.G3DWIZARD.getJson(rulesUrl);
+        const initialUrl = buildQuery(rulesUrl, {
+          // TODO(doc Capa 2 §params): incluir solo los que el doc defina
+          ...(initialProductoId ? { producto_id: initialProductoId } : {}),
+          ...(initialSnapshotId ? { snapshot_id: initialSnapshotId } : {}),
+          ...(initialLocale ? { locale: initialLocale } : {}),
+        });
+        const r = await global.G3DWIZARD.getJson(initialUrl);
         lastRules = r;
         const count = r && Array.isArray(r.rules) ? r.rules.length : 0;
 
@@ -258,10 +264,8 @@
           msg.textContent = 'Reglas cargadas: ' + String(count);
         }
 
-        const modalData = getModalData();
-
         if (
-          (!modalData.productoId || !modalData.snapshotId) &&
+          (!initialModalData.productoId || !initialModalData.snapshotId) &&
           r &&
           typeof r === 'object'
         ) {
@@ -1014,20 +1018,6 @@
         return;
       }
 
-      var params = {};
-
-      if (productoId) {
-        params.producto_id = productoId;
-      }
-
-      if (snapshotId) {
-        params.snapshot_id = snapshotId;
-      }
-
-      if (locale) {
-        params.locale = locale;
-      }
-
       setRulesSummaryMessage(__('Reglas: cargando…', TEXT_DOMAIN));
       showRulesLoading();
 
@@ -1040,8 +1030,13 @@
         if (!endpoint) {
           throw new Error('Missing catalog rules endpoint');
         }
-
-        var data = await getJSON(endpoint, params, { signal: signal });
+        var requestUrl = buildQuery(endpoint, {
+          // TODO(doc Capa 2 §params): incluir solo los que el doc defina
+          ...(productoId ? { producto_id: productoId } : {}),
+          ...(snapshotId ? { snapshot_id: snapshotId } : {}),
+          ...(locale ? { locale: locale } : {}),
+        });
+        var data = await global.G3DWIZARD.getJson(requestUrl, { signal: signal });
         var parsed = data && typeof data === 'object' ? data : {};
 
         lastRules = parsed;
