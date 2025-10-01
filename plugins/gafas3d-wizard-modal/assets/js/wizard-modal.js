@@ -786,58 +786,33 @@
       return true;
     }
 
-    function formatRulesSummary(data, fallbackSnapshotId) {
+    function formatRulesSummary(data) {
       var payload = data && typeof data === 'object' ? data : {};
-      var snapshotValue = '';
-      var meta = [];
-
-      if (typeof payload.snapshot_id === 'string' && payload.snapshot_id) {
-        snapshotValue = payload.snapshot_id;
-      } else if (
-        typeof fallbackSnapshotId === 'string' &&
-        fallbackSnapshotId
-      ) {
-        snapshotValue = fallbackSnapshotId;
-      }
-
-      if (snapshotValue) {
-        meta.push('snap: ' + snapshotValue);
-      }
-
-      if (typeof payload.ver === 'string' && payload.ver) {
-        meta.push('ver: ' + payload.ver);
-      }
-
       var rulesList = Array.isArray(payload.rules) ? payload.rules : [];
-      var message = 'Reglas: ' + String(rulesList.length);
 
-      if (meta.length) {
-        message += ' (' + meta.join(' · ') + ')';
-      }
-
-      return message;
+      return 'Reglas cargadas: ' + String(rulesList.length);
     }
 
     function formatRulesError(response, payload) {
       var body = payload && typeof payload === 'object' ? payload : {};
 
       if (body && typeof body.reason_key === 'string' && body.reason_key) {
-        return 'ERROR — ' + body.reason_key;
+        return 'ERROR reglas — ' + body.reason_key;
       }
 
       if (body && typeof body.code === 'string' && body.code) {
-        return 'ERROR — ' + body.code;
+        return 'ERROR reglas — ' + body.code;
       }
 
       if (response && typeof response.status === 'number' && response.status) {
-        return 'ERROR — HTTP ' + String(response.status);
+        return 'ERROR reglas — HTTP ' + String(response.status);
       }
 
-      return 'ERROR — HTTP';
+      return 'ERROR reglas — HTTP';
     }
 
     function formatRulesNetworkError() {
-      return 'ERROR — NETWORK';
+      return 'ERROR reglas — NETWORK';
     }
 
     function getRulesEndpoint() {
@@ -1283,15 +1258,11 @@
       var api = wizard.api || {};
       var endpoint = '';
 
-      if (!message) {
-        // TODO(Plugin 4 §markup hooks): falta .g3d-wizard-modal__msg en el DOM.
-      }
-
       if (typeof api.rules === 'string' && api.rules) {
         endpoint = api.rules;
       } else {
         endpoint = '/wp-json/g3d/v1/catalog/rules';
-        // TODO(doc §params): confirmar ruta pública documentada.
+        // TODO(plugin-2-g3d-catalog-rules.md §6): confirmar ruta pública documentada.
       }
 
       var query = {};
@@ -1358,9 +1329,15 @@
         wizard.lastRules = state;
         rulesAttempted = true;
 
-        if (response && response.ok && Array.isArray(payload.rules)) {
+        var okFlag = true;
+
+        if (payload && typeof payload.ok === 'boolean') {
+          okFlag = payload.ok;
+        }
+
+        if (response && response.ok && okFlag && Array.isArray(payload.rules)) {
           rulesLoaded = true;
-          setRulesSummaryMessage(formatRulesSummary(payload, fallbackSnapshotId));
+          setRulesSummaryMessage(formatRulesSummary(payload));
         } else if (response) {
           rulesLoaded = false;
           setRulesSummaryMessage(formatRulesError(response, payload));
