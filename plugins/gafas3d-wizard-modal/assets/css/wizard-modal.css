@@ -52,6 +52,8 @@ body.g3d-wizard-open {
   font-size: 0.95rem;
   min-height: 1.5em;
   line-height: 1.35;
+  color: rgba(17, 24, 39, 0.72);
+  font-style: italic;
 }
 
 .g3d-wizard-rules__summary {

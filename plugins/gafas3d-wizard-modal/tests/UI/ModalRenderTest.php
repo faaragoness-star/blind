@@ -107,6 +107,50 @@ final class ModalRenderTest extends TestCase
         self::assertSame(get_locale(), $modalNode->getAttribute('data-locale'));
     }
 
+    public function testRequiredFieldMetadataIsExposed(): void
+    {
+        ob_start();
+        Modal::render();
+        $output = (string) ob_get_clean();
+
+        $previous = libxml_use_internal_errors(true);
+        $document = new \DOMDocument();
+        $document->loadHTML('<?xml encoding="utf-8" ?>' . $output);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+
+        $xpath = new \DOMXPath($document);
+
+        $modalNode = $xpath
+            ->query('//*[@class="g3d-wizard-modal" or contains(@class,"g3d-wizard-modal ")]')
+            ->item(0);
+
+        self::assertInstanceOf(\DOMElement::class, $modalNode);
+        self::assertSame('snapshot_id', $modalNode->getAttribute('data-g3d-field'));
+        self::assertSame('1', $modalNode->getAttribute('data-g3d-required'));
+        self::assertSame('data-snapshot-id', $modalNode->getAttribute('data-g3d-source'));
+
+        $summaryNode = $xpath
+            ->query('//*[contains(concat(" ", normalize-space(@class), " "), " g3d-wizard-modal__summary ")]')
+            ->item(0);
+
+        self::assertInstanceOf(\DOMElement::class, $summaryNode);
+        self::assertSame('producto_id', $summaryNode->getAttribute('data-g3d-field'));
+        self::assertSame('1', $summaryNode->getAttribute('data-g3d-required'));
+        self::assertSame('data-producto-id', $summaryNode->getAttribute('data-g3d-source'));
+        self::assertSame('', $summaryNode->getAttribute('data-producto-id'));
+
+        $ctaNode = $xpath
+            ->query('//*[@data-g3d-wizard-modal-cta]')
+            ->item(0);
+
+        self::assertInstanceOf(\DOMElement::class, $ctaNode);
+        self::assertSame('locale', $ctaNode->getAttribute('data-g3d-field'));
+        self::assertSame('1', $ctaNode->getAttribute('data-g3d-required'));
+        self::assertSame('data-locale', $ctaNode->getAttribute('data-g3d-source'));
+        self::assertSame(get_locale(), $ctaNode->getAttribute('data-locale'));
+    }
+
     public function testRenderContainsSinglePoliteMessageRegion(): void
     {
         ob_start();

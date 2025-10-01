@@ -227,6 +227,139 @@
     return state;
   }
 
+  function normalizeFieldAttrName(key) {
+    if (!key) {
+      return '';
+    }
+
+    return 'data-' + String(key).trim().replace(/_/g, '-');
+  }
+
+  function datasetKeyFromField(key) {
+    if (!key) {
+      return '';
+    }
+
+    return String(key)
+      .trim()
+      .toLowerCase()
+      .replace(/_([a-z])/g, function (_match, letter) {
+        return letter.toUpperCase();
+      });
+  }
+
+  function getFieldValue(el, key) {
+    if (!el) {
+      return '';
+    }
+
+    var raw = null;
+
+    if (el.value !== undefined && el.value !== null) {
+      raw = el.value;
+    }
+
+    if (!raw) {
+      var sourceAttr = el.getAttribute('data-g3d-source');
+
+      if (sourceAttr) {
+        raw = el.getAttribute(sourceAttr);
+      }
+    }
+
+    if (!raw && key) {
+      var normalizedAttr = normalizeFieldAttrName(key);
+
+      if (normalizedAttr && el.hasAttribute(normalizedAttr)) {
+        raw = el.getAttribute(normalizedAttr);
+      }
+    }
+
+    if (!raw && key && el.dataset) {
+      var datasetKey = datasetKeyFromField(key);
+
+      if (
+        datasetKey &&
+        Object.prototype.hasOwnProperty.call(el.dataset, datasetKey)
+      ) {
+        raw = el.dataset[datasetKey];
+      }
+    }
+
+    if (!raw) {
+      var attrValue = el.getAttribute('value');
+
+      if (attrValue !== null && attrValue !== undefined) {
+        raw = attrValue;
+      }
+    }
+
+    if (!raw) {
+      raw = el.textContent || '';
+    }
+
+    return String(raw || '').trim();
+  }
+
+  function readFields(scope) {
+    var out = {};
+
+    if (!scope) {
+      return out;
+    }
+
+    var nodes = scope.querySelectorAll('[data-g3d-field]');
+
+    Array.prototype.forEach.call(nodes, function (el) {
+      var key = el.getAttribute('data-g3d-field');
+
+      if (!key) {
+        return;
+      }
+
+      var value = getFieldValue(el, key);
+
+      if (value !== '') {
+        out[key] = value;
+      }
+    });
+
+    return out;
+  }
+
+  function validateRequiredFields(scope) {
+    var result = { ok: true, missing: [] };
+
+    if (!scope) {
+      return result;
+    }
+
+    var nodes = scope.querySelectorAll(
+      '[data-g3d-field][data-g3d-required="1"]'
+    );
+
+    Array.prototype.forEach.call(nodes, function (el) {
+      if (!el) {
+        return;
+      }
+
+      var key = el.getAttribute('data-g3d-field');
+
+      if (!key) {
+        return;
+      }
+
+      var value = getFieldValue(el, key);
+
+      if (value === '') {
+        result.ok = false;
+        result.missing.push(key);
+      }
+    });
+
+    return result;
+  }
+
   function setText(el, s) {
     if (!el) {
       return;
@@ -493,6 +626,8 @@
     var hasExpired = false;
     var autoVerifyEnabled = false;
     var liveOverrideMessage = '';
+    var ctaRulesEnabled = false;
+    var requiredMessage = __('Faltan campos requeridos', TEXT_DOMAIN);
 
     function updateModalBusy() {
       if (!modal) {
@@ -502,6 +637,69 @@
       var isBusy = inflight.validate || inflight.verify;
 
       setBusy(modal, isBusy);
+    }
+
+    function updateCtaAvailability(options) {
+      if (!cta) {
+        return { ok: true, missing: [] };
+      }
+
+      var requiredState = validateRequiredFields(modal);
+      var shouldEnable =
+        ctaRulesEnabled && requiredState.ok && inflight.validate === false;
+
+      setButtonEnabledState(cta, shouldEnable);
+
+      if (!requiredState.ok) {
+        var shouldAnnounce = false;
+
+        if (options && options.forceMessage) {
+          shouldAnnounce = true;
+        } else if (
+          ctaRulesEnabled &&
+          (!statusMessage || statusMessage === requiredMessage)
+        ) {
+          shouldAnnounce = true;
+        }
+
+        if (shouldAnnounce) {
+          setStatusMessage(requiredMessage, { override: true });
+        }
+      } else if (
+        statusMessage === requiredMessage &&
+        (!options || options.clearMessage !== false)
+      ) {
+        setStatusMessage('');
+      }
+
+      return requiredState;
+    }
+
+    function setCtaRulesEnabled(shouldEnable) {
+      ctaRulesEnabled = !!shouldEnable;
+      updateCtaAvailability();
+    }
+
+    function bindFieldListeners() {
+      if (!overlay) {
+        return;
+      }
+
+      var fieldNodes = overlay.querySelectorAll('[data-g3d-field]');
+
+      Array.prototype.forEach.call(fieldNodes, function (node) {
+        if (!node || typeof node.addEventListener !== 'function') {
+          return;
+        }
+
+        node.addEventListener('input', function () {
+          updateCtaAvailability({ clearMessage: true });
+        });
+
+        node.addEventListener('change', function () {
+          updateCtaAvailability({ clearMessage: true });
+        });
+      });
     }
 
 
@@ -762,8 +960,11 @@
         enable = true;
       }
 
-      setButtonEnabledState(cta, enable);
-      setButtonEnabledState(verifyButton, enable);
+      setCtaRulesEnabled(enable);
+
+      if (verifyButton) {
+        setButtonEnabledState(verifyButton, enable && !hasExpired);
+      }
     }
 
     function setStatusMessage(value, options) {
@@ -1016,11 +1217,18 @@
         return;
       }
 
+      var requiredState = updateCtaAvailability({ forceMessage: true });
+
+      if (!requiredState.ok) {
+        return;
+      }
+
       resetTtlState();
       var modalData = getModalData();
-      var snapshotId = modalData.snapshotId;
-      var productoId = modalData.productoId;
-      var locale = modalData.locale;
+      var fieldValues = readFields(modal);
+      var snapshotId = fieldValues.snapshot_id || modalData.snapshotId;
+      var productoId = fieldValues.producto_id || modalData.productoId;
+      var locale = fieldValues.locale || modalData.locale;
 
       if (!locale && wizard.locale) {
         locale = wizard.locale;
@@ -1036,6 +1244,8 @@
       const payload = {
         state: state,
       };
+
+      // TODO(plugin-3-g3d-validate-sign.md §6.1 POST /validate-sign): incluir schema_version.
 
       if (rulesSelection && Object.keys(rulesSelection).length) {
         // TODO(plugin-4-gafas3d-wizard-modal.md §4 estado): incluir selección de reglas en payload cuando se documente.
@@ -1170,6 +1380,7 @@
 
         updateModalBusy();
         setBtnBusy(cta, false, ctaLabelIdle, ctaBusyLabel);
+        updateCtaAvailability({ clearMessage: false });
 
         if (!statusMessage) {
           liveOverrideMessage = '';
@@ -1386,7 +1597,7 @@
       rulesLoaded = false;
 
       if (cta) {
-        setButtonEnabledState(cta, false);
+        setCtaRulesEnabled(false);
       }
 
       var request = getJson(endpoint, params);
@@ -1468,7 +1679,7 @@
         if (computedCount === 0) {
           rulesLoaded = true;
           showRulesEmpty();
-          setButtonEnabledState(cta, true);
+          setCtaRulesEnabled(true);
 
           return;
         }
@@ -1476,7 +1687,7 @@
         rulesLoaded = true;
         setRulesSummaryMessage(formatRulesSummary(normalized));
         showRulesList(rulesField);
-        setButtonEnabledState(cta, true);
+        setCtaRulesEnabled(true);
       } catch (rulesError) {
         rulesAttempted = true;
         rulesLoaded = false;
@@ -1524,7 +1735,7 @@
       setRulesSummaryMessage('');
 
       if (cta) {
-        setButtonEnabledState(cta, false);
+        setCtaRulesEnabled(false);
       }
 
       var existingState = wizard.lastRules;
@@ -1544,14 +1755,14 @@
           rulesLoaded = true;
           showRulesEmpty();
           if (cta) {
-            setButtonEnabledState(cta, true);
+            setCtaRulesEnabled(true);
           }
         } else if (wizardRules && wizardRules.rules) {
           rulesLoaded = true;
           setRulesSummaryMessage(formatRulesSummary(wizardRules));
           showRulesList(wizardRules.rules);
           if (cta) {
-            setButtonEnabledState(cta, true);
+            setCtaRulesEnabled(true);
           }
         } else {
           rulesLoaded = false;
@@ -1593,7 +1804,7 @@
 
       if (cta) {
         setBtnBusy(cta, false, ctaLabelIdle, ctaBusyLabel);
-        setButtonEnabledState(cta, true);
+        setCtaRulesEnabled(true);
       }
 
       if (verifyButton) {
@@ -1618,6 +1829,9 @@
     closeButtons.forEach(function (button) {
       button.addEventListener('click', closeModal);
     });
+
+    bindFieldListeners();
+    updateCtaAvailability();
 
     var rulesRetryControl = overlay.querySelector(
       '[data-g3d-wizard-retry-rules]'
