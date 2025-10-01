@@ -751,9 +751,9 @@
           continue;
         }
 
-        focusTab(candidate);
+        activateTab(candidate);
 
-        return;
+        return candidate;
       }
     }
 
@@ -765,7 +765,7 @@
       var first = getFirstEnabledTab() || (tabs.length ? tabs[0] : null);
 
       if (first) {
-        focusTab(first);
+        activateTab(first);
       }
     }
 
@@ -773,7 +773,7 @@
       var last = getLastEnabledTab() || (tabs.length ? tabs[tabs.length - 1] : null);
 
       if (last) {
-        focusTab(last);
+        activateTab(last);
       }
     }
 
