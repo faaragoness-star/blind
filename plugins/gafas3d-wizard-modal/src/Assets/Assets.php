@@ -68,6 +68,7 @@ final class Assets
                     'validateSign' => rest_url('g3d/v1/validate-sign'),
                     'verify' => rest_url('g3d/v1/verify'),
                     'audit' => rest_url('g3d/v1/audit'),
+                    'catalogRules' => rest_url('g3d/v1/catalog/rules'),
                     'rules' => rest_url('g3d/v1/catalog/rules'),
                 ],
                 'nonce' => wp_create_nonce('wp_rest'),
