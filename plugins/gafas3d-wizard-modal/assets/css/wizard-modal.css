@@ -33,7 +33,7 @@ body.g3d-wizard-open {
   opacity: 0.85;
 }
 
-.g3d-wizard-modal [role="tab"]:focus {
+[role="tab"]:focus {
   outline: 2px solid;
   outline-offset: 2px;
 }

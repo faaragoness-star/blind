@@ -162,6 +162,88 @@
     el.textContent = s;
   }
 
+  function isHorizontal(list) {
+    return (list.getAttribute('aria-orientation') || 'horizontal') === 'horizontal';
+  }
+
+  function tabsAndPanels(root) {
+    var list = root.querySelector('[role="tablist"]');
+    var tabs = list ? list.querySelectorAll('[role="tab"]') : [];
+    var panels = root.querySelectorAll('[role="tabpanel"]');
+
+    return { list: list, tabs: tabs, panels: panels };
+  }
+
+  function findPanelById(panels, id) {
+    var panel = null;
+
+    Array.prototype.forEach.call(panels, function (candidate) {
+      if (!panel && candidate.id === id) {
+        panel = candidate;
+      }
+    });
+
+    return panel;
+  }
+
+  function setActive(tab, tabs, panels) {
+    if (!tab) {
+      return;
+    }
+
+    if (tab.disabled) {
+      return;
+    }
+
+    if (tab.hasAttribute('aria-disabled')) {
+      var disabledValue = tab.getAttribute('aria-disabled');
+
+      if (disabledValue === 'true' || disabledValue === '1') {
+        return;
+      }
+    }
+
+    var target = tab.getAttribute('aria-controls');
+    var shouldFocus = arguments.length < 4 ? true : !!arguments[3];
+    var panel = null;
+
+    if (!target) {
+      if (global.console && typeof global.console.warn === 'function') {
+        global.console.warn('G3DWIZARD: tab sin aria-controls.');
+      }
+
+      // TODO(doc §estructura tabs)
+      return;
+    }
+
+    panel = findPanelById(panels, target);
+
+    if (!panel) {
+      if (global.console && typeof global.console.warn === 'function') {
+        global.console.warn(
+          'G3DWIZARD: aria-controls="' + target + '" sin <tabpanel> asociado.'
+        );
+      }
+
+      // TODO(doc §estructura tabs)
+      return;
+    }
+
+    Array.prototype.forEach.call(tabs, function (t) {
+      var sel = t === tab;
+      t.setAttribute('aria-selected', sel ? 'true' : 'false');
+      t.setAttribute('tabindex', sel ? '0' : '-1');
+    });
+
+    Array.prototype.forEach.call(panels, function (p) {
+      p.hidden = p.id !== target;
+    });
+
+    if (shouldFocus && typeof tab.focus === 'function') {
+      tab.focus();
+    }
+  }
+
   global.G3DWIZARD.postJson = async function postJson(url, body) {
     const options = arguments.length > 2 ? arguments[2] : null;
     const init = {
@@ -210,10 +292,10 @@
     var rulesContainer = modal
       ? modal.querySelector('[data-g3d-wizard-rules]')
       : null;
-    var tablist = root.querySelector('[role="tablist"]');
-    const tabs = tablist ? tablist.querySelectorAll('[role="tab"]') : [];
-    const panels = root.querySelectorAll('[role="tabpanel"]');
-    const panelById = {};
+    var tabSetup = tabsAndPanels(root);
+    var tablist = tabSetup.list;
+    var tabs = tabSetup.tabs;
+    var panels = tabSetup.panels;
     var shouldAutoAudit = modal && modal.getAttribute('data-auto-audit') === '1';
     var previousFocus = null;
     var summaryMessage = '';
@@ -665,88 +747,36 @@
       return value === 'true' || value === '1';
     }
 
-    Array.prototype.forEach.call(panels, function (panel) {
-      if (!panel || !panel.id) {
-        return;
-      }
-
-      panelById[panel.id] = panel;
-    });
-
-    function idxOf(nodeList, el) {
-      return Array.prototype.indexOf.call(nodeList, el);
-    }
-
-    function getFirstEnabledTab() {
-      for (var i = 0; i < tabs.length; i += 1) {
-        if (!isTabDisabled(tabs[i])) {
-          return tabs[i];
-        }
-      }
-
-      return null;
-    }
-
-    function getLastEnabledTab() {
-      for (var i = tabs.length - 1; i >= 0; i -= 1) {
-        if (!isTabDisabled(tabs[i])) {
-          return tabs[i];
-        }
-      }
-
-      return null;
-    }
-
-    function focusTab(tabEl) {
+    function setRovingFocus(tabEl) {
       if (!tabEl || isTabDisabled(tabEl)) {
         return;
       }
+
+      Array.prototype.forEach.call(tabs, function (candidate) {
+        if (!candidate) {
+          return;
+        }
+
+        candidate.setAttribute('tabindex', candidate === tabEl ? '0' : '-1');
+      });
 
       if (typeof tabEl.focus === 'function') {
         tabEl.focus();
       }
     }
 
-    function activateTab(tabEl) {
-      if (!tabEl || isTabDisabled(tabEl)) {
-        return;
+    function findNextFocusable(current, step) {
+      if (!tabs || !tabs.length) {
+        return null;
       }
 
-      var target = tabEl.getAttribute('aria-controls');
-
-      if (!target || !panelById[target]) {
-        return;
-      }
-
-      Array.prototype.forEach.call(tabs, function (t) {
-        var active = t === tabEl;
-        t.setAttribute('aria-selected', active ? 'true' : 'false');
-        t.setAttribute('tabindex', active ? '0' : '-1');
-      });
-
-      focusTab(tabEl);
-
-      Array.prototype.forEach.call(panels, function (p) {
-        var isActivePanel = p.id === target;
-
-        p.hidden = !isActivePanel;
-      });
-    }
-
-    function focusNext(current, dir) {
-      var index = idxOf(tabs, current);
+      var index = Array.prototype.indexOf.call(tabs, current);
 
       if (index < 0) {
-        return;
+        return null;
       }
 
       var len = tabs.length;
-
-      if (!len) {
-        return;
-      }
-
-      var step = dir === -1 ? -1 : 1;
       var next = index;
 
       for (var attempt = 0; attempt < len; attempt += 1) {
@@ -757,56 +787,115 @@
           continue;
         }
 
-        activateTab(candidate);
-
         return candidate;
       }
+
+      return null;
     }
 
-    function focusPrev(current) {
-      focusNext(current, -1);
-    }
-
-    function focusFirst() {
-      var first = getFirstEnabledTab() || (tabs.length ? tabs[0] : null);
-
-      if (first) {
-        activateTab(first);
-      }
-    }
-
-    function focusLast() {
-      var last = getLastEnabledTab() || (tabs.length ? tabs[tabs.length - 1] : null);
-
-      if (last) {
-        activateTab(last);
-      }
-    }
-
-    (function initTabs() {
-      if (!tabs.length || !panels.length) {
+    function focusEdge(first) {
+      if (!tabs || !tabs.length) {
         return;
       }
 
-      var active = Array.prototype.find
-        ? Array.prototype.find.call(tabs, function (candidate) {
-            return (
-              candidate &&
-              candidate.getAttribute &&
-              candidate.getAttribute('aria-selected') === 'true' &&
-              !isTabDisabled(candidate)
-            );
-          })
-        : null;
+      var candidate = null;
 
-      if (!active) {
-        active = getFirstEnabledTab() || (tabs.length ? tabs[0] : null);
+      if (first) {
+        Array.prototype.forEach.call(tabs, function (tab) {
+          if (candidate || !tab || isTabDisabled(tab)) {
+            return;
+          }
+
+          candidate = tab;
+        });
+      } else {
+        for (var i = tabs.length - 1; i >= 0; i -= 1) {
+          var tab = tabs[i];
+
+          if (tab && !isTabDisabled(tab)) {
+            candidate = tab;
+            break;
+          }
+        }
       }
 
-      if (active) {
-        activateTab(active);
+      if (candidate) {
+        setRovingFocus(candidate);
       }
-    })();
+    }
+
+    function ensureInitialTabsState() {
+      if (!tablist || !tabs || !tabs.length) {
+        return;
+      }
+
+      var activeTab = null;
+
+      Array.prototype.forEach.call(tabs, function (tab) {
+        if (activeTab || !tab || isTabDisabled(tab)) {
+          return;
+        }
+
+        if (tab.getAttribute('aria-selected') === 'true') {
+          var panel = findPanelById(panels, tab.getAttribute('aria-controls'));
+
+          if (panel) {
+            activeTab = tab;
+          }
+        }
+      });
+
+      if (!activeTab) {
+        Array.prototype.forEach.call(tabs, function (tab) {
+          if (activeTab || !tab || isTabDisabled(tab)) {
+            return;
+          }
+
+          var panel = findPanelById(panels, tab.getAttribute('aria-controls'));
+
+          if (panel) {
+            activeTab = tab;
+          }
+        });
+      }
+
+      if (activeTab) {
+        setActive(activeTab, tabs, panels, false);
+      }
+
+      if (!activeTab && tabs.length) {
+        activeTab = tabs[0];
+      }
+
+      Array.prototype.forEach.call(tabs, function (tab) {
+        if (!tab) {
+          return;
+        }
+
+        var isActive = tab === activeTab;
+
+        tab.setAttribute('tabindex', isActive ? '0' : '-1');
+        tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
+
+      Array.prototype.forEach.call(panels, function (panel) {
+        if (!panel) {
+          return;
+        }
+
+        if (!activeTab) {
+          panel.hidden = true;
+
+          return;
+        }
+
+        var controls = activeTab.getAttribute('aria-controls');
+
+        panel.hidden = panel.id !== controls;
+      });
+    }
+
+    ensureInitialTabsState();
 
     function getModalData() {
       var snapshotId = '';
@@ -1491,7 +1580,91 @@
       // TODO(Plugin 4 §controles de recarga).
     }
 
-    if (tabs.length && panels.length) {
+    if (tablist && tabs.length && panels.length) {
+      tablist.addEventListener('keydown', function (event) {
+        if (!event) {
+          return;
+        }
+
+        var target = event.target;
+
+        if (!target || target.getAttribute('role') !== 'tab') {
+          return;
+        }
+
+        var key = event.key;
+        var horizontal = isHorizontal(tablist);
+        var next = null;
+
+        if (horizontal && key === 'ArrowRight') {
+          event.preventDefault();
+          next = findNextFocusable(target, 1);
+
+          if (next) {
+            setRovingFocus(next);
+          }
+
+          return;
+        }
+
+        if (horizontal && key === 'ArrowLeft') {
+          event.preventDefault();
+          next = findNextFocusable(target, -1);
+
+          if (next) {
+            setRovingFocus(next);
+          }
+
+          return;
+        }
+
+        if (!horizontal && key === 'ArrowDown') {
+          event.preventDefault();
+          next = findNextFocusable(target, 1);
+
+          if (next) {
+            setRovingFocus(next);
+          }
+
+          return;
+        }
+
+        if (!horizontal && key === 'ArrowUp') {
+          event.preventDefault();
+          next = findNextFocusable(target, -1);
+
+          if (next) {
+            setRovingFocus(next);
+          }
+
+          return;
+        }
+
+        if (key === 'Home') {
+          event.preventDefault();
+          focusEdge(true);
+
+          return;
+        }
+
+        if (key === 'End') {
+          event.preventDefault();
+          focusEdge(false);
+
+          return;
+        }
+
+        if (key === 'Enter' || key === ' ' || key === 'Space' || key === 'Spacebar') {
+          event.preventDefault();
+
+          if (isTabDisabled(target)) {
+            return;
+          }
+
+          setActive(target, tabs, panels);
+        }
+      });
+
       Array.prototype.forEach.call(tabs, function (tab) {
         tab.addEventListener('click', function (event) {
           if (event && typeof event.preventDefault === 'function') {
@@ -1502,49 +1675,11 @@
             return;
           }
 
-          activateTab(tab);
+          setActive(tab, tabs, panels);
         });
 
-        tab.addEventListener('keydown', function (event) {
-          if (!event) {
-            return;
-          }
-
-          var key = event.key;
-
-          if (key === 'ArrowRight') {
-            event.preventDefault();
-            focusNext(tab, 1);
-            return;
-          }
-
-          if (key === 'ArrowLeft') {
-            event.preventDefault();
-            focusPrev(tab);
-            return;
-          }
-
-          if (key === 'Home') {
-            event.preventDefault();
-            focusFirst();
-            return;
-          }
-
-          if (key === 'End') {
-            event.preventDefault();
-            focusLast();
-            return;
-          }
-
-          if (key === 'Enter' || key === ' ' || key === 'Space' || key === 'Spacebar') {
-            event.preventDefault();
-
-            if (isTabDisabled(tab)) {
-              return;
-            }
-
-            activateTab(tab);
-          }
+        tab.addEventListener('focus', function () {
+          setRovingFocus(tab);
         });
       });
     }
