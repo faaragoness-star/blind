@@ -40,6 +40,9 @@ namespace G3D\CatalogRules\Tests\Routes {
             self::assertSame('__return_true', $definition['args']['permission_callback']);
             self::assertArrayHasKey('args', $definition['args']);
             self::assertArrayHasKey('producto_id', $definition['args']['args']);
+            self::assertTrue($definition['args']['args']['producto_id']['required']);
+            self::assertArrayHasKey('locale', $definition['args']['args']);
+            self::assertFalse($definition['args']['args']['locale']['required']);
         }
     }
 }
