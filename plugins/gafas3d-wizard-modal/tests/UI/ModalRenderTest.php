@@ -24,6 +24,8 @@ final class ModalRenderTest extends TestCase
         self::assertStringContainsString('data-producto-id=""', $output);
         self::assertStringContainsString('data-locale="', $output);
         self::assertStringContainsString('class="g3d-wizard-modal__rules"', $output);
+        self::assertStringContainsString('data-g3d-rules-summary', $output);
+        self::assertStringContainsString('data-g3d-rules-list', $output);
         self::assertStringContainsString('data-g3d-wizard-modal-cta', $output);
         self::assertStringContainsString('data-g3d-wizard-modal-verify', $output);
     }
@@ -60,7 +62,18 @@ final class ModalRenderTest extends TestCase
         self::assertSame(1, $rulesNodes->length);
         $rulesNode = $rulesNodes->item(0);
         self::assertInstanceOf(\DOMElement::class, $rulesNode);
-        self::assertSame('polite', $rulesNode->getAttribute('aria-live'));
+        self::assertSame('g3d-wizard-rules-title', $rulesNode->getAttribute('aria-labelledby'));
+
+        $titleNode = $xpath->query('//*[@id="g3d-wizard-rules-title"]')->item(0);
+        self::assertInstanceOf(\DOMElement::class, $titleNode);
+        self::assertSame('h3', $titleNode->tagName);
+
+        $summaryNode = $xpath->query('//*[@data-g3d-rules-summary]')->item(0);
+        self::assertInstanceOf(\DOMElement::class, $summaryNode);
+        self::assertSame('polite', $summaryNode->getAttribute('aria-live'));
+
+        $listNode = $xpath->query('//*[@data-g3d-rules-list]')->item(0);
+        self::assertInstanceOf(\DOMElement::class, $listNode);
     }
 
     public function testRenderContainsSinglePoliteMessageRegion(): void

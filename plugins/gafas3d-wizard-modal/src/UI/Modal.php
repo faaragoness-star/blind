@@ -125,7 +125,13 @@ final class Modal
             echo '</section>';
         }
 
-        echo '<section class="g3d-wizard-modal__rules" data-g3d-wizard-rules aria-live="polite"></section>';
+        echo '<section class="g3d-wizard-modal__rules" aria-labelledby="g3d-wizard-rules-title">';
+        echo '<h3 id="g3d-wizard-rules-title" class="screen-reader-text">';
+        echo esc_html__('Reglas de catálogo', 'gafas3d-wizard-modal');
+        echo '</h3>';
+        echo '<div class="g3d-wizard-rules__summary" data-g3d-rules-summary aria-live="polite"></div>';
+        echo '<div class="g3d-wizard-rules__list" data-g3d-rules-list></div>';
+        echo '</section>';
 
         echo '<footer class="g3d-wizard-modal__footer">';
         echo '<div class="g3d-wizard-modal__summary" aria-live="polite">';

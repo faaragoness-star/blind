@@ -10,10 +10,14 @@
 
   global.G3DWIZARD = global.G3DWIZARD || {};
 
-  global.G3DWIZARD.getJson = async function getJson(url, query) {
-    const qs = query ? '?' + new URLSearchParams(query).toString() : '';
-    const res = await fetch(url + qs, { method: 'GET' });
-    return res;
+  global.G3DWIZARD.getJson = async function getJson(url) {
+    const res = await fetch(url, {
+      headers: {
+        'X-WP-Nonce': (global.G3DWIZARD && global.G3DWIZARD.nonce) || '',
+      },
+    });
+
+    return res.json();
   };
 
   global.G3DWIZARD.last = global.G3DWIZARD.last || null;
@@ -21,8 +25,6 @@
   global.G3DWIZARD.rules = global.G3DWIZARD.rules || null;
 
   let rulesPromise = null;
-  let rulesData = null;
-  let rulesResponse = null;
   let netCtl = null;
 
   function resetNetCtl() {
@@ -118,26 +120,6 @@
 
     return query;
   }
-
-  async function getJSON(url, params) {
-    if (!url) {
-      return { res: null, data: {} };
-    }
-
-    var query = buildQuery(params);
-    var res = await global.G3DWIZARD.getJson(url, query);
-    var data = {};
-
-    if (res && typeof res.json === 'function') {
-      data = await res.json().catch(function () {
-        return {};
-      });
-    }
-
-    return { res: res, data: data };
-  }
-
-  global.G3DWIZARD.getJSON = getJSON;
 
   function readValue(el) {
     if (!el) {
@@ -445,8 +427,11 @@
     var ctaBusyLabel = __('Enviando…', TEXT_DOMAIN);
     var verifyBusyLabel = __('Verificando…', TEXT_DOMAIN);
     var summaryContainer = overlay.querySelector('.g3d-wizard-modal__summary');
-    var rulesContainer = modal
-      ? modal.querySelector('[data-g3d-wizard-rules]')
+    var rulesSummaryContainer = modal
+      ? modal.querySelector('[data-g3d-rules-summary]')
+      : null;
+    var rulesListContainer = modal
+      ? modal.querySelector('[data-g3d-rules-list]')
       : null;
     var tablist = root.querySelector('[role="tablist"]');
     var shouldAutoAudit = modal && modal.getAttribute('data-auto-audit') === '1';
@@ -542,97 +527,139 @@
 
     function setRulesSummaryMessage(value) {
       rulesSummaryMessage = value || '';
+
+      if (rulesSummaryContainer) {
+        setText(rulesSummaryContainer, rulesSummaryMessage);
+      }
+
       updateLiveMessage();
     }
 
-  function setRulesContainerText(value) {
-    if (!rulesContainer) {
-      return;
-    }
-
-    rulesContainer.textContent = value || '';
-  }
-
-  function setRulesBusyState(on) {
-    if (rulesContainer) {
-      if (on) {
-        rulesContainer.setAttribute('aria-busy', 'true');
-      } else {
-        rulesContainer.removeAttribute('aria-busy');
+    function setRulesListContent(value) {
+      if (!rulesListContainer) {
+        return;
       }
 
-      return;
+      rulesListContainer.textContent = value || '';
     }
 
-    if (!root) {
-      return;
-    }
+    function setRulesBusyState(on) {
+      var busy = !!on;
 
-    if (on) {
-      root.setAttribute('aria-busy', 'true');
-    } else {
-      root.removeAttribute('aria-busy');
-    }
+      if (rulesSummaryContainer) {
+        if (busy) {
+          rulesSummaryContainer.setAttribute('aria-busy', 'true');
+        } else {
+          rulesSummaryContainer.removeAttribute('aria-busy');
+        }
+      }
 
-    // TODO(doc §markup): definir panel específico para mostrar estado de reglas.
-  }
+      if (rulesListContainer) {
+        if (busy) {
+          rulesListContainer.setAttribute('aria-busy', 'true');
+        } else {
+          rulesListContainer.removeAttribute('aria-busy');
+        }
+      }
+
+      if (!rulesSummaryContainer && !rulesListContainer && root) {
+        if (busy) {
+          root.setAttribute('aria-busy', 'true');
+        } else {
+          root.removeAttribute('aria-busy');
+        }
+      }
+    }
 
     function showRulesLoading() {
-      setRulesContainerText(__('Reglas: cargando…', TEXT_DOMAIN));
+      setRulesSummaryMessage(__('Cargando reglas…', TEXT_DOMAIN));
+      setRulesListContent('');
     }
 
-    function showRulesError(messageText) {
-      if (messageText) {
-        setRulesContainerText(messageText);
+    function showRulesError() {
+      setRulesSummaryMessage('ERROR — no se pudieron cargar las reglas');
+      setRulesListContent('');
+    }
 
+    function showRulesList(rulesPayload) {
+      if (!rulesListContainer) {
         return;
       }
 
-      setRulesContainerText(formatRulesError(rulesResponse, rulesData));
-    }
+      rulesListContainer.textContent = '';
 
-    function showRulesNetworkError() {
-      showRulesError(formatRulesNetworkError());
-    }
-
-    function showRulesList(rules) {
-      if (!rulesContainer) {
-        return;
-      }
-
-      rulesContainer.textContent = '';
-
-      if (!Array.isArray(rules) || rules.length === 0) {
+      if (!rulesPayload || typeof rulesPayload !== 'object') {
         showRulesError();
 
         return;
       }
 
       var list = document.createElement('ul');
+      var documentedKeys = [
+        'material_to_modelos',
+        'material_to_colores',
+        'material_to_texturas',
+        'defaults',
+        'encaje',
+        'morph_rules',
+        'slot_mapping_editorial',
+        // docs/plugin-2-g3d-catalog-rules.md §5 Modelo de datos.
+      ];
 
-      rules.forEach(function (rule) {
+      documentedKeys.forEach(function (key) {
+        if (!Object.prototype.hasOwnProperty.call(rulesPayload, key)) {
+          return;
+        }
+
+        var value = rulesPayload[key];
         var item = document.createElement('li');
-        var label = '';
-
-        if (rule && typeof rule === 'object') {
-          if (typeof rule.label === 'string' && rule.label) {
-            label = rule.label;
-          } else if (typeof rule.key === 'string' && rule.key) {
-            label = rule.key; // TODO(plugin-2-g3d-catalog-rules.md §payload): confirmar etiqueta visible.
-          }
-        } else if (typeof rule === 'string' && rule) {
-          label = rule;
-        }
-
-        if (!label) {
-          label = 'rule.key'; // TODO(plugin-2-g3d-catalog-rules.md §payload): definir fallback visible.
-        }
-
+        var label = key + ': ' + summarizeRulesValue(value);
         item.textContent = label;
         list.appendChild(item);
       });
 
-      rulesContainer.appendChild(list);
+      if (!list.children.length) {
+        var fallbackItem = document.createElement('li');
+
+        try {
+          fallbackItem.textContent = JSON.stringify(rulesPayload);
+        } catch (serializationError) {
+          fallbackItem.textContent = String(rulesPayload);
+        }
+
+        // TODO(plugin-2-g3d-catalog-rules.md §6 APIs / Contratos): formato legible para reglas no documentadas.
+        list.appendChild(fallbackItem);
+      }
+
+      rulesListContainer.appendChild(list);
+    }
+
+    function summarizeRulesValue(value) {
+      if (Array.isArray(value)) {
+        return value.length + ' elementos';
+      }
+
+      if (value && typeof value === 'object') {
+        return Object.keys(value).length + ' claves';
+      }
+
+      if (value === null || value === undefined) {
+        return '';
+      }
+
+      return String(value);
+    }
+
+    function countRulesEntries(value) {
+      if (Array.isArray(value)) {
+        return value.length;
+      }
+
+      if (value && typeof value === 'object') {
+        return Object.keys(value).length;
+      }
+
+      return 0;
     }
 
     function resetRulesSelection() {
@@ -795,50 +822,33 @@
 
     function formatRulesSummary(data) {
       var payload = data && typeof data === 'object' ? data : {};
-      var rulesList = Array.isArray(payload.rules) ? payload.rules : [];
+      var rulesValue = payload.rules;
+      var count = countRulesEntries(rulesValue);
+      var parts = ['Reglas de catálogo: ' + String(count)];
 
-      return (
-        'Reglas cargadas (' +
-        String(rulesList.length) +
-        ') — TODO(plugin-4-gafas3d-wizard-modal.md §5.6).'
-      );
-    }
-
-    function formatRulesError(response, payload) {
-      var body = payload && typeof payload === 'object' ? payload : {};
-
-      if (body && typeof body.reason_key === 'string' && body.reason_key) {
-        return 'ERROR — ' + body.reason_key;
+      if (typeof payload.id === 'string' && payload.id) {
+        parts.push('snapshot: ' + payload.id);
+      } else if (typeof payload.snapshot_id === 'string' && payload.snapshot_id) {
+        parts.push('snapshot: ' + payload.snapshot_id);
       }
 
-      if (body && typeof body.code === 'string' && body.code) {
-        return 'ERROR — ' + body.code;
+      if (typeof payload.ver === 'string' && payload.ver) {
+        parts.push('versión: ' + payload.ver);
       }
 
-      if (response && typeof response.status === 'number' && response.status) {
-        return 'ERROR — HTTP ' + String(response.status);
+      if (typeof payload.producto_id === 'string' && payload.producto_id) {
+        parts.push('producto: ' + payload.producto_id);
       }
 
-      return 'ERROR — HTTP';
-    }
-
-    function formatRulesNetworkError() {
-      return 'ERROR — NETWORK';
-    }
-
-    function getRulesEndpoint() {
-      var wizard = global.G3DWIZARD || {};
-      var api = wizard.api || {};
-
-      if (typeof api.catalogRules === 'string' && api.catalogRules) {
-        return api.catalogRules;
+      if (typeof payload.schema_version === 'string' && payload.schema_version) {
+        parts.push('schema: ' + payload.schema_version);
       }
 
-      if (typeof api.rules === 'string' && api.rules) {
-        return api.rules;
+      if (typeof payload.published_at === 'string' && payload.published_at) {
+        parts.push('publicado: ' + payload.published_at);
       }
 
-      return '/wp-json/g3d/v1/catalog/rules';
+      return parts.join(' · ');
     }
 
     function audit(action, extras) {
@@ -1273,7 +1283,6 @@
         endpoint = api.rules;
       } else {
         endpoint = '/wp-json/g3d/v1/catalog/rules';
-        // TODO(plugin-2-g3d-catalog-rules.md §6): confirmar ruta pública documentada.
       }
 
       var query = {};
@@ -1301,35 +1310,50 @@
 
       rulesAttempted = false;
       rulesLoaded = false;
-      rulesPromise = getJSON(endpoint, params);
+
+      var searchParams = new URLSearchParams(params).toString();
+      var requestUrl = endpoint;
+
+      if (searchParams) {
+        requestUrl += (endpoint.indexOf('?') === -1 ? '?' : '&') + searchParams;
+      }
+
+      rulesPromise = global.G3DWIZARD.getJson(requestUrl);
 
       setRulesBusyState(true);
-      setRulesSummaryMessage(__('Cargando…', TEXT_DOMAIN));
+      showRulesLoading();
 
       try {
-        var result = await rulesPromise;
-        var response = result && typeof result.res === 'object' ? result.res : null;
-        var payload = result && result.data ? result.data : {};
-        var rulesList = Array.isArray(payload.rules) ? payload.rules : [];
+        var payload = await rulesPromise;
+        var normalized = payload && typeof payload === 'object' ? payload : {};
+        var rulesField = normalized.rules;
+        var computedCount = countRulesEntries(rulesField);
+        var snapshotValue = '';
 
-        rulesData = payload;
-        rulesResponse = response;
-        wizard.rules = payload;
-        rulesCount = rulesList.length;
-
-        var state = { count: rulesCount };
-
-        if (typeof payload.snapshot_id === 'string' && payload.snapshot_id) {
-          state.snapshot_id = payload.snapshot_id;
+        if (typeof normalized.snapshot_id === 'string' && normalized.snapshot_id) {
+          snapshotValue = normalized.snapshot_id;
+        } else if (typeof normalized.id === 'string' && normalized.id) {
+          snapshotValue = normalized.id;
         } else if (fallbackSnapshotId) {
-          state.snapshot_id = fallbackSnapshotId;
+          snapshotValue = fallbackSnapshotId;
         }
 
-        if (typeof payload.ver === 'string' && payload.ver) {
-          state.ver = payload.ver;
+        rulesCount = computedCount;
+        wizard.rules = normalized;
+
+        var state = { count: computedCount };
+
+        if (snapshotValue) {
+          state.snapshot_id = snapshotValue;
         }
 
-        if (productoId) {
+        if (typeof normalized.ver === 'string' && normalized.ver) {
+          state.ver = normalized.ver;
+        }
+
+        if (typeof normalized.producto_id === 'string' && normalized.producto_id) {
+          state.producto_id = normalized.producto_id;
+        } else if (productoId) {
           state.producto_id = productoId;
         }
 
@@ -1341,27 +1365,21 @@
         wizard.lastRules = state;
         rulesAttempted = true;
 
-        var okFlag = true;
+        var hasShape =
+          Array.isArray(rulesField) ||
+          (rulesField && typeof rulesField === 'object');
 
-        if (payload && typeof payload.ok === 'boolean') {
-          okFlag = payload.ok;
-        }
-
-        if (response && response.ok && okFlag && Array.isArray(payload.rules)) {
+        if (hasShape) {
           rulesLoaded = true;
-          setRulesSummaryMessage(formatRulesSummary(payload));
-        } else if (response) {
-          rulesLoaded = false;
-          setRulesSummaryMessage(formatRulesError(response, payload));
+          setRulesSummaryMessage(formatRulesSummary(normalized));
+          showRulesList(rulesField);
         } else {
           rulesLoaded = false;
-          setRulesSummaryMessage(formatRulesNetworkError());
+          showRulesError();
         }
       } catch (rulesError) {
         rulesAttempted = true;
         rulesLoaded = false;
-        rulesData = null;
-        rulesResponse = null;
         wizard.rules = null;
 
         var fallbackState = { count: 0 };
@@ -1380,7 +1398,7 @@
 
         lastRules = fallbackState;
         wizard.lastRules = fallbackState;
-        setRulesSummaryMessage(formatRulesNetworkError());
+        showRulesError();
       } finally {
         rulesPromise = null;
         setRulesBusyState(false);
@@ -1440,9 +1458,7 @@
       resetTtlState();
       setRulesSummaryMessage('');
 
-      if (rulesContainer) {
-        setRulesContainerText('');
-      }
+      setRulesListContent('');
 
       resetRulesSelection();
 
