@@ -9,6 +9,21 @@
   var TEXT_DOMAIN = 'gafas3d-wizard-modal';
 
   global.G3DWIZARD = global.G3DWIZARD || {};
+
+  global.G3DWIZARD.getJson = async function getJson(url, params) {
+    const qs = params && Object.keys(params).length
+      ? '?' + new URLSearchParams(params).toString()
+      : '';
+    const res = await fetch(url + qs, {
+      method: 'GET',
+      headers: {
+        'X-WP-Nonce': (global.G3DWIZARD && global.G3DWIZARD.nonce) || ''
+      }
+    });
+
+    return res;
+  };
+
   global.G3DWIZARD.last = global.G3DWIZARD.last || null;
   global.G3DWIZARD.lastRules = global.G3DWIZARD.lastRules || null;
   global.G3DWIZARD.rules = global.G3DWIZARD.rules || null;
@@ -118,19 +133,19 @@
     }
 
     var query = buildQuery(params);
-    var queryString = Object.keys(query).length
-      ? '?' + new URLSearchParams(query).toString()
-      : '';
-    var res = await fetch(url + queryString, { method: 'GET' });
-    var data = await res.json().catch(function () {
-      return {};
-    });
+    var res = await global.G3DWIZARD.getJson(url, query);
+    var data = {};
+
+    if (res && typeof res.json === 'function') {
+      data = await res.json().catch(function () {
+        return {};
+      });
+    }
 
     return { res: res, data: data };
   }
 
   global.G3DWIZARD.getJSON = getJSON;
-  global.G3DWIZARD.getJson = getJSON;
 
   function readValue(el) {
     if (!el) {
@@ -797,22 +812,22 @@
       var body = payload && typeof payload === 'object' ? payload : {};
 
       if (body && typeof body.reason_key === 'string' && body.reason_key) {
-        return 'ERROR reglas — ' + body.reason_key;
+        return 'ERROR — ' + body.reason_key;
       }
 
       if (body && typeof body.code === 'string' && body.code) {
-        return 'ERROR reglas — ' + body.code;
+        return 'ERROR — ' + body.code;
       }
 
       if (response && typeof response.status === 'number' && response.status) {
-        return 'ERROR reglas — HTTP ' + String(response.status);
+        return 'ERROR — HTTP ' + String(response.status);
       }
 
-      return 'ERROR reglas — HTTP';
+      return 'ERROR — HTTP';
     }
 
     function formatRulesNetworkError() {
-      return 'ERROR reglas — NETWORK';
+      return 'ERROR — NETWORK';
     }
 
     function getRulesEndpoint() {
