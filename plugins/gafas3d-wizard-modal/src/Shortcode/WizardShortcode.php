@@ -96,7 +96,7 @@ final class WizardShortcode
         $pattern = sprintf('/%s="[^"]*"/', preg_quote($attribute, '/'));
         $replacement = sprintf('%s="%s"', $attribute, esc_attr($value));
 
-        $replaced = preg_replace($pattern, $replacement, $html, 1);
+        $replaced = preg_replace($pattern, $replacement, $html);
 
         if ($replaced === null) {
             return $html;

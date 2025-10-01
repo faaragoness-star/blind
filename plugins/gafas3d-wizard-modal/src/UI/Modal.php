@@ -43,7 +43,8 @@ final class Modal
             . 'aria-labelledby="g3d-wizard-modal-title" '
             . 'aria-describedby="g3d-wizard-modal-description" '
             . 'data-snapshot-id="" data-producto-id="" data-locale="' . $locale . '" '
-            . 'data-actor-id="" data-what="">';
+            . 'data-actor-id="" data-what="" data-g3d-field="snapshot_id" '
+            . 'data-g3d-source="data-snapshot-id" data-g3d-required="1">';
 
         echo '<div tabindex="0" data-g3d-wizard-focus-guard="start"></div>';
         echo '<div class="g3d-wizard-modal__content">';
@@ -134,7 +135,9 @@ final class Modal
         echo '</section>';
 
         echo '<footer class="g3d-wizard-modal__footer">';
-        echo '<div class="g3d-wizard-modal__summary" aria-live="polite">';
+        echo '<div class="g3d-wizard-modal__summary" aria-live="polite" '
+            . 'data-producto-id="" data-g3d-field="producto_id" '
+            . 'data-g3d-source="data-producto-id" data-g3d-required="1">';
         echo esc_html__(
             'TODO: Resumen del estado. Ver docs/plugin-4-gafas3d-wizard-modal.md §5.5.',
             'gafas3d-wizard-modal'
@@ -150,7 +153,9 @@ final class Modal
         echo esc_html__('Verificar', 'gafas3d-wizard-modal');
         echo '</button>';
 
-        echo '<button type="button" class="g3d-wizard-modal__cta" data-g3d-wizard-modal-cta>';
+        echo '<button type="button" class="g3d-wizard-modal__cta" data-g3d-wizard-modal-cta '
+            . 'data-locale="' . $locale . '" data-g3d-field="locale" '
+            . 'data-g3d-source="data-locale" data-g3d-required="1">';
         echo esc_html__(
             'TODO: Texto del CTA. Ver docs/plugin-4-gafas3d-wizard-modal.md §5.6.',
             'gafas3d-wizard-modal'
