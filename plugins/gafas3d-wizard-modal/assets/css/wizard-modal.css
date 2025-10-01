@@ -6,6 +6,10 @@ body.g3d-wizard-open {
   overflow: hidden;
 }
 
+.g3d-wizard--busy {
+  cursor: progress;
+}
+
 .g3d-wizard-modal__overlay {
   position: fixed;
   inset: 0;
@@ -29,7 +33,7 @@ body.g3d-wizard-open {
   padding: 1.5rem;
 }
 
-.g3d-wizard-modal.is-busy {
+.g3d-wizard-modal.g3d-wizard--busy {
   opacity: 0.85;
 }
 

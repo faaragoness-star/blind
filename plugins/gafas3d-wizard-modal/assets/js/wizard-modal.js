@@ -16,17 +16,31 @@
   let rulesPromise = null;
   let rulesData = null;
 
-  function setBusy(el, busy) {
-    if (!el) {
-      return;
-    }
+  function setBusy(modal, busy) {
+    if (!modal) return;
 
-    el.setAttribute('aria-busy', busy ? 'true' : 'false');
+    if (busy) {
+      modal.setAttribute('aria-busy', 'true');
 
-    if (el.classList && typeof el.classList.toggle === 'function') {
-      el.classList.toggle('is-busy', !!busy);
+      if (modal.classList && typeof modal.classList.add === 'function') {
+        modal.classList.add('g3d-wizard--busy');
+      }
+    } else {
+      modal.removeAttribute('aria-busy');
+
+      if (modal.classList && typeof modal.classList.remove === 'function') {
+        modal.classList.remove('g3d-wizard--busy');
+      }
     }
   }
+
+  function announce(msgEl, text) {
+    if (msgEl) {
+      msgEl.textContent = String(text || '');
+    }
+  }
+
+  var inflight = { validate: false, verify: false };
 
   function setDisabled(el, on) {
     if (!el) {
@@ -36,15 +50,11 @@
     const disabled = !!on;
 
     el.disabled = disabled;
-    el.setAttribute('aria-disabled', disabled ? 'true' : 'false');
-  }
-
-  function say(msgEl, text) {
-    if (!msgEl) {
-      return;
+    if (disabled) {
+      el.setAttribute('aria-disabled', 'true');
+    } else {
+      el.removeAttribute('aria-disabled');
     }
-
-    msgEl.textContent = text || '';
   }
 
   function buildQuery(params) {
@@ -312,7 +322,6 @@
     var hasExpired = false;
     let currentAbort = null;
     var autoVerifyEnabled = false;
-    var modalBusyState = { validate: false, verify: false };
     var liveOverrideMessage = '';
 
     function updateModalBusy() {
@@ -320,7 +329,7 @@
         return;
       }
 
-      var isBusy = modalBusyState.validate || modalBusyState.verify;
+      var isBusy = inflight.validate || inflight.verify;
 
       setBusy(modal, isBusy);
     }
@@ -375,7 +384,7 @@
       }
 
       if (liveOverrideMessage) {
-        say(message, liveOverrideMessage);
+        announce(message, liveOverrideMessage);
 
         return;
       }
@@ -398,7 +407,7 @@
         parts.push(ttlMessage);
       }
 
-      say(message, parts.join(' · '));
+      announce(message, parts.join(' · '));
     }
 
     function setSummaryMessage(value) {
@@ -924,6 +933,10 @@
         return;
       }
 
+      if (inflight.validate) {
+        return;
+      }
+
       if (cta.disabled) {
         return;
       }
@@ -980,12 +993,13 @@
       }
 
       cta.textContent = ctaBusyLabel;
-      modalBusyState.validate = true;
+      inflight.validate = true;
+      setBusy(modal, true);
       updateModalBusy();
       setDisabled(cta, true);
       setStatusMessage('');
       liveOverrideMessage = ctaBusyLabel;
-      say(message, ctaBusyLabel);
+      announce(message, ctaBusyLabel);
       setBusy(message, true);
 
       try {
@@ -1078,7 +1092,7 @@
           }
 
           setStatusMessage('ERROR — ' + code);
-          say(message, 'ERROR — ' + code);
+          announce(message, 'ERROR — ' + code);
         }
       } catch (error) {
         if (error && error.name === 'AbortError') {
@@ -1091,7 +1105,7 @@
         };
 
         setStatusMessage('ERROR — NETWORK');
-        say(message, 'ERROR — NETWORK');
+        announce(message, 'ERROR — NETWORK');
       } finally {
         var prevLabel = cta.getAttribute('data-label-prev');
 
@@ -1100,13 +1114,18 @@
           cta.removeAttribute('data-label-prev');
         }
 
-        modalBusyState.validate = false;
+        inflight.validate = false;
+
+        if (!inflight.verify) {
+          setBusy(modal, false);
+        }
+
         updateModalBusy();
         setDisabled(cta, false);
 
         if (!statusMessage) {
           liveOverrideMessage = '';
-          say(message, '');
+          announce(message, '');
         }
         var shouldReleaseBusy = !currentAbort || currentAbort === controller;
 
@@ -1125,6 +1144,10 @@
 
       var opts = options && typeof options === 'object' ? options : {};
       var force = opts.force === true;
+
+      if (inflight.verify) {
+        return;
+      }
 
       if (!force && verifyButton.disabled) {
         return;
@@ -1163,6 +1186,7 @@
 
       if (!skuHash || !skuSignature) {
         setStatusMessage('ERROR — Primero valida y firma');
+        announce(message, 'Primero valida y firma');
         return;
       }
 
@@ -1184,12 +1208,13 @@
       }
 
       verifyButton.textContent = verifyBusyLabel;
-      modalBusyState.verify = true;
+      inflight.verify = true;
+      setBusy(modal, true);
       updateModalBusy();
       setDisabled(verifyButton, true);
       setStatusMessage('');
       liveOverrideMessage = verifyBusyLabel;
-      say(message, verifyBusyLabel);
+      announce(message, verifyBusyLabel);
       setBusy(message, true);
 
       try {
@@ -1239,7 +1264,7 @@
           }
 
           setStatusMessage('ERROR — ' + code);
-          say(message, 'ERROR — ' + code);
+          announce(message, 'ERROR — ' + code);
         }
       } catch (error) {
         if (error && error.name === 'AbortError') {
@@ -1247,7 +1272,7 @@
         }
 
         setStatusMessage('ERROR — NETWORK');
-        say(message, 'ERROR — NETWORK');
+        announce(message, 'ERROR — NETWORK');
       } finally {
         var prevVerifyLabel = verifyButton.getAttribute('data-label-prev');
 
@@ -1256,7 +1281,12 @@
           verifyButton.removeAttribute('data-label-prev');
         }
 
-        modalBusyState.verify = false;
+        inflight.verify = false;
+
+        if (!inflight.validate) {
+          setBusy(modal, false);
+        }
+
         updateModalBusy();
         setDisabled(verifyButton, false);
 
@@ -1276,7 +1306,7 @@
 
         if (!statusMessage) {
           liveOverrideMessage = '';
-          say(message, '');
+          announce(message, '');
         }
 
         clearAbort(controller);
@@ -1541,8 +1571,9 @@
         setButtonEnabledState(verifyButton, true);
       }
 
-      modalBusyState.validate = false;
-      modalBusyState.verify = false;
+      inflight.validate = false;
+      inflight.verify = false;
+      setBusy(modal, false);
       liveOverrideMessage = '';
       updateModalBusy();
     }
