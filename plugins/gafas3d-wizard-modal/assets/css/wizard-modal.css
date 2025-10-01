@@ -35,11 +35,16 @@ body.g3d-wizard-open {
 }
 
 .g3d-wizard-modal__rules {
-  margin-top: 0.5rem;
+  margin-top: 0.75rem;
   font-size: 0.875rem;
   line-height: 1.4;
   min-height: 1.5em;
   color: rgba(17, 24, 39, 0.78);
+}
+
+.g3d-wizard-modal__rules ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
 }
 
 .g3d-wizard-modal__msg {

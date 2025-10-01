@@ -125,6 +125,8 @@ final class Modal
             echo '</section>';
         }
 
+        echo '<section class="g3d-wizard-modal__rules" data-g3d-wizard-rules aria-live="polite"></section>';
+
         echo '<footer class="g3d-wizard-modal__footer">';
         echo '<div class="g3d-wizard-modal__summary" aria-live="polite">';
         echo esc_html__(
@@ -134,8 +136,6 @@ final class Modal
         echo '</div>';
 
         echo '<div class="g3d-wizard-modal__msg" aria-live="polite"></div>';
-
-        echo '<div class="g3d-wizard-modal__rules" aria-live="polite"></div>';
 
         echo '<button type="button"'
             . ' class="g3d-wizard-modal__verify"'
