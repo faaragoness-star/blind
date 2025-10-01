@@ -103,6 +103,67 @@ if (!function_exists('get_locale')) {
     }
 }
 
+if (!isset($GLOBALS['g3d_wizard_modal_shortcodes'])) {
+    /**
+     * @var array<string, callable> $GLOBALS['g3d_wizard_modal_shortcodes']
+     */
+    $GLOBALS['g3d_wizard_modal_shortcodes'] = [];
+}
+
+if (!function_exists('add_shortcode')) {
+    /**
+     * @param callable $callback
+     */
+    function add_shortcode(string $tag, callable $callback): void
+    {
+        $GLOBALS['g3d_wizard_modal_shortcodes'][$tag] = $callback;
+    }
+}
+
+if (!function_exists('shortcode_atts')) {
+    /**
+     * @param array<string, mixed> $pairs
+     * @param array<string, mixed> $atts
+     * @return array<string, mixed>
+     */
+    function shortcode_atts(array $pairs, array $atts, string $shortcode = ''): array
+    {
+        unset($shortcode);
+
+        $out = [];
+
+        foreach ($pairs as $name => $default) {
+            if (array_key_exists($name, $atts)) {
+                $out[$name] = $atts[$name];
+            } else {
+                $out[$name] = $default;
+            }
+        }
+
+        foreach ($atts as $name => $value) {
+            if (!array_key_exists($name, $out)) {
+                $out[$name] = $value;
+            }
+        }
+
+        return $out;
+    }
+}
+
+if (!function_exists('sanitize_text_field')) {
+    function sanitize_text_field(string $text): string
+    {
+        $text = strip_tags($text);
+        $text = preg_replace('/[\r\n\t]+/', ' ', $text);
+
+        if ($text === null) {
+            $text = '';
+        }
+
+        return trim($text);
+    }
+}
+
 if (!isset($GLOBALS['g3d_wizard_modal_enqueued_scripts'])) {
     /**
      * @var array<string, array{src:string,deps:array<int, string>,ver:string|bool,in_footer:bool}> $GLOBALS['g3d_wizard_modal_enqueued_scripts']
