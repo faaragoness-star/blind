@@ -206,9 +206,14 @@
     var summaryMessage = '';
     var statusMessage = '';
     var rulesSummaryMessage = '';
+    var ttlMessage = '';
     var lastRules = null;
     var rulesSelection = {};
+    var ttlIntervalId = null;
+    var ttlDeadline = null;
+    var hasExpired = false;
     let currentAbort = null;
+    var autoVerifyEnabled = false;
 
     const msg = message;
     const rulesUrl =
@@ -222,6 +227,21 @@
     const initialSnapshotId = initialModalData.snapshotId || '';
     const initialLocale =
       initialModalData.locale || wizard.locale || '';
+
+    if (
+      rootContainer &&
+      rootContainer.getAttribute('data-auto-verify') === '1'
+    ) {
+      autoVerifyEnabled = true;
+    }
+
+    if (!autoVerifyEnabled && overlay) {
+      autoVerifyEnabled = overlay.getAttribute('data-auto-verify') === '1';
+    }
+
+    if (!autoVerifyEnabled && modal) {
+      autoVerifyEnabled = modal.getAttribute('data-auto-verify') === '1';
+    }
 
     if (rulesUrl) {
       try {
@@ -297,6 +317,10 @@
 
       if (statusMessage) {
         parts.push(statusMessage);
+      }
+
+      if (ttlMessage) {
+        parts.push(ttlMessage);
       }
 
       setText(message, parts.join(' · '));
@@ -416,6 +440,113 @@
     function setStatusMessage(value) {
       statusMessage = value || '';
       updateLiveMessage();
+    }
+
+    function setTtlMessage(value) {
+      ttlMessage = value || '';
+      updateLiveMessage();
+    }
+
+    function clearTtlCountdown() {
+      if (ttlIntervalId) {
+        global.clearInterval(ttlIntervalId);
+        ttlIntervalId = null;
+      }
+
+      ttlDeadline = null;
+    }
+
+    function resetTtlState() {
+      hasExpired = false;
+      clearTtlCountdown();
+      setTtlMessage('');
+    }
+
+    function padTimeSegment(value) {
+      var segment = Number(value);
+
+      if (!Number.isFinite(segment)) {
+        segment = 0;
+      }
+
+      return segment < 10 ? '0' + String(segment) : String(segment);
+    }
+
+    function formatRemainingDuration(milliseconds) {
+      var totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+      var hours = Math.floor(totalSeconds / 3600);
+      var minutes = Math.floor((totalSeconds % 3600) / 60);
+      var seconds = totalSeconds % 60;
+
+      if (hours > 0) {
+        return (
+          padTimeSegment(hours) +
+          ':' +
+          padTimeSegment(minutes) +
+          ':' +
+          padTimeSegment(seconds)
+        );
+      }
+
+      return padTimeSegment(minutes) + ':' + padTimeSegment(seconds);
+    }
+
+    function markAsExpired() {
+      hasExpired = true;
+      setTtlMessage('Expirado.');
+
+      if (verifyButton) {
+        setButtonEnabledState(verifyButton, false);
+      }
+    }
+
+    function updateTtlCountdown() {
+      if (!ttlDeadline) {
+        return;
+      }
+
+      var now = Date.now();
+      var remaining = ttlDeadline - now;
+
+      if (remaining <= 0) {
+        clearTtlCountdown();
+        markAsExpired();
+
+        return;
+      }
+
+      hasExpired = false;
+      setTtlMessage('OK — expira en ' + formatRemainingDuration(remaining));
+    }
+
+    function startTtlCountdown(expiresAt) {
+      if (typeof expiresAt !== 'string' || !expiresAt) {
+        return false;
+      }
+
+      clearTtlCountdown();
+
+      var parsed = Date.parse(expiresAt);
+
+      if (Number.isNaN(parsed)) {
+        // TODO(Capa 3 §Caducidad): definir formato/ausencia y no mostrar cuenta atrás (comportamiento degradado).
+        return false;
+      }
+
+      ttlDeadline = parsed;
+
+      if (ttlDeadline <= Date.now()) {
+        markAsExpired();
+
+        return true;
+      }
+
+      updateTtlCountdown();
+      ttlIntervalId = global.setInterval(function () {
+        updateTtlCountdown();
+      }, 1000);
+
+      return true;
     }
 
     function formatRulesSummary(data, fallbackSnapshotId) {
@@ -700,6 +831,7 @@
         return;
       }
 
+      resetTtlState();
       var modalData = getModalData();
       var snapshotId = modalData.snapshotId;
       var productoId = modalData.productoId;
@@ -758,17 +890,38 @@
         };
 
         if (response.ok) {
-          var hash = data && data.sku_hash ? data.sku_hash : '-';
-          var expires = data && data.expires_at ? data.expires_at : '-';
+          var hash = data && data.sku_hash ? data.sku_hash : '';
+          var signature =
+            data && typeof data.sku_signature === 'string'
+              ? data.sku_signature
+              : '';
+          var expiresAtRaw =
+            data && typeof data.expires_at === 'string' ? data.expires_at : '';
           var snapshotValue =
             data && data.snapshot_id ? data.snapshot_id : snapshotId || '';
 
-          setStatusMessage(
-            __('OK — hash: ', TEXT_DOMAIN) +
-              hash +
-              __(' | expira: ', TEXT_DOMAIN) +
-              expires
-          );
+          if (verifyButton) {
+            setButtonEnabledState(verifyButton, true);
+          }
+
+          var countdownStarted = false;
+
+          if (expiresAtRaw) {
+            countdownStarted = startTtlCountdown(expiresAtRaw);
+          } else {
+            // TODO(Capa 3 §Caducidad): definir formato/ausencia y no mostrar cuenta atrás (comportamiento degradado).
+          }
+
+          if (countdownStarted) {
+            setStatusMessage('');
+          } else {
+            var hashLabel = hash || '-';
+            setStatusMessage(__('OK — hash: ', TEXT_DOMAIN) + hashLabel);
+          }
+
+          if (verifyButton) {
+            setButtonEnabledState(verifyButton, !hasExpired);
+          }
 
           if (shouldAutoAudit) {
             audit('validate_sign_success', {
@@ -777,8 +930,14 @@
             });
           }
 
-          // TODO(plugin-4-gafas3d-wizard-modal.md §9): encadenar verify tras validate-sign.
-
+          if (
+            autoVerifyEnabled &&
+            !hasExpired &&
+            hash &&
+            signature
+          ) {
+            runVerifyRequest({ force: true });
+          }
         } else {
           var code = '-';
 
@@ -819,12 +978,19 @@
       }
     }
 
-    async function runVerifyRequest() {
+    async function runVerifyRequest(options) {
       if (!verifyButton) {
         return;
       }
 
-      if (verifyButton.disabled) {
+      var opts = options && typeof options === 'object' ? options : {};
+      var force = opts.force === true;
+
+      if (!force && verifyButton.disabled) {
+        return;
+      }
+
+      if (hasExpired) {
         return;
       }
 
@@ -868,6 +1034,8 @@
 
       const controller = startAbortableRequest();
       var signal = controller ? controller.signal : undefined;
+      var initialDisabled = verifyButton.disabled;
+
       disableBtn(verifyButton, true, __('Verificando…', TEXT_DOMAIN));
 
       setBusy(message, true);
@@ -929,6 +1097,15 @@
         setStatusMessage('ERROR — NETWORK');
       } finally {
         disableBtn(verifyButton, false);
+
+        if (hasExpired) {
+          setButtonEnabledState(verifyButton, false);
+        } else if (initialDisabled) {
+          setButtonEnabledState(verifyButton, false);
+        } else {
+          setButtonEnabledState(verifyButton, true);
+        }
+
         var shouldReleaseBusy = !currentAbort || currentAbort === controller;
 
         if (shouldReleaseBusy) {
@@ -1097,6 +1274,7 @@
       previousFocus = null;
       setSummaryMessage('');
       setStatusMessage('');
+      resetTtlState();
       setRulesSummaryMessage('');
 
       setBusy(message, false);
@@ -1107,6 +1285,16 @@
       }
 
       resetRulesSelection();
+
+      if (cta) {
+        disableBtn(cta, false);
+        setButtonEnabledState(cta, true);
+      }
+
+      if (verifyButton) {
+        disableBtn(verifyButton, false);
+        setButtonEnabledState(verifyButton, true);
+      }
     }
 
     var openButtons = document.querySelectorAll('[' + OPEN_ATTR + ']');
