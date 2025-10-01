@@ -31,7 +31,9 @@ final class ModalRulesContainerTest extends TestCase
 
         $xpath = new \DOMXPath($document);
 
-        $rulesNodes = $xpath->query('//*[@class="g3d-wizard-modal__rules" or contains(@class,"g3d-wizard-modal__rules ")]');
+        $rulesQuery = '//*[@class="g3d-wizard-modal__rules" '
+            . 'or contains(@class,"g3d-wizard-modal__rules ")]';
+        $rulesNodes = $xpath->query($rulesQuery);
         self::assertNotFalse($rulesNodes);
         self::assertSame(1, $rulesNodes->length);
 
@@ -46,7 +48,9 @@ final class ModalRulesContainerTest extends TestCase
         $listNode = $xpath->query('//*[@data-g3d-rules-list]')->item(0);
         self::assertInstanceOf(\DOMElement::class, $listNode);
 
-        $modalNodes = $xpath->query('//*[@class="g3d-wizard-modal" or contains(@class,"g3d-wizard-modal ")]');
+        $modalQuery = '//*[@class="g3d-wizard-modal" '
+            . 'or contains(@class,"g3d-wizard-modal ")]';
+        $modalNodes = $xpath->query($modalQuery);
         self::assertNotFalse($modalNodes);
         self::assertGreaterThan(0, $modalNodes->length);
 
