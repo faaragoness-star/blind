@@ -73,29 +73,27 @@ class VerifyController
         $validation = $this->validator->validate($payload);
 
         if (!empty($validation['missing'])) {
-            // TODO(doc §errores): documentar missing_fields en errores REST.
-            return new WP_Error(
-                'rest_missing_required_params',
-                'Faltan campos requeridos.',
-                [
-                    'status'         => 400,
-                    'request_id'     => $requestId,
-                    'missing_fields' => $validation['missing'],
-                ]
+            $error = Responses::error(
+                'E_MISSING_PARAMS',
+                'missing_params',
+                'Faltan parámetros requeridos.'
             );
+            $error['request_id'] = $requestId;
+            $error['meta']       = ['missing_fields' => $validation['missing']];
+
+            return new WP_REST_Response($error, 400);
         }
 
         if (!empty($validation['type'])) {
-            // TODO(doc §errores): documentar type_errors en errores REST.
-            return new WP_Error(
-                'rest_invalid_param',
-                'Tipos inválidos detectados.',
-                [
-                    'status'      => 400,
-                    'request_id'  => $requestId,
-                    'type_errors' => $validation['type'],
-                ]
+            $error = Responses::error(
+                'E_INVALID_PARAMS',
+                'invalid_params',
+                'Tipos inválidos detectados.'
             );
+            $error['request_id'] = $requestId;
+            $error['meta']       = ['type_errors' => $validation['type']];
+
+            return new WP_REST_Response($error, 400);
         }
 
         /** @var VerifyPayload $sanitized */
