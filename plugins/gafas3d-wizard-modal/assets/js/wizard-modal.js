@@ -29,36 +29,11 @@
     return base + '?' + entries.join('&');
   }
 
-  global.G3DWIZARD.getJson = async function getJson(url, options) {
-    if (!url) {
-      return {};
-    }
+  global.G3DWIZARD.getJson = async function getJson(url, init) {
+    const options = Object.assign({ method: 'GET' }, init || {});
+    const res = await fetch(url, options);
 
-    try {
-      const init = {
-        headers: {
-          'X-WP-Nonce': (global.G3DWIZARD && global.G3DWIZARD.nonce) || '',
-        },
-      };
-
-      if (options && options.signal) {
-        init.signal = options.signal;
-      }
-
-      const res = await fetch(url, init);
-
-      if (!res.ok) {
-        return {};
-      }
-
-      try {
-        return await res.json();
-      } catch (parseError) {
-        return {};
-      }
-    } catch (requestError) {
-      return {};
-    }
+    return res;
   };
 
   function readValue(el) {
@@ -250,26 +225,27 @@
 
     if (rulesUrl) {
       try {
-        const initialUrl = buildQuery(rulesUrl, {
-          // TODO(doc Capa 2 §params): incluir solo los que el doc defina
-          ...(initialProductoId ? { producto_id: initialProductoId } : {}),
-          ...(initialSnapshotId ? { snapshot_id: initialSnapshotId } : {}),
-          ...(initialLocale ? { locale: initialLocale } : {}),
-        });
-        const r = await global.G3DWIZARD.getJson(initialUrl);
-        lastRules = r;
-        const count = r && Array.isArray(r.rules) ? r.rules.length : 0;
+        const initialUrl = rulesUrl; // TODO(doc Capa 2 §params): documentar querystring.
+        const response = await global.G3DWIZARD.getJson(initialUrl);
+        const payload = (await response.json().catch(function () {
+          return {};
+        })) || {};
 
-        if (msg && count) {
-          msg.textContent = 'Reglas cargadas: ' + String(count);
-        }
+        if (response.ok) {
+          lastRules = payload && typeof payload === 'object' ? payload : {};
+          const list = Array.isArray(lastRules.rules) ? lastRules.rules : [];
 
-        if (
-          (!initialModalData.productoId || !initialModalData.snapshotId) &&
-          r &&
-          typeof r === 'object'
-        ) {
-          // TODO(Plugin 4 §pre-fill): definir prellenado cuando se documente.
+          if (msg) {
+            msg.textContent = 'Reglas: ' + String(list.length);
+          }
+
+          if (
+            (!initialModalData.productoId || !initialModalData.snapshotId) &&
+            lastRules &&
+            typeof lastRules === 'object'
+          ) {
+            // TODO(Plugin 4 §pre-fill): definir prellenado cuando se documente.
+          }
         }
       } catch (rulesError) {
         // Best effort; sin bloquear.
@@ -417,7 +393,7 @@
     }
 
     function gateCtasByRules(rulesPayload) {
-      var enable = true;
+      var enable = false;
 
       if (
         rulesPayload &&
@@ -425,6 +401,12 @@
         Object.prototype.hasOwnProperty.call(rulesPayload, 'ok')
       ) {
         enable = rulesPayload.ok === true;
+      } else if (
+        rulesPayload &&
+        typeof rulesPayload === 'object' &&
+        Array.isArray(rulesPayload.rules)
+      ) {
+        enable = true;
       }
 
       setButtonEnabledState(cta, enable);
@@ -966,63 +948,34 @@
     }
 
     async function loadRulesData(snapshotId, productoId, locale) {
-      disableBtn(cta, true, __('Cargando…', TEXT_DOMAIN));
-
-      if (verifyButton) {
-        disableBtn(verifyButton, true, __('Cargando…', TEXT_DOMAIN));
-      }
-
       setBusy(message, true);
 
       if (rulesContainer) {
         setBusy(rulesContainer, true);
       }
 
+      setButtonEnabledState(cta, false);
+
+      if (verifyButton) {
+        setButtonEnabledState(verifyButton, false);
+      }
+
+      disableBtn(cta, true, __('Cargando…', TEXT_DOMAIN));
+
+      if (verifyButton) {
+        disableBtn(verifyButton, true, __('Cargando…', TEXT_DOMAIN));
+      }
+
       resetRulesSelection();
-
-      var missing = [];
-
-      if (!productoId) {
-        missing.push('producto_id');
-      }
-
-      if (!snapshotId) {
-        missing.push('snapshot_id');
-      }
-
-      if (!locale) {
-        missing.push('locale');
-      }
-
-      if (missing.length) {
-        var missingMessage =
-          'TODO(docs/plugin-2-g3d-catalog-rules.md §6 APIs / Contratos (lectura)): falta ' +
-          missing.join(', ');
-        lastRules = null;
-        setRulesSummaryMessage(missingMessage);
-        showRulesError(missingMessage);
-        setBusy(message, false);
-
-        if (rulesContainer) {
-          setBusy(rulesContainer, false);
-        }
-
-        disableBtn(cta, false);
-
-        if (verifyButton) {
-          disableBtn(verifyButton, false);
-        }
-
-        gateCtasByRules(lastRules);
-
-        return;
-      }
 
       setRulesSummaryMessage(__('Reglas: cargando…', TEXT_DOMAIN));
       showRulesLoading();
 
       const controller = startAbortableRequest();
       var signal = controller ? controller.signal : undefined;
+      var aborted = false;
+      var response = null;
+      var parsed = {};
 
       try {
         var endpoint = getRulesEndpoint();
@@ -1030,56 +983,65 @@
         if (!endpoint) {
           throw new Error('Missing catalog rules endpoint');
         }
-        var requestUrl = buildQuery(endpoint, {
-          // TODO(doc Capa 2 §params): incluir solo los que el doc defina
-          ...(productoId ? { producto_id: productoId } : {}),
-          ...(snapshotId ? { snapshot_id: snapshotId } : {}),
-          ...(locale ? { locale: locale } : {}),
-        });
-        var data = await global.G3DWIZARD.getJson(requestUrl, { signal: signal });
-        var parsed = data && typeof data === 'object' ? data : {};
 
-        lastRules = parsed;
-        showRulesList(parsed.rules || []);
-        setRulesSummaryMessage(formatRulesSummary(parsed, snapshotId));
+        var requestUrl = endpoint; // TODO(doc Capa 2 §params): documentar query del endpoint.
+        response = await global.G3DWIZARD.getJson(
+          requestUrl,
+          signal ? { signal: signal } : undefined
+        );
+        parsed = (await response.json().catch(function () {
+          return {};
+        })) || {};
       } catch (error) {
         if (error && error.name === 'AbortError') {
-          return;
+          aborted = true;
         }
+      }
 
-        lastRules = null;
+      disableBtn(cta, false);
 
-        if (error && typeof error.status === 'number') {
-          showRulesError(formatRulesError());
-          setRulesSummaryMessage(formatRulesError());
+      if (verifyButton) {
+        disableBtn(verifyButton, false);
+      }
+
+      if (!aborted) {
+        if (response && response.ok) {
+          lastRules = parsed && typeof parsed === 'object' ? parsed : {};
+          showRulesList(lastRules.rules || []);
+          var count = Array.isArray(lastRules.rules) ? lastRules.rules.length : 0;
+          setRulesSummaryMessage('Reglas: ' + String(count));
+          gateCtasByRules(lastRules);
         } else {
-          showRulesNetworkError();
-          setRulesSummaryMessage(formatRulesNetworkError());
+          lastRules = null;
+          var statusCode = response ? response.status || 0 : 0;
+          var errorMessage = 'ERROR — HTTP ' + String(statusCode);
+          showRulesError(errorMessage);
+          setRulesSummaryMessage(errorMessage);
+          gateCtasByRules(lastRules);
         }
-      } finally {
-        disableBtn(cta, false);
+      } else {
+        setRulesSummaryMessage('');
+        setButtonEnabledState(cta, false);
 
         if (verifyButton) {
-          disableBtn(verifyButton, false);
+          setButtonEnabledState(verifyButton, false);
         }
+      }
 
-        var shouldReleaseBusy = !currentAbort || currentAbort === controller;
+      var shouldReleaseBusy = !currentAbort || currentAbort === controller;
 
-        if (shouldReleaseBusy) {
-          setBusy(message, false);
+      if (shouldReleaseBusy) {
+        setBusy(message, false);
 
-          if (rulesContainer) {
-            setBusy(rulesContainer, false);
-          }
+        if (rulesContainer) {
+          setBusy(rulesContainer, false);
         }
+      }
 
-        clearAbort(controller);
+      clearAbort(controller);
 
-        if (modal) {
-          modal.setAttribute('data-ready', '1');
-        }
-
-        gateCtasByRules(lastRules);
+      if (!aborted && modal) {
+        modal.setAttribute('data-ready', '1');
       }
     }
 
