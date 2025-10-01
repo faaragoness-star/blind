@@ -41,7 +41,9 @@ final class ModalRenderTest extends TestCase
         libxml_use_internal_errors($previous);
 
         $xpath = new \DOMXPath($document);
-        $modalNode = $xpath->query('//*[@class="g3d-wizard-modal" or contains(@class,"g3d-wizard-modal ")]')->item(0);
+
+        $modalQuery = '//*[@class="g3d-wizard-modal" or contains(@class,"g3d-wizard-modal ")]';
+        $modalNode = $xpath->query($modalQuery)->item(0);
 
         self::assertInstanceOf(\DOMElement::class, $modalNode);
         self::assertTrue($modalNode->hasAttribute('data-snapshot-id'));
@@ -51,7 +53,9 @@ final class ModalRenderTest extends TestCase
         self::assertTrue($modalNode->hasAttribute('data-locale'));
         self::assertSame(get_locale(), $modalNode->getAttribute('data-locale'));
 
-        $rulesNodes = $xpath->query('//*[@class="g3d-wizard-modal__rules" or contains(@class,"g3d-wizard-modal__rules ")]');
+        $rulesQuery = '//*[@class="g3d-wizard-modal__rules" or contains(@class,"g3d-wizard-modal__rules ")]';
+        $rulesNodes = $xpath->query($rulesQuery);
+
         self::assertNotFalse($rulesNodes);
         self::assertSame(1, $rulesNodes->length);
         $rulesNode = $rulesNodes->item(0);
@@ -110,7 +114,7 @@ final class ModalRenderTest extends TestCase
         $panelIds = [];
 
         foreach ($panels as $panel) {
-            if (! $panel instanceof \DOMElement) {
+            if (!$panel instanceof \DOMElement) {
                 continue;
             }
 
@@ -121,7 +125,7 @@ final class ModalRenderTest extends TestCase
         }
 
         foreach ($tabs as $tab) {
-            if (! $tab instanceof \DOMElement) {
+            if (!$tab instanceof \DOMElement) {
                 continue;
             }
 
