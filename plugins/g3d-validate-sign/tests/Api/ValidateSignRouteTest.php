@@ -9,7 +9,6 @@ use G3D\ValidateSign\Crypto\Signer;
 use G3D\ValidateSign\Validation\RequestValidator;
 use G3D\VendorBase\Time\FixedClock;
 use PHPUnit\Framework\TestCase;
-use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
 
@@ -99,15 +98,17 @@ final class ValidateSignRouteTest extends TestCase
         $request->set_body((string) json_encode($payload));
         $response = $controller->handle($request);
 
-        self::assertInstanceOf(WP_Error::class, $response);
-        self::assertSame('rest_missing_required_params', $response->get_error_code());
-        self::assertSame('Faltan campos requeridos.', $response->get_error_message());
-        $data = $response->get_error_data();
+        self::assertInstanceOf(WP_REST_Response::class, $response);
+        self::assertSame(400, $response->get_status());
+        $data = $response->get_data();
         self::assertIsArray($data);
-        self::assertSame(400, $data['status']);
-        self::assertArrayHasKey('request_id', $data);
+        self::assertFalse($data['ok']);
+        self::assertSame('E_MISSING_PARAMS', $data['code']);
+        self::assertSame('missing_params', $data['reason_key']);
+        self::assertSame('Faltan parámetros requeridos.', $data['detail']);
         self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $data['request_id']);
-        self::assertContains('snapshot_id', $data['missing_fields']);
+        self::assertIsArray($data['meta']);
+        self::assertContains('snapshot_id', $data['meta']['missing_fields']);
     }
 
     public function testHandleReturnsWpErrorWhenTypeInvalid(): void
@@ -135,14 +136,16 @@ final class ValidateSignRouteTest extends TestCase
         $request->set_body((string) json_encode($payload));
         $response = $controller->handle($request);
 
-        self::assertInstanceOf(WP_Error::class, $response);
-        self::assertSame('rest_invalid_param', $response->get_error_code());
-        self::assertSame('Tipos inválidos detectados.', $response->get_error_message());
-        $data = $response->get_error_data();
+        self::assertInstanceOf(WP_REST_Response::class, $response);
+        self::assertSame(400, $response->get_status());
+        $data = $response->get_data();
         self::assertIsArray($data);
-        self::assertSame(400, $data['status']);
-        self::assertArrayHasKey('request_id', $data);
+        self::assertFalse($data['ok']);
+        self::assertSame('E_INVALID_PARAMS', $data['code']);
+        self::assertSame('invalid_params', $data['reason_key']);
+        self::assertSame('Tipos inválidos detectados.', $data['detail']);
         self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', (string) $data['request_id']);
-        self::assertArrayHasKey('type_errors', $data);
+        self::assertIsArray($data['meta']);
+        self::assertArrayHasKey('type_errors', $data['meta']);
     }
 }
