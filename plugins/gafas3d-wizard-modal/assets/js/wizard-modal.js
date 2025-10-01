@@ -255,9 +255,9 @@
     var summaryContainer = overlay.querySelector('.g3d-wizard-modal__summary');
     var rulesContainer = modal ? modal.querySelector('.g3d-wizard-modal__rules') : null;
     var tablist = root.querySelector('[role="tablist"]');
-    var tabs = tablist ? tablist.querySelectorAll('[role="tab"]') : [];
-    var panels = root.querySelectorAll('[role="tabpanel"]');
-    var panelById = {};
+    const tabs = tablist ? tablist.querySelectorAll('[role="tab"]') : [];
+    const panels = root.querySelectorAll('[role="tabpanel"]');
+    const panelById = {};
     var shouldAutoAudit = modal && modal.getAttribute('data-auto-audit') === '1';
     var previousFocus = null;
     var summaryMessage = '';
@@ -560,7 +560,9 @@
       });
 
       Array.prototype.forEach.call(panels, function (p) {
-        p.hidden = p.id !== target;
+        var isActivePanel = p.id === target;
+
+        p.hidden = !isActivePanel;
       });
 
       if (typeof tabEl.focus === 'function') {
@@ -1182,7 +1184,7 @@
             return;
           }
 
-          if (key === 'Enter' || key === ' ' || key === 'Space') {
+          if (key === 'Enter' || key === ' ' || key === 'Space' || key === 'Spacebar') {
             event.preventDefault();
 
             if (isTabDisabled(tab)) {
