@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace G3D\CatalogRules\Api;
 
-use G3D\VendorBase\Rest\Responses;
 use G3D\VendorBase\Rest\Security;
 use WP_Error;
 use WP_REST_Request;
@@ -109,53 +108,63 @@ final class RulesReadController
         );
     }
 
-    public function handle(WP_REST_Request $request): WP_REST_Response
+    public function handle(WP_REST_Request $request): WP_REST_Response|WP_Error
     {
         $nonceCheck = Security::checkOptionalNonce($request);
         if ($nonceCheck instanceof WP_Error) {
             // TODO(plugin-2-g3d-catalog-rules.md §12 Seguridad): definir si nonce obligatorio.
         }
 
-        $missingParams = [];
-        $invalidTypes  = [];
+        $missingFields = [];
+        $typeErrors    = [];
 
         $productoId = $this->readRequiredStringParam(
             $request->get_param('producto_id'),
             'producto_id',
-            $missingParams,
-            $invalidTypes
+            $missingFields,
+            $typeErrors
+        );
+
+        $snapshotId = $this->readOptionalStringParam(
+            $request->get_param('snapshot_id'),
+            'snapshot_id',
+            $typeErrors
         );
 
         $locale = $this->readOptionalStringParam(
             $request->get_param('locale'),
             'locale',
-            $invalidTypes
+            $typeErrors
         );
 
-        if ($missingParams !== []) {
-            return new WP_REST_Response(
-                Responses::error(
-                    'E_MISSING_PARAMS',
-                    'missing_params',
-                    'Faltan parámetros requeridos.'
-                ),
-                400
+        if ($missingFields !== []) {
+            return new WP_Error(
+                'rest_missing_required_params',
+                'Faltan campos requeridos.',
+                [
+                    'status'         => 400,
+                    'missing_fields' => $missingFields,
+                ]
             );
         }
 
-        if ($invalidTypes !== []) {
-            return new WP_REST_Response(
-                Responses::error(
-                    'E_INVALID_PARAMS',
-                    'invalid_params',
-                    'Parámetros inválidos.'
-                ),
-                400
+        if ($typeErrors !== []) {
+            return new WP_Error(
+                'rest_invalid_param',
+                'Tipos inválidos.',
+                [
+                    'status'      => 400,
+                    'type_errors' => $typeErrors,
+                ]
             );
         }
 
         if ($locale !== null) {
             // TODO(plugin-2-g3d-catalog-rules.md §6 APIs / Contratos): aplicar filtro por locale.
+        }
+
+        if ($snapshotId !== null) {
+            // TODO(Plugin 2 — G3D Catalog Rules — Informe.md §APIs): filtrar por snapshot específico.
         }
 
         $payload = $this->buildSnapshotPayload((string) $productoId);
