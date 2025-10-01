@@ -76,6 +76,37 @@ final class ModalRenderTest extends TestCase
         self::assertInstanceOf(\DOMElement::class, $listNode);
     }
 
+    public function testModalContainerPreservesSnapshotProductoAndLocale(): void
+    {
+        ob_start();
+        Modal::render();
+        $output = (string) ob_get_clean();
+
+        $previous = libxml_use_internal_errors(true);
+        $document = new \DOMDocument();
+        $document->loadHTML('<?xml encoding="utf-8" ?>' . $output);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+
+        $xpath = new \DOMXPath($document);
+
+        $overlay = $xpath->query('//*[@data-g3d-wizard-modal-overlay]')->item(0);
+
+        self::assertInstanceOf(\DOMElement::class, $overlay);
+
+        $modalNode = $xpath
+            ->query('.//*[@class="g3d-wizard-modal" or contains(@class,"g3d-wizard-modal ")]', $overlay)
+            ->item(0);
+
+        self::assertInstanceOf(\DOMElement::class, $modalNode);
+        self::assertTrue($modalNode->hasAttribute('data-snapshot-id'));
+        self::assertTrue($modalNode->hasAttribute('data-producto-id'));
+        self::assertTrue($modalNode->hasAttribute('data-locale'));
+        self::assertSame('', $modalNode->getAttribute('data-snapshot-id'));
+        self::assertSame('', $modalNode->getAttribute('data-producto-id'));
+        self::assertSame(get_locale(), $modalNode->getAttribute('data-locale'));
+    }
+
     public function testRenderContainsSinglePoliteMessageRegion(): void
     {
         ob_start();

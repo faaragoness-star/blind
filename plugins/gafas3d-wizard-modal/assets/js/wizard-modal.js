@@ -20,6 +20,29 @@
     return res.json();
   };
 
+  global.G3DWIZARD.getJsonWithParams = async function getJsonWithParams(
+    baseUrl,
+    params
+  ) {
+    const usp = new URLSearchParams(params || {});
+    const query = usp.toString();
+    const url = baseUrl + (query ? '?' + query : '');
+    const res = await fetch(url, {
+      headers: {
+        'X-WP-Nonce': (global.G3DWIZARD && global.G3DWIZARD.nonce) || '',
+      },
+    });
+    const data = await res.json().catch(function () {
+      return {};
+    });
+
+    return {
+      ok: !!res.ok,
+      status: typeof res.status === 'number' ? res.status : 0,
+      data: data,
+    };
+  };
+
   global.G3DWIZARD.last = global.G3DWIZARD.last || null;
   global.G3DWIZARD.lastRules = global.G3DWIZARD.lastRules || null;
   global.G3DWIZARD.rules = global.G3DWIZARD.rules || null;
@@ -576,8 +599,26 @@
       setRulesListContent('');
     }
 
-    function showRulesError() {
-      setRulesSummaryMessage('ERROR — no se pudieron cargar las reglas');
+    function showRulesError(status, payload) {
+      var code = '';
+      var data = payload && typeof payload === 'object' ? payload : {};
+
+      if (data.code) {
+        code = data.code;
+      } else if (typeof status === 'number') {
+        code = 'HTTP ' + status;
+      }
+
+      if (!code) {
+        code = 'HTTP 0';
+      }
+
+      setRulesSummaryMessage('ERROR — ' + code);
+      setRulesListContent('');
+    }
+
+    function showRulesEmpty() {
+      setRulesSummaryMessage(__('Sin reglas', TEXT_DOMAIN));
       setRulesListContent('');
     }
 
@@ -956,6 +997,10 @@
         locale = wizard.locale;
       }
 
+      if (!wizard.lastRules && !rulesPromise) {
+        loadRulesData(snapshotId, productoId, locale);
+      }
+
       // TODO(Capa 4 §estado wizard): documentar claves válidas para state
       const state = buildState(modal);
 
@@ -1288,15 +1333,15 @@
       var query = {};
 
       if (snapshotId) {
-        query.snapshot_id = snapshotId;
+        query.snapshot_id = snapshotId; // docs/plugin-2-g3d-catalog-rules.md §5 Modelo de datos.
       }
 
       if (productoId) {
-        query.producto_id = productoId;
+        query.producto_id = productoId; // docs/plugin-2-g3d-catalog-rules.md §5 Modelo de datos.
       }
 
       if (locale) {
-        query.locale = locale;
+        query.locale = locale; // docs/plugin-2-g3d-catalog-rules.md §5 Modelo de datos.
       }
 
       var params = buildQuery(query);
@@ -1311,22 +1356,36 @@
       rulesAttempted = false;
       rulesLoaded = false;
 
-      var searchParams = new URLSearchParams(params).toString();
-      var requestUrl = endpoint;
-
-      if (searchParams) {
-        requestUrl += (endpoint.indexOf('?') === -1 ? '?' : '&') + searchParams;
-      }
-
-      rulesPromise = global.G3DWIZARD.getJson(requestUrl);
+      rulesPromise = global.G3DWIZARD.getJsonWithParams(endpoint, params);
 
       setRulesBusyState(true);
       showRulesLoading();
 
       try {
-        var payload = await rulesPromise;
-        var normalized = payload && typeof payload === 'object' ? payload : {};
+        var response = await rulesPromise;
+        var ok = response && response.ok;
+        var status = response && typeof response.status === 'number' ? response.status : 0;
+        var payload =
+          response && response.data && typeof response.data === 'object'
+            ? response.data
+            : {};
+
+        if (!ok) {
+          rulesAttempted = true;
+          rulesLoaded = false;
+          wizard.rules = null;
+          lastRules = null;
+          wizard.lastRules = null;
+          showRulesError(status, payload);
+
+          return;
+        }
+
+        var normalized = payload;
         var rulesField = normalized.rules;
+        var hasShape =
+          Array.isArray(rulesField) ||
+          (rulesField && typeof rulesField === 'object');
         var computedCount = countRulesEntries(rulesField);
         var snapshotValue = '';
 
@@ -1365,40 +1424,30 @@
         wizard.lastRules = state;
         rulesAttempted = true;
 
-        var hasShape =
-          Array.isArray(rulesField) ||
-          (rulesField && typeof rulesField === 'object');
-
-        if (hasShape) {
-          rulesLoaded = true;
-          setRulesSummaryMessage(formatRulesSummary(normalized));
-          showRulesList(rulesField);
-        } else {
+        if (!hasShape) {
           rulesLoaded = false;
-          showRulesError();
+          showRulesError(status, payload);
+
+          return;
         }
+
+        if (computedCount === 0) {
+          rulesLoaded = true;
+          showRulesEmpty();
+
+          return;
+        }
+
+        rulesLoaded = true;
+        setRulesSummaryMessage(formatRulesSummary(normalized));
+        showRulesList(rulesField);
       } catch (rulesError) {
         rulesAttempted = true;
         rulesLoaded = false;
         wizard.rules = null;
-
-        var fallbackState = { count: 0 };
-
-        if (fallbackSnapshotId) {
-          fallbackState.snapshot_id = fallbackSnapshotId;
-        }
-
-        if (productoId) {
-          fallbackState.producto_id = productoId;
-        }
-
-        if (locale) {
-          fallbackState.locale = locale;
-        }
-
-        lastRules = fallbackState;
-        wizard.lastRules = fallbackState;
-        showRulesError();
+        lastRules = null;
+        wizard.lastRules = null;
+        showRulesError(undefined, { code: 'NETWORK' });
       } finally {
         rulesPromise = null;
         setRulesBusyState(false);
@@ -1432,9 +1481,38 @@
       setStatusMessage('');
       setSummaryMessage('');
       setRulesSummaryMessage('');
+
+      var existingState = wizard.lastRules;
+      var wizardRules = wizard.rules;
+      var shouldFetchRules = true;
+
+      if (
+        existingState &&
+        typeof existingState.count === 'number' &&
+        (wizardRules || existingState.count === 0)
+      ) {
+        shouldFetchRules = false;
+        rulesAttempted = true;
+        rulesCount = existingState.count;
+
+        if (existingState.count === 0) {
+          rulesLoaded = true;
+          showRulesEmpty();
+        } else if (wizardRules && wizardRules.rules) {
+          rulesLoaded = true;
+          setRulesSummaryMessage(formatRulesSummary(wizardRules));
+          showRulesList(wizardRules.rules);
+        } else {
+          rulesLoaded = false;
+          showRulesError();
+        }
+      }
+
       applyRulesSummary();
 
-      loadRulesData(snapshotId, productoId, locale);
+      if (shouldFetchRules) {
+        loadRulesData(snapshotId, productoId, locale);
+      }
     }
 
     function closeModal(event) {
