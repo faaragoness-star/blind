@@ -10,28 +10,16 @@
 
   global.G3DWIZARD = global.G3DWIZARD || {};
   global.G3DWIZARD.last = global.G3DWIZARD.last || null;
+  global.G3DWIZARD.lastRules = global.G3DWIZARD.lastRules || null;
 
-  function buildQuery(base, params) {
-    const entries = Object.keys(params || {})
-      .filter(function (key) {
-        return params[key] !== '' && params[key] !== undefined;
-      })
-      .map(function (key) {
-        return (
-          encodeURIComponent(key) + '=' + encodeURIComponent(String(params[key]))
-        );
-      });
-
-    if (!entries.length) {
-      return base;
-    }
-
-    return base + '?' + entries.join('&');
-  }
-
-  global.G3DWIZARD.getJson = async function getJson(url, init) {
-    const options = Object.assign({ method: 'GET' }, init || {});
-    const res = await fetch(url, options);
+  global.G3DWIZARD.getJson = async function getJson(url, params) {
+    const queryString = params && Object.keys(params).length
+      ? '?' + new URLSearchParams(params).toString()
+      : '';
+    const res = await fetch(url + queryString, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    });
 
     return res;
   };
@@ -215,18 +203,6 @@
     let currentAbort = null;
     var autoVerifyEnabled = false;
 
-    const msg = message;
-    const rulesUrl =
-      (global.G3DWIZARD &&
-        global.G3DWIZARD.api &&
-        global.G3DWIZARD.api.rules) ||
-      '';
-    const initialModalData = getModalData();
-    const wizard = global.G3DWIZARD || {};
-    const initialProductoId = initialModalData.productoId || '';
-    const initialSnapshotId = initialModalData.snapshotId || '';
-    const initialLocale =
-      initialModalData.locale || wizard.locale || '';
 
     if (
       rootContainer &&
@@ -241,35 +217,6 @@
 
     if (!autoVerifyEnabled && modal) {
       autoVerifyEnabled = modal.getAttribute('data-auto-verify') === '1';
-    }
-
-    if (rulesUrl) {
-      try {
-        const initialUrl = rulesUrl; // TODO(doc Capa 2 §params): documentar querystring.
-        const response = await global.G3DWIZARD.getJson(initialUrl);
-        const payload = (await response.json().catch(function () {
-          return {};
-        })) || {};
-
-        if (response.ok) {
-          lastRules = payload && typeof payload === 'object' ? payload : {};
-          const list = Array.isArray(lastRules.rules) ? lastRules.rules : [];
-
-          if (msg) {
-            msg.textContent = 'Reglas: ' + String(list.length);
-          }
-
-          if (
-            (!initialModalData.productoId || !initialModalData.snapshotId) &&
-            lastRules &&
-            typeof lastRules === 'object'
-          ) {
-            // TODO(Plugin 4 §pre-fill): definir prellenado cuando se documente.
-          }
-        }
-      } catch (rulesError) {
-        // Best effort; sin bloquear.
-      }
     }
 
     function startAbortableRequest() {
@@ -1125,100 +1072,118 @@
     }
 
     async function loadRulesData(snapshotId, productoId, locale) {
-      setBusy(message, true);
-
-      if (rulesContainer) {
-        setBusy(rulesContainer, true);
+      if (!message) {
+        return;
       }
 
-      setButtonEnabledState(cta, false);
+      var wizard = global.G3DWIZARD || {};
+      var api = wizard.api || {};
 
-      if (verifyButton) {
-        setButtonEnabledState(verifyButton, false);
+      if (!api.rules || typeof wizard.getJson !== 'function') {
+        setRulesSummaryMessage('ERROR — endpoint no disponible');
+
+        return;
       }
 
-      disableBtn(cta, true, __('Cargando…', TEXT_DOMAIN));
+      setRulesSummaryMessage('');
 
-      if (verifyButton) {
-        disableBtn(verifyButton, true, __('Cargando…', TEXT_DOMAIN));
+      var query = {};
+
+      if (snapshotId) {
+        // TODO(Plugin 2 §params): confirmar nombre de query param snapshot_id.
       }
 
-      resetRulesSelection();
+      if (productoId) {
+        // TODO(Plugin 2 §params): confirmar nombre de query param producto_id.
+      }
 
-      setRulesSummaryMessage(__('Reglas: cargando…', TEXT_DOMAIN));
-      showRulesLoading();
-
-      const controller = startAbortableRequest();
-      var signal = controller ? controller.signal : undefined;
-      var aborted = false;
-      var response = null;
-      var parsed = {};
+      if (locale) {
+        // TODO(Plugin 2 §params): confirmar nombre de query param locale.
+      }
 
       try {
-        var endpoint = getRulesEndpoint();
+        var response = await wizard.getJson(api.rules, query);
 
-        if (!endpoint) {
-          throw new Error('Missing catalog rules endpoint');
-        }
+        if (response.ok) {
+          var payload = (await response.json().catch(function () {
+            return {};
+          })) || {};
+          // TODO(Capa 2 §payload): clave exacta para lista de reglas.
+          var rules = Array.isArray(payload.rules) ? payload.rules : [];
+          var count = rules.length;
+          var state = { count: count };
 
-        var requestUrl = endpoint; // TODO(doc Capa 2 §params): documentar query del endpoint.
-        response = await global.G3DWIZARD.getJson(
-          requestUrl,
-          signal ? { signal: signal } : undefined
-        );
-        parsed = (await response.json().catch(function () {
-          return {};
-        })) || {};
-      } catch (error) {
-        if (error && error.name === 'AbortError') {
-          aborted = true;
-        }
-      }
+          if (snapshotId) {
+            state.snapshot_id = snapshotId;
+          }
 
-      disableBtn(cta, false);
+          if (productoId) {
+            state.producto_id = productoId;
+          }
 
-      if (verifyButton) {
-        disableBtn(verifyButton, false);
-      }
+          if (locale) {
+            state.locale = locale;
+          }
 
-      if (!aborted) {
-        if (response && response.ok) {
-          lastRules = parsed && typeof parsed === 'object' ? parsed : {};
-          showRulesList(lastRules.rules || []);
-          var count = Array.isArray(lastRules.rules) ? lastRules.rules.length : 0;
-          setRulesSummaryMessage('Reglas: ' + String(count));
-          gateCtasByRules(lastRules);
+          lastRules = state;
+          wizard.lastRules = state;
+          setRulesSummaryMessage('Reglas cargadas: ' + String(count));
         } else {
-          lastRules = null;
-          var statusCode = response ? response.status || 0 : 0;
-          var errorMessage = 'ERROR — HTTP ' + String(statusCode);
-          showRulesError(errorMessage);
-          setRulesSummaryMessage(errorMessage);
-          gateCtasByRules(lastRules);
+          var errorBody = (await response.json().catch(function () {
+            return null;
+          })) || null;
+          var code = '';
+
+          if (errorBody && typeof errorBody.code === 'string' && errorBody.code) {
+            code = errorBody.code;
+          } else if (
+            errorBody &&
+            typeof errorBody.reason_key === 'string' &&
+            errorBody.reason_key
+          ) {
+            code = errorBody.reason_key;
+          }
+
+          if (!code) {
+            code = 'HTTP ' + String(response.status || 0);
+          }
+
+          var failedState = { count: 0 };
+
+          if (snapshotId) {
+            failedState.snapshot_id = snapshotId;
+          }
+
+          if (productoId) {
+            failedState.producto_id = productoId;
+          }
+
+          if (locale) {
+            failedState.locale = locale;
+          }
+
+          lastRules = failedState;
+          wizard.lastRules = failedState;
+          setRulesSummaryMessage('ERROR — ' + code);
         }
-      } else {
-        setRulesSummaryMessage('');
-        setButtonEnabledState(cta, false);
+      } catch (rulesError) {
+        var networkState = { count: 0 };
 
-        if (verifyButton) {
-          setButtonEnabledState(verifyButton, false);
+        if (snapshotId) {
+          networkState.snapshot_id = snapshotId;
         }
-      }
 
-      var shouldReleaseBusy = !currentAbort || currentAbort === controller;
-
-      if (shouldReleaseBusy) {
-        setBusy(message, false);
-
-        if (rulesContainer) {
-          setBusy(rulesContainer, false);
+        if (productoId) {
+          networkState.producto_id = productoId;
         }
-      }
 
-      clearAbort(controller);
+        if (locale) {
+          networkState.locale = locale;
+        }
 
-      if (!aborted && modal) {
-        modal.setAttribute('data-ready', '1');
+        lastRules = networkState;
+        wizard.lastRules = networkState;
+        setRulesSummaryMessage('ERROR — NETWORK');
       }
     }
 
