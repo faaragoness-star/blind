@@ -4,58 +4,49 @@ declare(strict_types=1);
 
 namespace G3D\CatalogRules\Api;
 
+use G3D\VendorBase\Rest\Responses;
 use G3D\VendorBase\Rest\Security;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
 
 /**
- * @phpstan-type SlotControl array{
+ * @phpstan-type CatalogSlotControl array{
  *   type: 'material'|'color'|'textura'|'acabado'|'shader_params',
  *   affects_sku: bool
  * }
- * @phpstan-type SlotDefaults array{
+ * @phpstan-type CatalogSlotDefaults array{
  *   material?: string,
  *   color?: string,
  *   textura?: string,
  *   acabado?: string
  * }
- * @phpstan-type SlotDefinition array{
- *   controles: list<SlotControl>,
- *   defaults?: SlotDefaults,
+ * @phpstan-type CatalogSlotDefinition array{
+ *   controles: list<CatalogSlotControl>,
+ *   defaults?: CatalogSlotDefaults,
  *   visible: bool,
  *   order: int
  * }
- * @phpstan-type SlotMapping array<string, array<string, SlotDefinition>>
- * @phpstan-type MaterialDefaults array{
+ * @phpstan-type CatalogSlotMapping array<string, array<string, CatalogSlotDefinition>>
+ * @phpstan-type CatalogMaterialDefaults array{
  *   color?: string,
  *   textura?: string
  * }
- * @phpstan-type SnapshotRules array{
+ * @phpstan-type CatalogSnapshotRules array{
  *   material_to_modelos: array<string, array<string, list<string>>>,
  *   material_to_colores: array<string, list<string>>,
  *   material_to_texturas: array<string, list<string>>,
- *   defaults: array<string, MaterialDefaults>,
+ *   defaults: array<string, CatalogMaterialDefaults>,
  *   encaje: array{
- *     clearance_por_material_mm?: array<string, float>,
- *     encaje_policy?: array{
- *       driver: string,
- *       target: string,
- *       clearance_por_material_mm: array<string, float>,
- *       max_k?: float,
- *       safety?: array{
- *         espesor_min_mm?: float,
- *         radio_min_mm?: float
- *       }
- *     }
+ *     clearance_por_material_mm?: array<string, float>
  *   },
  *   morph_rules: array<string, array<string, array{
  *     range_norm: array{float, float},
  *     maps_to: string
  *   }>>,
- *   slot_mapping_editorial: SlotMapping
+ *   slot_mapping_editorial: CatalogSlotMapping
  * }
- * @phpstan-type SnapshotEntities array{
+ * @phpstan-type CatalogSnapshotEntities array{
  *   piezas: list<array{id:string, order:int}>,
  *   modelos: list<array{
  *     id: string,
@@ -64,7 +55,7 @@ use WP_REST_Response;
  *   }>,
  *   materiales: list<array{
  *     id: string,
- *     defaults?: MaterialDefaults
+ *     defaults?: CatalogMaterialDefaults
  *   }>,
  *   colores: list<array{id:string, hex:string}>,
  *   texturas: list<array{
@@ -74,14 +65,14 @@ use WP_REST_Response;
  *     source?: string
  *   }>,
  *   acabados: list<array{id:string}>,
- *   morphs?: list<array{id:string, type?: string, analytics_key?: string}>
+ *   morphs?: list<array{id:string}>
  * }
- * @phpstan-type SnapshotPayload array{
+ * @phpstan-type CatalogRulesPayload array{
  *   id: string,
  *   schema_version: string,
  *   producto_id: string,
- *   entities: SnapshotEntities,
- *   rules: SnapshotRules,
+ *   entities: CatalogSnapshotEntities,
+ *   rules: CatalogSnapshotRules,
  *   published_at: string,
  *   published_by: string,
  *   ver: string,
@@ -118,7 +109,7 @@ final class RulesReadController
         );
     }
 
-    public function handle(WP_REST_Request $request): WP_REST_Response|WP_Error
+    public function handle(WP_REST_Request $request): WP_REST_Response
     {
         $nonceCheck = Security::checkOptionalNonce($request);
         if ($nonceCheck instanceof WP_Error) {
@@ -142,24 +133,24 @@ final class RulesReadController
         );
 
         if ($missingParams !== []) {
-            return new WP_Error(
-                'rest_missing_required_params',
-                'Faltan parámetros requeridos.',
-                [
-                    'status'          => 400,
-                    'missing_params'  => $missingParams,
-                ]
+            return new WP_REST_Response(
+                Responses::error(
+                    'E_MISSING_PARAMS',
+                    'missing_params',
+                    'Faltan parámetros requeridos.'
+                ),
+                400
             );
         }
 
         if ($invalidTypes !== []) {
-            return new WP_Error(
-                'rest_invalid_param',
-                'Parámetros inválidos.',
-                [
-                    'status'         => 400,
-                    'invalid_params' => $invalidTypes,
-                ]
+            return new WP_REST_Response(
+                Responses::error(
+                    'E_INVALID_PARAMS',
+                    'invalid_params',
+                    'Parámetros inválidos.'
+                ),
+                400
             );
         }
 
@@ -237,7 +228,7 @@ final class RulesReadController
     }
 
     /**
-     * @return SnapshotPayload
+     * @return CatalogRulesPayload
      */
     private function buildSnapshotPayload(string $productoId): array
     {

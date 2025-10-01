@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace {
     require_once __DIR__ . '/../../../g3d-vendor-base-helper/tests/bootstrap.php';
-    require_once __DIR__ . '/../../plugin.php';
 }
 
 namespace G3D\CatalogRules\Tests\Routes {
@@ -16,32 +15,34 @@ namespace G3D\CatalogRules\Tests\Routes {
         protected function setUp(): void
         {
             parent::setUp();
-
             $GLOBALS['g3d_tests_registered_rest_routes'] = [];
+            $GLOBALS['g3d_tests_wp_actions']            = [];
+
+            require __DIR__ . '/../../plugin.php';
         }
 
         public function testRulesReadRouteIsRegistered(): void
         {
-            \do_action('rest_api_init');
+            do_action('rest_api_init');
 
-            $route = '/catalog/rules';
-
-            self::assertTrue(self::routeExists('g3d/v1', $route, 'GET'));
-        }
-
-        private static function routeExists(string $ns, string $route, string $method): bool
-        {
-            /** @var list<array{namespace:string,route:string,args:array<string,mixed>}> $routes */
             $routes = $GLOBALS['g3d_tests_registered_rest_routes'] ?? [];
-            foreach ($routes as $r) {
-                if ($r['namespace'] === $ns && $r['route'] === $route) {
-                    $m = $r['args']['methods'] ?? '';
+            $matches = array_values(array_filter(
+                $routes,
+                static fn (array $route): bool =>
+                    $route['namespace'] === 'g3d/v1'
+                    && $route['route'] === '/catalog/rules'
+            ));
 
-                    return \is_string($m) ? \str_contains($m, $method) : false;
-                }
-            }
+            self::assertCount(1, $matches);
 
-            return false;
+            $definition = $matches[0];
+            self::assertSame('GET', $definition['args']['methods']);
+            self::assertSame('__return_true', $definition['args']['permission_callback']);
+            self::assertArrayHasKey('args', $definition['args']);
+            self::assertArrayHasKey('producto_id', $definition['args']['args']);
+            self::assertTrue($definition['args']['args']['producto_id']['required']);
+            self::assertArrayHasKey('locale', $definition['args']['args']);
+            self::assertFalse($definition['args']['args']['locale']['required']);
         }
     }
 }
