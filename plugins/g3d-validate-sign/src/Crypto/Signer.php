@@ -32,7 +32,7 @@ class Signer
      *
      * @var string[]
      */
-    public const ALLOWED_SIGNATURE_PREFIXES = ['sig.v1'];
+    public const ALLOWED_SIGNATURE_PREFIXES = ['sig.v1']; // TODO(Plugin 3 §Firmas/prefijos): soportar convivencia N/N-1.
 
     /**
      * TTL exacto de 30 días según docs/Capa 3 — Validación, Firma Y Caducidad —
