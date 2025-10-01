@@ -4,13 +4,19 @@ declare(strict_types=1);
 
 namespace Gafas3d\WizardModal\Tests\UI;
 
-require_once __DIR__ . '/../../../g3d-vendor-base-helper/tests/bootstrap.php';
-
 use Gafas3d\WizardModal\UI\Modal;
 use PHPUnit\Framework\TestCase;
 
 final class ModalRulesContainerTest extends TestCase
 {
+    public static function setUpBeforeClass(): void
+    {
+        parent::setUpBeforeClass();
+
+        // Carga el bootstrap de pruebas sin efectos a nivel de archivo.
+        require_once __DIR__ . '/../../../g3d-vendor-base-helper/tests/bootstrap.php';
+    }
+
     public function testModalContainsRulesContainerAndDataAttributes(): void
     {
         ob_start();
