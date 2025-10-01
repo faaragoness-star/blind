@@ -52,9 +52,9 @@ final class AssetsTest extends TestCase
         );
         self::assertSame('http://example.test/wp-json/g3d/v1/verify', $localized['api']['verify'] ?? null);
         self::assertArrayHasKey('rules', $localized['api']);
-        self::assertStringStartsWith(
+        self::assertSame(
             'http://example.test/wp-json/g3d/v1/catalog/rules',
-            $localized['api']['rules'] ?? ''
+            $localized['api']['rules'] ?? null
         );
         self::assertArrayHasKey('nonce', $localized);
         self::assertSame('nonce-123', $localized['nonce'] ?? null);

@@ -15,6 +15,7 @@
 
   let rulesPromise = null;
   let rulesData = null;
+  let rulesResponse = null;
   let netCtl = null;
 
   function resetNetCtl() {
@@ -113,23 +114,19 @@
 
   async function getJSON(url, params) {
     if (!url) {
-      return {};
+      return { res: null, data: {} };
     }
 
     var query = buildQuery(params);
     var queryString = Object.keys(query).length
       ? '?' + new URLSearchParams(query).toString()
       : '';
-    var response = await fetch(url + queryString, {
-      method: 'GET',
-      headers: { Accept: 'application/json' },
+    var res = await fetch(url + queryString, { method: 'GET' });
+    var data = await res.json().catch(function () {
+      return {};
     });
 
-    return response
-      .json()
-      .catch(function () {
-        return {};
-      });
+    return { res: res, data: data };
   }
 
   global.G3DWIZARD.getJSON = getJSON;
@@ -541,20 +538,50 @@
       updateLiveMessage();
     }
 
-    function setRulesContainerText(value) {
-      if (!rulesContainer) {
-        return;
+  function setRulesContainerText(value) {
+    if (!rulesContainer) {
+      return;
+    }
+
+    rulesContainer.textContent = value || '';
+  }
+
+  function setRulesBusyState(on) {
+    if (rulesContainer) {
+      if (on) {
+        rulesContainer.setAttribute('aria-busy', 'true');
+      } else {
+        rulesContainer.removeAttribute('aria-busy');
       }
 
-      rulesContainer.textContent = value || '';
+      return;
     }
+
+    if (!root) {
+      return;
+    }
+
+    if (on) {
+      root.setAttribute('aria-busy', 'true');
+    } else {
+      root.removeAttribute('aria-busy');
+    }
+
+    // TODO(doc §markup): definir panel específico para mostrar estado de reglas.
+  }
 
     function showRulesLoading() {
       setRulesContainerText(__('Reglas: cargando…', TEXT_DOMAIN));
     }
 
     function showRulesError(messageText) {
-      setRulesContainerText(messageText || formatRulesError());
+      if (messageText) {
+        setRulesContainerText(messageText);
+
+        return;
+      }
+
+      setRulesContainerText(formatRulesError(rulesResponse, rulesData));
     }
 
     function showRulesNetworkError() {
@@ -777,26 +804,40 @@
         meta.push('snap: ' + snapshotValue);
       }
 
-      if (typeof payload.version === 'string' && payload.version) {
-        meta.push('ver: ' + payload.version);
+      if (typeof payload.ver === 'string' && payload.ver) {
+        meta.push('ver: ' + payload.ver);
       }
 
       var rulesList = Array.isArray(payload.rules) ? payload.rules : [];
-      var message = 'Reglas cargadas: ' + String(rulesList.length);
+      var message = 'Reglas: ' + String(rulesList.length);
 
       if (meta.length) {
-        message += ' (' + meta.join(' | ') + ')';
+        message += ' (' + meta.join(' · ') + ')';
       }
 
       return message;
     }
 
-    function formatRulesError() {
-      return 'Sin reglas';
+    function formatRulesError(response, payload) {
+      var body = payload && typeof payload === 'object' ? payload : {};
+
+      if (body && typeof body.reason_key === 'string' && body.reason_key) {
+        return 'ERROR — ' + body.reason_key;
+      }
+
+      if (body && typeof body.code === 'string' && body.code) {
+        return 'ERROR — ' + body.code;
+      }
+
+      if (response && typeof response.status === 'number' && response.status) {
+        return 'ERROR — HTTP ' + String(response.status);
+      }
+
+      return 'ERROR — HTTP';
     }
 
     function formatRulesNetworkError() {
-      return 'Sin reglas';
+      return 'ERROR — NETWORK';
     }
 
     function getRulesEndpoint() {
@@ -1228,19 +1269,13 @@
     }
 
     function applyRulesSummary() {
-      if (!rulesAttempted || rulesPromise) {
+      if (rulesPromise || !rulesAttempted) {
         setRulesSummaryMessage('');
 
         return;
       }
 
-      if (rulesData && Array.isArray(rulesData.rules)) {
-        setRulesSummaryMessage('Reglas cargadas: ' + String(rulesData.rules.length));
-
-        return;
-      }
-
-      setRulesSummaryMessage('Reglas no disponibles');
+      updateLiveMessage();
     }
 
     async function loadRulesData(snapshotId, productoId, locale) {
@@ -1256,7 +1291,7 @@
         endpoint = api.rules;
       } else {
         endpoint = '/wp-json/g3d/v1/catalog/rules';
-        // TODO(Capa 2 §endpoint): confirmar ruta pública documentada.
+        // TODO(doc §params): confirmar ruta pública documentada.
       }
 
       var query = {};
@@ -1273,76 +1308,42 @@
         query.locale = locale;
       }
 
-      if (rulesData) {
-        var cachedPayload = rulesData || {};
+      var params = buildQuery(query);
+      var fallbackSnapshotId = '';
 
-        wizard.rules = cachedPayload;
-        rulesCount = Array.isArray(cachedPayload.rules)
-          ? cachedPayload.rules.length
-          : 0;
-
-        var cachedState = { count: rulesCount };
-
-        if (snapshotId) {
-          cachedState.snapshot_id = snapshotId;
-        }
-
-        if (productoId) {
-          cachedState.producto_id = productoId;
-        }
-
-        if (locale) {
-          cachedState.locale = locale;
-        }
-
-        lastRules = cachedState;
-        wizard.lastRules = cachedState;
-        rulesLoaded = Array.isArray(cachedPayload.rules);
-        rulesAttempted = true;
-        applyRulesSummary();
-
-        return;
-      }
-
-      if (!rulesPromise) {
-        var params = query;
-        var rulesUrl = endpoint;
-
-        rulesPromise = getJSON(rulesUrl, params)
-          .then(function (res) {
-            rulesData = res || {};
-
-            return rulesData;
-          })
-          .catch(function (error) {
-            rulesData = null;
-
-            throw error;
-          })
-          .finally(function () {
-            rulesPromise = null;
-          });
+      if (typeof params.snapshot_id === 'string' && params.snapshot_id) {
+        fallbackSnapshotId = params.snapshot_id;
+      } else if (snapshotId) {
+        fallbackSnapshotId = snapshotId;
       }
 
       rulesAttempted = false;
       rulesLoaded = false;
+      rulesPromise = getJSON(endpoint, params);
 
-      if (message) {
-        setBusy(message, true);
-      }
+      setRulesBusyState(true);
 
       try {
-        var payload = await rulesPromise;
-        var resolvedPayload = payload || {};
-        var isArray = Array.isArray(resolvedPayload.rules);
+        var result = await rulesPromise;
+        var response = result && typeof result.res === 'object' ? result.res : null;
+        var payload = result && result.data ? result.data : {};
+        var rulesList = Array.isArray(payload.rules) ? payload.rules : [];
 
-        wizard.rules = resolvedPayload;
-        rulesCount = isArray ? resolvedPayload.rules.length : 0;
+        rulesData = payload;
+        rulesResponse = response;
+        wizard.rules = payload;
+        rulesCount = rulesList.length;
 
         var state = { count: rulesCount };
 
-        if (snapshotId) {
-          state.snapshot_id = snapshotId;
+        if (typeof payload.snapshot_id === 'string' && payload.snapshot_id) {
+          state.snapshot_id = payload.snapshot_id;
+        } else if (fallbackSnapshotId) {
+          state.snapshot_id = fallbackSnapshotId;
+        }
+
+        if (typeof payload.ver === 'string' && payload.ver) {
+          state.ver = payload.ver;
         }
 
         if (productoId) {
@@ -1355,35 +1356,45 @@
 
         lastRules = state;
         wizard.lastRules = state;
-        rulesLoaded = isArray;
         rulesAttempted = true;
-        rulesData = resolvedPayload;
+
+        if (response && response.ok && Array.isArray(payload.rules)) {
+          rulesLoaded = true;
+          setRulesSummaryMessage(formatRulesSummary(payload, fallbackSnapshotId));
+        } else if (response) {
+          rulesLoaded = false;
+          setRulesSummaryMessage(formatRulesError(response, payload));
+        } else {
+          rulesLoaded = false;
+          setRulesSummaryMessage(formatRulesNetworkError());
+        }
       } catch (rulesError) {
-        rulesData = null;
-        rulesLoaded = false;
         rulesAttempted = true;
+        rulesLoaded = false;
+        rulesData = null;
+        rulesResponse = null;
+        wizard.rules = null;
 
-        var networkState = { count: 0 };
+        var fallbackState = { count: 0 };
 
-        if (snapshotId) {
-          networkState.snapshot_id = snapshotId;
+        if (fallbackSnapshotId) {
+          fallbackState.snapshot_id = fallbackSnapshotId;
         }
 
         if (productoId) {
-          networkState.producto_id = productoId;
+          fallbackState.producto_id = productoId;
         }
 
         if (locale) {
-          networkState.locale = locale;
+          fallbackState.locale = locale;
         }
 
-        lastRules = networkState;
-        wizard.lastRules = networkState;
+        lastRules = fallbackState;
+        wizard.lastRules = fallbackState;
+        setRulesSummaryMessage(formatRulesNetworkError());
       } finally {
-        if (message) {
-          setBusy(message, false);
-        }
-
+        rulesPromise = null;
+        setRulesBusyState(false);
         applyRulesSummary();
       }
     }
@@ -1413,6 +1424,7 @@
 
       setStatusMessage('');
       setSummaryMessage('');
+      setRulesSummaryMessage('');
       applyRulesSummary();
 
       loadRulesData(snapshotId, productoId, locale);
