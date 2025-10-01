@@ -13,6 +13,9 @@
   global.G3DWIZARD.lastRules = global.G3DWIZARD.lastRules || null;
   global.G3DWIZARD.rules = global.G3DWIZARD.rules || null;
 
+  let rulesPromise = null;
+  let rulesData = null;
+
   function buildQuery(params) {
     var query = {};
 
@@ -228,7 +231,7 @@
     var statusMessage = '';
     var rulesSummaryMessage = '';
     var rulesLoaded = false;
-    var rulesLoadOutcome = 'idle';
+    var rulesAttempted = false;
     var rulesCount = 0;
     var ttlMessage = '';
     var lastRules = null;
@@ -1132,37 +1135,25 @@
     }
 
     function applyRulesSummary() {
-      if (rulesLoadOutcome === 'success') {
-        setRulesSummaryMessage('Reglas cargadas: ' + String(rulesCount));
+      if (!rulesAttempted || rulesPromise) {
+        setRulesSummaryMessage('');
 
         return;
       }
 
-      if (rulesLoadOutcome === 'empty') {
-        setRulesSummaryMessage('Reglas no disponibles');
+      if (rulesData && Array.isArray(rulesData.rules)) {
+        setRulesSummaryMessage('Reglas cargadas: ' + String(rulesData.rules.length));
 
         return;
       }
 
-      if (rulesLoadOutcome === 'network') {
-        setRulesSummaryMessage('No se pudieron cargar reglas');
-
-        return;
-      }
-
-      setRulesSummaryMessage('');
+      setRulesSummaryMessage('Reglas no disponibles');
     }
 
     async function loadRulesData(snapshotId, productoId, locale) {
       var wizard = global.G3DWIZARD || {};
       var api = wizard.api || {};
       var endpoint = '';
-
-      if (rulesLoaded) {
-        applyRulesSummary();
-
-        return;
-      }
 
       if (!message) {
         // TODO(Plugin 4 §markup hooks): falta .g3d-wizard-modal__msg en el DOM.
@@ -1189,20 +1180,71 @@
         query.locale = locale;
       }
 
+      if (rulesData) {
+        var cachedPayload = rulesData || {};
+
+        wizard.rules = cachedPayload;
+        rulesCount = Array.isArray(cachedPayload.rules)
+          ? cachedPayload.rules.length
+          : 0;
+
+        var cachedState = { count: rulesCount };
+
+        if (snapshotId) {
+          cachedState.snapshot_id = snapshotId;
+        }
+
+        if (productoId) {
+          cachedState.producto_id = productoId;
+        }
+
+        if (locale) {
+          cachedState.locale = locale;
+        }
+
+        lastRules = cachedState;
+        wizard.lastRules = cachedState;
+        rulesLoaded = Array.isArray(cachedPayload.rules);
+        rulesAttempted = true;
+        applyRulesSummary();
+
+        return;
+      }
+
+      if (!rulesPromise) {
+        var params = query;
+        var rulesUrl = endpoint;
+
+        rulesPromise = getJSON(rulesUrl, params)
+          .then(function (res) {
+            rulesData = res || {};
+
+            return rulesData;
+          })
+          .catch(function (error) {
+            rulesData = null;
+
+            throw error;
+          })
+          .finally(function () {
+            rulesPromise = null;
+          });
+      }
+
+      rulesAttempted = false;
+      rulesLoaded = false;
+
       if (message) {
         setBusy(message, true);
       }
 
       try {
-        var payload = await getJSON(endpoint, query);
+        var payload = await rulesPromise;
+        var resolvedPayload = payload || {};
+        var isArray = Array.isArray(resolvedPayload.rules);
 
-        wizard.rules = payload || {};
-        rulesCount = Array.isArray((payload || {}).rules)
-          ? payload.rules.length
-          : 0;
-        rulesLoadOutcome = Array.isArray((payload || {}).rules)
-          ? 'success'
-          : 'empty';
+        wizard.rules = resolvedPayload;
+        rulesCount = isArray ? resolvedPayload.rules.length : 0;
 
         var state = { count: rulesCount };
 
@@ -1220,10 +1262,14 @@
 
         lastRules = state;
         wizard.lastRules = state;
-        rulesLoaded = true;
-        applyRulesSummary();
+        rulesLoaded = isArray;
+        rulesAttempted = true;
+        rulesData = resolvedPayload;
       } catch (rulesError) {
-        rulesLoadOutcome = 'network';
+        rulesData = null;
+        rulesLoaded = false;
+        rulesAttempted = true;
+
         var networkState = { count: 0 };
 
         if (snapshotId) {
@@ -1240,11 +1286,12 @@
 
         lastRules = networkState;
         wizard.lastRules = networkState;
-        applyRulesSummary();
       } finally {
         if (message) {
           setBusy(message, false);
         }
+
+        applyRulesSummary();
       }
     }
 
