@@ -15,22 +15,56 @@
 
   let rulesPromise = null;
   let rulesData = null;
+  let netCtl = null;
 
-  function setBusy(modal, busy) {
-    if (!modal) return;
+  function resetNetCtl() {
+    if (netCtl && typeof netCtl.abort === 'function') {
+      netCtl.abort();
+    }
 
-    if (busy) {
-      modal.setAttribute('aria-busy', 'true');
+    netCtl =
+      typeof AbortController !== 'undefined' ? new AbortController() : null;
 
-      if (modal.classList && typeof modal.classList.add === 'function') {
-        modal.classList.add('g3d-wizard--busy');
+    return netCtl;
+  }
+
+  function setBusy(modalEl, on) {
+    if (!modalEl) {
+      return;
+    }
+
+    if (on) {
+      modalEl.setAttribute('aria-busy', 'true');
+
+      var isModal =
+        modalEl.classList && modalEl.classList.contains('g3d-wizard-modal');
+
+      if (
+        isModal &&
+        typeof document !== 'undefined' &&
+        document.body &&
+        document.body.classList
+      ) {
+        document.body.classList.add('g3d-wizard-open');
       }
     } else {
-      modal.removeAttribute('aria-busy');
+      modalEl.removeAttribute('aria-busy');
+    }
+  }
 
-      if (modal.classList && typeof modal.classList.remove === 'function') {
-        modal.classList.remove('g3d-wizard--busy');
-      }
+  function setBtnBusy(btn, on, labelIdle, labelBusy) {
+    if (!btn) {
+      return;
+    }
+
+    btn.disabled = !!on;
+
+    if (on && labelBusy) {
+      btn.textContent = labelBusy;
+    }
+
+    if (!on && labelIdle) {
+      btn.textContent = labelIdle;
     }
   }
 
@@ -184,22 +218,21 @@
     return panel;
   }
 
-  global.G3DWIZARD.postJson = async function postJson(url, body) {
-    const options = arguments.length > 2 ? arguments[2] : null;
-    const init = {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-WP-Nonce': (global.G3DWIZARD && global.G3DWIZARD.nonce) || '',
-      },
-      body: JSON.stringify(body || {}),
-    };
-
-    if (options && options.signal) {
-      init.signal = options.signal;
-    }
-
-    const res = await fetch(url, init);
+  global.G3DWIZARD.postJson = async function postJson(url, body, init) {
+    const res = await fetch(
+      url,
+      Object.assign(
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-WP-Nonce': (global.G3DWIZARD && global.G3DWIZARD.nonce) || '',
+          },
+          body: JSON.stringify(body || {}),
+        },
+        init || {}
+      )
+    );
 
     return res;
   };
@@ -228,6 +261,10 @@
     var cta = overlay.querySelector('[data-g3d-wizard-modal-cta]');
     var verifyButton = overlay.querySelector('[data-g3d-wizard-modal-verify]');
     var message = overlay.querySelector('.g3d-wizard-modal__msg');
+    var ctaLabelIdle = cta ? cta.textContent || '' : '';
+    var verifyLabelIdle = verifyButton ? verifyButton.textContent || '' : '';
+    var ctaBusyLabel = __('Enviando…', TEXT_DOMAIN);
+    var verifyBusyLabel = __('Verificando…', TEXT_DOMAIN);
     var summaryContainer = overlay.querySelector('.g3d-wizard-modal__summary');
     var rulesContainer = modal
       ? modal.querySelector('[data-g3d-wizard-rules]')
@@ -318,7 +355,6 @@
     var ttlIntervalId = null;
     var ttlDeadline = null;
     var hasExpired = false;
-    let currentAbort = null;
     var autoVerifyEnabled = false;
     var liveOverrideMessage = '';
 
@@ -348,41 +384,19 @@
       autoVerifyEnabled = modal.getAttribute('data-auto-verify') === '1';
     }
 
-    function startAbortableRequest() {
-      if (typeof AbortController !== 'function') {
-        if (currentAbort) {
-          currentAbort = null;
-        }
-
-        return null;
-      }
-
-      if (currentAbort) {
-        try {
-          currentAbort.abort();
-        } catch (abortError) {
-          // no-op
-        }
-      }
-
-      currentAbort = new AbortController();
-
-      return currentAbort;
-    }
-
-    function clearAbort(controller) {
-      if (controller && controller === currentAbort) {
-        currentAbort = null;
-      }
-    }
-
     function updateLiveMessage() {
       if (!message) {
         return;
       }
 
       if (liveOverrideMessage) {
-        announce(message, liveOverrideMessage);
+        var overrideText = liveOverrideMessage;
+
+        if (ttlMessage) {
+          overrideText += ' · ' + ttlMessage;
+        }
+
+        announce(message, overrideText);
 
         return;
       }
@@ -517,9 +531,20 @@
       setButtonEnabledState(verifyButton, enable);
     }
 
-    function setStatusMessage(value) {
+    function setStatusMessage(value, options) {
       statusMessage = value || '';
-      liveOverrideMessage = '';
+      var opts = options && typeof options === 'object' ? options : {};
+
+      if (opts.override === true) {
+        liveOverrideMessage = statusMessage;
+      } else if (!statusMessage) {
+        liveOverrideMessage = '';
+      } else if (opts.keepOverride === true) {
+        // preserve current liveOverrideMessage
+      } else {
+        liveOverrideMessage = '';
+      }
+
       updateLiveMessage();
     }
 
@@ -969,7 +994,7 @@
       var api = wizard.api || {};
 
       if (!api.validateSign || typeof wizard.postJson !== 'function') {
-        setStatusMessage('ERROR — endpoint no disponible');
+        setStatusMessage('Error ✗ — endpoint no disponible', { override: true });
         return;
       }
 
@@ -1006,30 +1031,20 @@
         payload.locale = locale;
       }
 
-      const controller = startAbortableRequest();
-      var signal = controller ? controller.signal : undefined;
-      var ctaBusyLabel = __('Enviando…', TEXT_DOMAIN);
-      var ctaPrevLabel = cta.getAttribute('data-label-prev');
+      var signal = netCtl && netCtl.signal ? netCtl.signal : undefined;
 
-      if (ctaPrevLabel === null) {
-        ctaPrevLabel = cta.textContent || '';
-        cta.setAttribute('data-label-prev', ctaPrevLabel);
-      }
-
-      cta.textContent = ctaBusyLabel;
+      setBtnBusy(cta, true, ctaLabelIdle, ctaBusyLabel);
       inflight.validate = true;
       setBusy(modal, true);
       updateModalBusy();
-      setDisabled(cta, true);
-      setStatusMessage('');
-      liveOverrideMessage = ctaBusyLabel;
-      announce(message, ctaBusyLabel);
-      setBusy(message, true);
+      setStatusMessage(__('Validando…', TEXT_DOMAIN), { override: true });
 
       try {
-        var response = await wizard.postJson(api.validateSign, payload, {
-          signal: signal,
-        });
+        var response = await wizard.postJson(
+          api.validateSign,
+          payload,
+          signal ? { signal: signal } : undefined
+        );
         var data = null;
 
         try {
@@ -1070,16 +1085,10 @@
 
           var hashLabel = hash || '-';
           var expiresLabel = expiresAtRaw || '-';
-          var signatureLabel = signature || '-';
           var successMessage =
-            'OK — hash: ' +
-            hashLabel +
-            ' | expira: ' +
-            expiresLabel +
-            ' | sig: ' +
-            signatureLabel;
+            'Validado ✓ — hash: ' + hashLabel + ' | expira: ' + expiresLabel;
 
-          setStatusMessage(successMessage);
+          setStatusMessage(successMessage, { override: true });
 
           if (verifyButton) {
             setButtonEnabledState(verifyButton, !hasExpired);
@@ -1115,11 +1124,12 @@
             code = 'HTTP ' + response.status;
           }
 
-          setStatusMessage('ERROR — ' + code);
-          announce(message, 'ERROR — ' + code);
+          setStatusMessage('Error ✗ — ' + code, { override: true });
         }
       } catch (error) {
         if (error && error.name === 'AbortError') {
+          setStatusMessage('Cancelado', { override: true });
+
           return;
         }
 
@@ -1128,16 +1138,8 @@
           response: null,
         };
 
-        setStatusMessage('ERROR — NETWORK');
-        announce(message, 'ERROR — NETWORK');
+        setStatusMessage('Error ✗ — NETWORK', { override: true });
       } finally {
-        var prevLabel = cta.getAttribute('data-label-prev');
-
-        if (prevLabel !== null) {
-          cta.textContent = prevLabel;
-          cta.removeAttribute('data-label-prev');
-        }
-
         inflight.validate = false;
 
         if (!inflight.verify) {
@@ -1145,19 +1147,12 @@
         }
 
         updateModalBusy();
-        setDisabled(cta, false);
+        setBtnBusy(cta, false, ctaLabelIdle, ctaBusyLabel);
 
         if (!statusMessage) {
           liveOverrideMessage = '';
           announce(message, '');
         }
-        var shouldReleaseBusy = !currentAbort || currentAbort === controller;
-
-        if (shouldReleaseBusy) {
-          setBusy(message, false);
-        }
-
-        clearAbort(controller);
       }
     }
 
@@ -1185,7 +1180,7 @@
       var api = wizard.api || {};
 
       if (!api.verify || typeof wizard.postJson !== 'function') {
-        setStatusMessage('ERROR — endpoint no disponible');
+        setStatusMessage('Error ✗ — endpoint no disponible', { override: true });
         return;
       }
 
@@ -1209,8 +1204,8 @@
       var snapshotForVerify = snapshotFromResponse || snapshotFromPayload || '';
 
       if (!skuHash || !skuSignature) {
-        setStatusMessage('ERROR — Primero valida y firma');
-        announce(message, 'Primero valida y firma');
+        setStatusMessage('Primero valida y firma', { override: true });
+
         return;
       }
 
@@ -1220,31 +1215,22 @@
         snapshot_id: snapshotForVerify,
       };
 
-      const controller = startAbortableRequest();
-      var signal = controller ? controller.signal : undefined;
+      var signal = netCtl && netCtl.signal ? netCtl.signal : undefined;
       var initialDisabled = verifyButton.disabled;
       var verifyBusyLabel = __('Verificando…', TEXT_DOMAIN);
-      var verifyPrevLabel = verifyButton.getAttribute('data-label-prev');
 
-      if (verifyPrevLabel === null) {
-        verifyPrevLabel = verifyButton.textContent || '';
-        verifyButton.setAttribute('data-label-prev', verifyPrevLabel);
-      }
-
-      verifyButton.textContent = verifyBusyLabel;
+      setBtnBusy(verifyButton, true, verifyLabelIdle, verifyBusyLabel);
       inflight.verify = true;
       setBusy(modal, true);
       updateModalBusy();
-      setDisabled(verifyButton, true);
-      setStatusMessage('');
-      liveOverrideMessage = verifyBusyLabel;
-      announce(message, verifyBusyLabel);
-      setBusy(message, true);
+      setStatusMessage(__('Verificando…', TEXT_DOMAIN), { override: true });
 
       try {
-        var responseVerify = await wizard.postJson(api.verify, payloadVerify, {
-          signal: signal,
-        });
+        var responseVerify = await wizard.postJson(
+          api.verify,
+          payloadVerify,
+          signal ? { signal: signal } : undefined
+        );
         var data = null;
 
         try {
@@ -1254,14 +1240,14 @@
         }
 
         if (responseVerify.ok && data && data.ok === true) {
+          var successLabel = 'Verificado ✓';
+
           if (data.request_id) {
-            setStatusMessage(
-              __('Verificado OK — request_id: ', TEXT_DOMAIN) + data.request_id
-            );
-          } else {
-            setStatusMessage(__('Verificado OK', TEXT_DOMAIN));
-            // TODO(plugin-3-g3d-validate-sign.md §6.2 POST /verify): exponer request_id en payload.
+            successLabel += ' — request: ' + data.request_id;
           }
+
+          setStatusMessage(successLabel, { override: true });
+          // TODO(plugin-3-g3d-validate-sign.md §6.2 POST /verify): exponer request_id en payload.
 
           if (shouldAutoAudit) {
             audit('verify_success', {
@@ -1287,24 +1273,17 @@
             code = __('ERROR', TEXT_DOMAIN);
           }
 
-          setStatusMessage('ERROR — ' + code);
-          announce(message, 'ERROR — ' + code);
+          setStatusMessage('Error ✗ — ' + code, { override: true });
         }
       } catch (error) {
         if (error && error.name === 'AbortError') {
+          setStatusMessage('Cancelado', { override: true });
+
           return;
         }
 
-        setStatusMessage('ERROR — NETWORK');
-        announce(message, 'ERROR — NETWORK');
+        setStatusMessage('Error ✗ — NETWORK', { override: true });
       } finally {
-        var prevVerifyLabel = verifyButton.getAttribute('data-label-prev');
-
-        if (prevVerifyLabel !== null) {
-          verifyButton.textContent = prevVerifyLabel;
-          verifyButton.removeAttribute('data-label-prev');
-        }
-
         inflight.verify = false;
 
         if (!inflight.validate) {
@@ -1312,7 +1291,7 @@
         }
 
         updateModalBusy();
-        setDisabled(verifyButton, false);
+        setBtnBusy(verifyButton, false, verifyLabelIdle, verifyBusyLabel);
 
         if (hasExpired) {
           setButtonEnabledState(verifyButton, false);
@@ -1322,18 +1301,10 @@
           setButtonEnabledState(verifyButton, true);
         }
 
-        var shouldReleaseBusy = !currentAbort || currentAbort === controller;
-
-        if (shouldReleaseBusy) {
-          setBusy(message, false);
-        }
-
         if (!statusMessage) {
           liveOverrideMessage = '';
           announce(message, '');
         }
-
-        clearAbort(controller);
       }
     }
 
@@ -1511,6 +1482,8 @@
         event.preventDefault();
       }
 
+      resetNetCtl();
+
       previousFocus =
         document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
@@ -1542,15 +1515,8 @@
       overlay.setAttribute('hidden', '');
       document.body.classList.remove('g3d-wizard-open');
 
-      if (currentAbort) {
-        try {
-          currentAbort.abort();
-        } catch (abortError) {
-          // no-op
-        }
-
-        currentAbort = null;
-      }
+      resetNetCtl();
+      netCtl = null;
 
       if (previousFocus && typeof previousFocus.focus === 'function') {
         previousFocus.focus();
@@ -1562,42 +1528,26 @@
       resetTtlState();
       setRulesSummaryMessage('');
 
-      setBusy(message, false);
-
       if (rulesContainer) {
-        setBusy(rulesContainer, false);
         setRulesContainerText('');
       }
 
       resetRulesSelection();
 
       if (cta) {
-        var prevCtaLabel = cta.getAttribute('data-label-prev');
-
-        if (prevCtaLabel !== null) {
-          cta.textContent = prevCtaLabel;
-          cta.removeAttribute('data-label-prev');
-        }
-
-        setDisabled(cta, false);
+        setBtnBusy(cta, false, ctaLabelIdle, ctaBusyLabel);
         setButtonEnabledState(cta, true);
       }
 
       if (verifyButton) {
-        var prevVerifyLabelClose = verifyButton.getAttribute('data-label-prev');
-
-        if (prevVerifyLabelClose !== null) {
-          verifyButton.textContent = prevVerifyLabelClose;
-          verifyButton.removeAttribute('data-label-prev');
-        }
-
-        setDisabled(verifyButton, false);
+        setBtnBusy(verifyButton, false, verifyLabelIdle, verifyBusyLabel);
         setButtonEnabledState(verifyButton, true);
       }
 
       inflight.validate = false;
       inflight.verify = false;
       setBusy(modal, false);
+      announce(message, '');
       liveOverrideMessage = '';
       updateModalBusy();
     }
