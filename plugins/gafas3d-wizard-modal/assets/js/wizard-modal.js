@@ -16,6 +16,37 @@
   let rulesPromise = null;
   let rulesData = null;
 
+  function setBusy(el, busy) {
+    if (!el) {
+      return;
+    }
+
+    el.setAttribute('aria-busy', busy ? 'true' : 'false');
+
+    if (el.classList && typeof el.classList.toggle === 'function') {
+      el.classList.toggle('is-busy', !!busy);
+    }
+  }
+
+  function setDisabled(el, on) {
+    if (!el) {
+      return;
+    }
+
+    const disabled = !!on;
+
+    el.disabled = disabled;
+    el.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+  }
+
+  function say(msgEl, text) {
+    if (!msgEl) {
+      return;
+    }
+
+    msgEl.textContent = text || '';
+  }
+
   function buildQuery(params) {
     var query = {};
 
@@ -123,48 +154,6 @@
     return state;
   }
 
-  function setBusy(el, busy) {
-    if (!el) {
-      return;
-    }
-
-    if (busy) {
-      el.setAttribute('aria-busy', 'true');
-      el.setAttribute('data-busy', '1');
-      if (typeof el.textContent === 'string') {
-        el.textContent = '';
-      }
-    } else {
-      el.removeAttribute('aria-busy');
-      el.removeAttribute('data-busy');
-    }
-  }
-
-  function disableBtn(btn, on, labelWhenBusy) {
-    if (!btn) {
-      return;
-    }
-
-    if (on) {
-      btn.disabled = true;
-      btn.setAttribute('aria-disabled', 'true');
-
-      if (labelWhenBusy) {
-        btn.setAttribute('data-label-prev', btn.textContent || '');
-        btn.textContent = labelWhenBusy;
-      }
-    } else {
-      btn.disabled = false;
-      btn.removeAttribute('aria-disabled');
-      const prev = btn.getAttribute('data-label-prev');
-
-      if (prev !== null) {
-        btn.textContent = prev;
-        btn.removeAttribute('data-label-prev');
-      }
-    }
-  }
-
   function setText(el, s) {
     if (!el) {
       return;
@@ -241,6 +230,18 @@
     var hasExpired = false;
     let currentAbort = null;
     var autoVerifyEnabled = false;
+    var modalBusyState = { validate: false, verify: false };
+    var liveOverrideMessage = '';
+
+    function updateModalBusy() {
+      if (!modal) {
+        return;
+      }
+
+      var isBusy = modalBusyState.validate || modalBusyState.verify;
+
+      setBusy(modal, isBusy);
+    }
 
 
     if (
@@ -291,6 +292,12 @@
         return;
       }
 
+      if (liveOverrideMessage) {
+        say(message, liveOverrideMessage);
+
+        return;
+      }
+
       var parts = [];
 
       if (rulesSummaryMessage) {
@@ -309,7 +316,7 @@
         parts.push(ttlMessage);
       }
 
-      setText(message, parts.join(' · '));
+      say(message, parts.join(' · '));
     }
 
     function setSummaryMessage(value) {
@@ -397,9 +404,7 @@
         return;
       }
 
-      var enabled = !!shouldEnable;
-      button.disabled = !enabled;
-      button.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+      setDisabled(button, !shouldEnable);
     }
 
     function gateCtasByRules(rulesPayload) {
@@ -425,6 +430,7 @@
 
     function setStatusMessage(value) {
       statusMessage = value || '';
+      liveOverrideMessage = '';
       updateLiveMessage();
     }
 
@@ -876,9 +882,22 @@
 
       const controller = startAbortableRequest();
       var signal = controller ? controller.signal : undefined;
-      disableBtn(cta, true, __('Enviando…', TEXT_DOMAIN));
-      setBusy(message, true);
+      var ctaBusyLabel = __('Enviando…', TEXT_DOMAIN);
+      var ctaPrevLabel = cta.getAttribute('data-label-prev');
+
+      if (ctaPrevLabel === null) {
+        ctaPrevLabel = cta.textContent || '';
+        cta.setAttribute('data-label-prev', ctaPrevLabel);
+      }
+
+      cta.textContent = ctaBusyLabel;
+      modalBusyState.validate = true;
+      updateModalBusy();
+      setDisabled(cta, true);
       setStatusMessage('');
+      liveOverrideMessage = ctaBusyLabel;
+      say(message, ctaBusyLabel);
+      setBusy(message, true);
 
       try {
         var response = await wizard.postJson(api.validateSign, payload, {
@@ -922,12 +941,18 @@
             // TODO(Capa 3 §Caducidad): definir formato/ausencia y no mostrar cuenta atrás (comportamiento degradado).
           }
 
-          if (countdownStarted) {
-            setStatusMessage('');
-          } else {
-            var hashLabel = hash || '-';
-            setStatusMessage(__('OK — hash: ', TEXT_DOMAIN) + hashLabel);
-          }
+          var hashLabel = hash || '-';
+          var expiresLabel = expiresAtRaw || '-';
+          var signatureLabel = signature || '-';
+          var successMessage =
+            'OK — hash: ' +
+            hashLabel +
+            ' | expira: ' +
+            expiresLabel +
+            ' | sig: ' +
+            signatureLabel;
+
+          setStatusMessage(successMessage);
 
           if (verifyButton) {
             setButtonEnabledState(verifyButton, !hasExpired);
@@ -964,6 +989,7 @@
           }
 
           setStatusMessage('ERROR — ' + code);
+          say(message, 'ERROR — ' + code);
         }
       } catch (error) {
         if (error && error.name === 'AbortError') {
@@ -976,8 +1002,23 @@
         };
 
         setStatusMessage('ERROR — NETWORK');
+        say(message, 'ERROR — NETWORK');
       } finally {
-        disableBtn(cta, false);
+        var prevLabel = cta.getAttribute('data-label-prev');
+
+        if (prevLabel !== null) {
+          cta.textContent = prevLabel;
+          cta.removeAttribute('data-label-prev');
+        }
+
+        modalBusyState.validate = false;
+        updateModalBusy();
+        setDisabled(cta, false);
+
+        if (!statusMessage) {
+          liveOverrideMessage = '';
+          say(message, '');
+        }
         var shouldReleaseBusy = !currentAbort || currentAbort === controller;
 
         if (shouldReleaseBusy) {
@@ -1045,11 +1086,22 @@
       const controller = startAbortableRequest();
       var signal = controller ? controller.signal : undefined;
       var initialDisabled = verifyButton.disabled;
+      var verifyBusyLabel = __('Verificando…', TEXT_DOMAIN);
+      var verifyPrevLabel = verifyButton.getAttribute('data-label-prev');
 
-      disableBtn(verifyButton, true, __('Verificando…', TEXT_DOMAIN));
+      if (verifyPrevLabel === null) {
+        verifyPrevLabel = verifyButton.textContent || '';
+        verifyButton.setAttribute('data-label-prev', verifyPrevLabel);
+      }
 
-      setBusy(message, true);
+      verifyButton.textContent = verifyBusyLabel;
+      modalBusyState.verify = true;
+      updateModalBusy();
+      setDisabled(verifyButton, true);
       setStatusMessage('');
+      liveOverrideMessage = verifyBusyLabel;
+      say(message, verifyBusyLabel);
+      setBusy(message, true);
 
       try {
         var responseVerify = await wizard.postJson(api.verify, payloadVerify, {
@@ -1098,6 +1150,7 @@
           }
 
           setStatusMessage('ERROR — ' + code);
+          say(message, 'ERROR — ' + code);
         }
       } catch (error) {
         if (error && error.name === 'AbortError') {
@@ -1105,8 +1158,18 @@
         }
 
         setStatusMessage('ERROR — NETWORK');
+        say(message, 'ERROR — NETWORK');
       } finally {
-        disableBtn(verifyButton, false);
+        var prevVerifyLabel = verifyButton.getAttribute('data-label-prev');
+
+        if (prevVerifyLabel !== null) {
+          verifyButton.textContent = prevVerifyLabel;
+          verifyButton.removeAttribute('data-label-prev');
+        }
+
+        modalBusyState.verify = false;
+        updateModalBusy();
+        setDisabled(verifyButton, false);
 
         if (hasExpired) {
           setButtonEnabledState(verifyButton, false);
@@ -1120,6 +1183,11 @@
 
         if (shouldReleaseBusy) {
           setBusy(message, false);
+        }
+
+        if (!statusMessage) {
+          liveOverrideMessage = '';
+          say(message, '');
         }
 
         clearAbort(controller);
@@ -1361,14 +1429,33 @@
       resetRulesSelection();
 
       if (cta) {
-        disableBtn(cta, false);
+        var prevCtaLabel = cta.getAttribute('data-label-prev');
+
+        if (prevCtaLabel !== null) {
+          cta.textContent = prevCtaLabel;
+          cta.removeAttribute('data-label-prev');
+        }
+
+        setDisabled(cta, false);
         setButtonEnabledState(cta, true);
       }
 
       if (verifyButton) {
-        disableBtn(verifyButton, false);
+        var prevVerifyLabelClose = verifyButton.getAttribute('data-label-prev');
+
+        if (prevVerifyLabelClose !== null) {
+          verifyButton.textContent = prevVerifyLabelClose;
+          verifyButton.removeAttribute('data-label-prev');
+        }
+
+        setDisabled(verifyButton, false);
         setButtonEnabledState(verifyButton, true);
       }
+
+      modalBusyState.validate = false;
+      modalBusyState.verify = false;
+      liveOverrideMessage = '';
+      updateModalBusy();
     }
 
     var openButtons = document.querySelectorAll('[' + OPEN_ATTR + ']');
