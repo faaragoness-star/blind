@@ -6,10 +6,6 @@ body.g3d-wizard-open {
   overflow: hidden;
 }
 
-.g3d-wizard--busy {
-  cursor: progress;
-}
-
 .g3d-wizard-modal__overlay {
   position: fixed;
   inset: 0;
@@ -33,8 +29,9 @@ body.g3d-wizard-open {
   padding: 1.5rem;
 }
 
-.g3d-wizard-modal.g3d-wizard--busy {
-  opacity: 0.85;
+.g3d-wizard-modal[aria-busy="true"] {
+  opacity: 0.75;
+  pointer-events: none;
 }
 
 [role="tab"]:focus {
@@ -57,7 +54,7 @@ body.g3d-wizard-open {
 
 .g3d-wizard-modal__msg {
   margin-top: 0.75rem;
-  font-size: .9rem;
+  font-size: 0.95rem;
   min-height: 1.5em;
 }
 
