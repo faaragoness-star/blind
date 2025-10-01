@@ -48,8 +48,8 @@ body.g3d-wizard-open {
 }
 
 .g3d-wizard-modal__msg {
-  margin-top: .75rem;
-  font-size: 0.875rem;
+  margin-top: .5rem;
+  font-size: .9rem;
   min-height: 1.5em;
 }
 
