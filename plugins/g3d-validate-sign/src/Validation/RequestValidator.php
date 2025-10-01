@@ -39,12 +39,27 @@ class RequestValidator
             'type' => [],
         ];
 
-        $required = $this->schema['required'] ?? [];
+        $required   = $this->schema['required'] ?? [];
         $properties = $this->schema['properties'] ?? [];
 
         foreach ($required as $field) {
             if (!array_key_exists($field, $data)) {
                 $errors['missing'][] = (string) $field;
+            }
+        }
+
+        $disallowAdditional = ($this->schema['additionalProperties'] ?? true) === false;
+
+        if ($disallowAdditional) {
+            $allowedFields = array_keys($properties);
+
+            foreach ($data as $field => $_value) {
+                if (!in_array($field, $allowedFields, true)) {
+                    $errors['type'][] = [
+                        'field'    => (string) $field,
+                        'expected' => 'not-allowed',
+                    ];
+                }
             }
         }
 

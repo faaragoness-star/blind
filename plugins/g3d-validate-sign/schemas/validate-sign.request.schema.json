@@ -13,29 +13,29 @@
   "properties": {
     "schema_version": {
       "type": "string",
-      "$comment": "SemVer requerido. TODO: Definir validación exacta según docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md (Compatibilidad y versionado)."
+      "$comment": "SemVer requerido. TODO(Capa 3 §Compatibilidad y versionado): validar patrón exacto."
     },
     "snapshot_id": {
       "type": "string",
-      "$comment": "ID de snapshot publicado. Ver docs/plugin-3-g3d-validate-sign.md §6.1 y docs/Capa 1 Identificadores Y Naming — Actualizada (slots Abiertos).md."
+      "$comment": "ID de snapshot publicado (docs/plugin-3-g3d-validate-sign.md §6.1)."
     },
     "producto_id": {
       "type": "string",
-      "$comment": "ID estable de producto según docs/Capa 1 Identificadores Y Naming — Actualizada (slots Abiertos).md."
+      "$comment": "ID estable de producto (docs/plugin-3-g3d-validate-sign.md §6.1)."
     },
     "state": {
       "type": "object",
-      "$comment": "Estado serializado pieza→mat→modelo→col→tex→fin según docs/plugin-3-g3d-validate-sign.md §6.1. TODO: Detallar estructura exacta."
+      "$comment": "Estado serializado pieza→mat→modelo→col→tex→fin (docs/plugin-3-g3d-validate-sign.md §6.1). TODO(Plugin 3 §Esquemas): detallar estructura."
     },
     "locale": {
       "type": "string",
-      "$comment": "Locale de la petición. TODO: Definir lista permitida según docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md."
+      "$comment": "Locale de la petición (docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md, API 2.1). TODO(Plugin 3 §Esquemas): enumerar permitidos."
     },
     "flags": {
       "type": "object",
-      "$comment": "Campo opcional (flags?) indicado en docs/plugin-3-g3d-validate-sign.md §6.1. TODO: Definir estructura exacta de flags/ab_variant.",
+      "$comment": "Campo opcional flags? (docs/plugin-3-g3d-validate-sign.md §6.1). TODO(Plugin 3 §Esquemas): definir shape de flags/ab_variant.",
       "additionalProperties": true
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }

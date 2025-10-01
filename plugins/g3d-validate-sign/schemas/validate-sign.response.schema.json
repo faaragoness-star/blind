@@ -15,53 +15,53 @@
   "properties": {
     "ok": {
       "type": "boolean",
-      "$comment": "Debe ser true en caso de éxito según docs/plugin-3-g3d-validate-sign.md §6.1."
+      "$comment": "Debe ser true en caso de éxito (docs/plugin-3-g3d-validate-sign.md §6.1)."
     },
     "sku_hash": {
       "type": "string",
-      "$comment": "SHA-256 del estado canónico (ver docs/plugin-3-g3d-validate-sign.md §6.1)."
+      "$comment": "SHA-256 del estado canónico (docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md, sección SKU, firma y caducidad)."
     },
     "sku_signature": {
       "type": "string",
-      "$comment": "Firma sig.vN Ed25519 (ver docs/plugin-3-g3d-validate-sign.md §6.1)."
+      "$comment": "Firma sig.vN Ed25519 (docs/plugin-3-g3d-validate-sign.md §6.1)."
     },
     "expires_at": {
       "type": "string",
-      "$comment": "Fecha en ISO8601 con TTL configurado (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md, sección SKU, firma y caducidad)."
+      "$comment": "Fecha/hora en ISO-8601 UTC con TTL 30 días (docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md, sección SKU, firma y caducidad)."
     },
     "snapshot_id": {
       "type": "string",
-      "$comment": "ID del snapshot usado en la validación (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md)."
+      "$comment": "ID del snapshot usado (docs/plugin-3-g3d-validate-sign.md §6.1)."
     },
     "summary": {
       "type": "string",
-      "$comment": "Resumen textual siguiendo naming de docs/Capa 1 Identificadores Y Naming — Actualizada (slots Abiertos).md."
+      "$comment": "Resumen textual (docs/plugin-3-g3d-validate-sign.md §2). TODO(Plugin 3 §Esquemas): precisar formato."
     },
     "price": {
       "type": [
         "number",
         "null"
       ],
-      "$comment": "Campo opcional price? (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md, API 2.1)."
+      "$comment": "Campo opcional price? (docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md, API 2.1)."
     },
     "stock": {
       "type": [
         "number",
         "null"
       ],
-      "$comment": "Campo opcional stock? (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md, API 2.1)."
+      "$comment": "Campo opcional stock? (docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md, API 2.1)."
     },
     "photo_url": {
       "type": [
         "string",
         "null"
       ],
-      "$comment": "Campo opcional photo_url? TTL 90 días (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md, sección SKU, firma y caducidad)."
+      "$comment": "Campo opcional photo_url? TTL 90 días (docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md, sección SKU, firma y caducidad)."
     },
     "request_id": {
       "type": "string",
-      "$comment": "Identificador para auditoría y observabilidad (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md)."
+      "$comment": "Identificador para auditoría/observabilidad (docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md)."
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }

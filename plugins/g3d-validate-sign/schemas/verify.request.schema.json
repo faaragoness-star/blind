@@ -11,16 +11,16 @@
   "properties": {
     "sku_hash": {
       "type": "string",
-      "$comment": "Hash determinista de SKU según docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md, sección SKU, firma y caducidad."
+      "$comment": "Hash determinista de SKU (docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md, sección SKU, firma y caducidad)."
     },
     "sku_signature": {
       "type": "string",
-      "$comment": "Firma Ed25519 sig.vN según docs/plugin-3-g3d-validate-sign.md §6.2."
+      "$comment": "Firma Ed25519 sig.vN (docs/plugin-3-g3d-validate-sign.md §6.2)."
     },
     "snapshot_id": {
       "type": "string",
-      "$comment": "Snapshot a verificar (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md)."
+      "$comment": "Snapshot a verificar (docs/plugin-3-g3d-validate-sign.md §6.2)."
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }

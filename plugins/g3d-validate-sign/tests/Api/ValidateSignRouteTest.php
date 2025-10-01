@@ -52,9 +52,6 @@ final class ValidateSignRouteTest extends TestCase
                     'acabado' => 'fin:clearcoat-high',
                 ],
             ],
-            'price'     => 199.0,
-            'stock'     => 5,
-            'photo_url' => 'https://cdn.example/snap.png',
         ];
 
         $request = new WP_REST_Request('POST', '/g3d/v1/validate-sign');
@@ -73,9 +70,9 @@ final class ValidateSignRouteTest extends TestCase
         self::assertStringStartsWith('sig.v1.', $data['sku_signature']);
         self::assertSame('2025-10-29T00:00:00+00:00', $data['expires_at']);
         self::assertSame('{{pieza}} · {{material}} — {{color}} · {{textura}} · {{acabado}}', $data['summary']);
-        self::assertSame(199.0, $data['price']);
-        self::assertSame(5, $data['stock']);
-        self::assertSame('https://cdn.example/snap.png', $data['photo_url']);
+        self::assertArrayNotHasKey('price', $data);
+        self::assertArrayNotHasKey('stock', $data);
+        self::assertArrayNotHasKey('photo_url', $data);
         self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/', $data['request_id']);
     }
 

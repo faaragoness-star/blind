@@ -10,27 +10,27 @@
   "properties": {
     "ok": {
       "type": "boolean",
-      "$comment": "ok:true indica verificación correcta; ok:false mapeará códigos de error según docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md, sección 2.2."
+      "$comment": "ok:true indica verificación correcta; ok:false devuelve código/razón (docs/plugin-3-g3d-validate-sign.md §6.2)."
     },
     "code": {
       "type": "string",
-      "$comment": "Errores como E_SIGN_EXPIRED, E_SIGN_INVALID, etc. (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md)."
+      "$comment": "Errores documentados como E_SIGN_EXPIRED, E_SIGN_INVALID, etc. (docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md)."
     },
     "reason_key": {
       "type": "string",
-      "$comment": "reason_key snake_case para analítica (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md)."
+      "$comment": "reason_key snake_case para analítica (docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md)."
     },
     "detail": {
       "type": [
         "string",
         "null"
       ],
-      "$comment": "Descripción opcional alineada con docs/plugin-3-g3d-validate-sign.md §6.2."
+      "$comment": "Descripción opcional (docs/plugin-3-g3d-validate-sign.md §6.2)."
     },
     "request_id": {
       "type": "string",
-      "$comment": "Identificador de auditoría (ver docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md, Observabilidad)."
+      "$comment": "Identificador de auditoría (docs/Capa 3 — Validación, Firma Y Caducidad — Actualizada (slots Abiertos) — V2 (urls).md, Observabilidad)."
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }

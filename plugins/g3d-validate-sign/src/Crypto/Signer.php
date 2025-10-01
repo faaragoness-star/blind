@@ -32,6 +32,7 @@ class Signer
      *
      * @var string[]
      */
+    /** @todo Plugin 3 §Firmas/prefijos: soportar convivencia N/N-1. */
     public const ALLOWED_SIGNATURE_PREFIXES = ['sig.v1'];
 
     /**
@@ -86,8 +87,8 @@ class Signer
             $abVariant = (string) $payload['flags']['ab_variant'];
         }
 
-        $now         = $this->clock->now();
-        $expiresAt   = $now->add(new DateInterval(self::TTL_INTERVAL_SPEC));
+        $now          = $this->clock->now();
+        $expiresAt    = $now->add(new DateInterval(self::TTL_INTERVAL_SPEC));
         $expiresAtUtc = $expiresAt->setTimezone(new DateTimeZone('UTC'));
 
         $messagePayload = [
@@ -163,7 +164,6 @@ class Signer
         }
 
         // TODO(docs Capa 3 §canonicalización): confirmar si price/stock deben entrar en sku_hash.
-
         return $canonical;
     }
 
