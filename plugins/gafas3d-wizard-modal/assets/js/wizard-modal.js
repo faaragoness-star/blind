@@ -652,6 +652,16 @@
       return null;
     }
 
+    function focusTab(tabEl) {
+      if (!tabEl || isTabDisabled(tabEl)) {
+        return;
+      }
+
+      if (typeof tabEl.focus === 'function') {
+        tabEl.focus();
+      }
+    }
+
     function activateTab(tabEl) {
       if (!tabEl || isTabDisabled(tabEl)) {
         return;
@@ -669,15 +679,13 @@
         t.setAttribute('tabindex', active ? '0' : '-1');
       });
 
+      focusTab(tabEl);
+
       Array.prototype.forEach.call(panels, function (p) {
         var isActivePanel = p.id === target;
 
         p.hidden = !isActivePanel;
       });
-
-      if (typeof tabEl.focus === 'function') {
-        tabEl.focus();
-      }
     }
 
     function focusNext(current, dir) {
@@ -693,7 +701,7 @@
         return;
       }
 
-      var step = dir === 1 ? 1 : -1;
+      var step = dir === -1 ? -1 : 1;
       var next = index;
 
       for (var attempt = 0; attempt < len; attempt += 1) {
@@ -704,13 +712,29 @@
           continue;
         }
 
-        if (typeof candidate.focus === 'function') {
-          candidate.focus();
-        }
-
-        activateTab(candidate);
+        focusTab(candidate);
 
         return;
+      }
+    }
+
+    function focusPrev(current) {
+      focusNext(current, -1);
+    }
+
+    function focusFirst() {
+      var first = getFirstEnabledTab() || (tabs.length ? tabs[0] : null);
+
+      if (first) {
+        focusTab(first);
+      }
+    }
+
+    function focusLast() {
+      var last = getLastEnabledTab() || (tabs.length ? tabs[tabs.length - 1] : null);
+
+      if (last) {
+        focusTab(last);
       }
     }
 
@@ -1324,31 +1348,19 @@
 
           if (key === 'ArrowLeft') {
             event.preventDefault();
-            focusNext(tab, -1);
+            focusPrev(tab);
             return;
           }
 
           if (key === 'Home') {
             event.preventDefault();
-
-            var first = getFirstEnabledTab() || (tabs.length ? tabs[0] : null);
-
-            if (first) {
-              activateTab(first);
-            }
-
+            focusFirst();
             return;
           }
 
           if (key === 'End') {
             event.preventDefault();
-
-            var last = getLastEnabledTab() || (tabs.length ? tabs[tabs.length - 1] : null);
-
-            if (last) {
-              activateTab(last);
-            }
-
+            focusLast();
             return;
           }
 
