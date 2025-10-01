@@ -31,15 +31,26 @@ final class ModalRulesContainerTest extends TestCase
 
         $xpath = new \DOMXPath($document);
 
-        $rulesNodes = $xpath->query('//*[@data-g3d-wizard-rules]');
+        $rulesQuery = '//*[@class="g3d-wizard-modal__rules" '
+            . 'or contains(@class,"g3d-wizard-modal__rules ")]';
+        $rulesNodes = $xpath->query($rulesQuery);
         self::assertNotFalse($rulesNodes);
         self::assertSame(1, $rulesNodes->length);
 
         $rulesNode = $rulesNodes->item(0);
         self::assertInstanceOf(\DOMElement::class, $rulesNode);
-        self::assertSame('polite', $rulesNode->getAttribute('aria-live'));
+        self::assertSame('g3d-wizard-rules-title', $rulesNode->getAttribute('aria-labelledby'));
 
-        $modalNodes = $xpath->query('//*[@class="g3d-wizard-modal" or contains(@class,"g3d-wizard-modal ")]');
+        $summaryNode = $xpath->query('//*[@data-g3d-rules-summary]')->item(0);
+        self::assertInstanceOf(\DOMElement::class, $summaryNode);
+        self::assertSame('polite', $summaryNode->getAttribute('aria-live'));
+
+        $listNode = $xpath->query('//*[@data-g3d-rules-list]')->item(0);
+        self::assertInstanceOf(\DOMElement::class, $listNode);
+
+        $modalQuery = '//*[@class="g3d-wizard-modal" '
+            . 'or contains(@class,"g3d-wizard-modal ")]';
+        $modalNodes = $xpath->query($modalQuery);
         self::assertNotFalse($modalNodes);
         self::assertGreaterThan(0, $modalNodes->length);
 
