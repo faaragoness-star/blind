@@ -29,6 +29,10 @@ body.g3d-wizard-open {
   padding: 1.5rem;
 }
 
+.g3d-wizard-modal.is-busy {
+  opacity: 0.85;
+}
+
 .g3d-wizard-modal [role="tab"]:focus {
   outline: 2px solid;
   outline-offset: 2px;
@@ -48,7 +52,7 @@ body.g3d-wizard-open {
 }
 
 .g3d-wizard-modal__msg {
-  margin-top: .5rem;
+  margin-top: 0.75rem;
   font-size: .9rem;
   min-height: 1.5em;
 }
@@ -71,4 +75,8 @@ body.g3d-wizard-open {
 .g3d-wizard-modal__footer button[disabled] {
   opacity: .6;
   cursor: not-allowed;
+}
+
+.g3d-wizard-modal [aria-disabled="true"] {
+  pointer-events: none;
 }

@@ -83,6 +83,8 @@ final class ModalRenderTest extends TestCase
         $node = $nodes->item(0);
         self::assertInstanceOf(\DOMElement::class, $node);
         self::assertSame('polite', $node->getAttribute('aria-live'));
+        self::assertSame('status', $node->getAttribute('role'));
+        self::assertSame('true', $node->getAttribute('aria-atomic'));
         self::assertSame('', $node->getAttribute('aria-busy'));
     }
 

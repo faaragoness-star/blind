@@ -135,7 +135,8 @@ final class Modal
         );
         echo '</div>';
 
-        echo '<div class="g3d-wizard-modal__msg" aria-live="polite"></div>';
+        echo '<div class="g3d-wizard-modal__msg"'
+            . ' role="status" aria-live="polite" aria-atomic="true"></div>';
 
         echo '<button type="button"'
             . ' class="g3d-wizard-modal__verify"'
