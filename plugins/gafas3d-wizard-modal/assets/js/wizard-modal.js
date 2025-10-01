@@ -116,19 +116,11 @@
     }
   }
 
-  function getJSON(url, params, options) {
+  async function getJSON(url, params, options) {
     var query = '';
 
     if (params && Object.keys(params).length) {
-      query =
-        '?' +
-        Object.keys(params)
-          .map(function (key) {
-            return (
-              encodeURIComponent(key) + '=' + encodeURIComponent(params[key])
-            );
-          })
-          .join('&');
+      query = '?' + new URLSearchParams(params).toString();
     }
 
     var init = { method: 'GET' };
@@ -137,26 +129,20 @@
       init.signal = options.signal;
     }
 
-    return fetch(url + query, init);
+    var response = await fetch(url + query, init);
+
+    if (!response.ok) {
+      var requestError = new Error('Request failed');
+      requestError.status = response.status;
+      throw requestError;
+    }
+
+    try {
+      return await response.json();
+    } catch (parseError) {
+      return {};
+    }
   }
-
-  global.G3DWIZARD.getJson =
-    global.G3DWIZARD.getJson ||
-    (async function (url, params, options) {
-      const qs =
-        params && Object.keys(params).length
-          ? '?' + new URLSearchParams(params).toString()
-          : '';
-      const init = { method: 'GET' };
-
-      if (options && options.signal) {
-        init.signal = options.signal;
-      }
-
-      const response = await fetch(url + qs, init);
-
-      return response;
-    });
 
   function setText(el, s) {
     if (!el) {
@@ -186,47 +172,8 @@
     return res;
   };
 
-  global.G3DWIZARD.getJSON = async function getJSON(url, params) {
-    const options = arguments.length > 2 ? arguments[2] : null;
-    const qs =
-      params && Object.keys(params).length
-        ? '?' + new URLSearchParams(params).toString()
-        : '';
-    const init = { method: 'GET' };
-
-    if (options && options.signal) {
-      init.signal = options.signal;
-    }
-
-    const res = await fetch(url + qs, init);
-
-    let payload = null;
-
-    try {
-      payload = await res.json();
-    } catch (error) {
-      payload = null;
-    }
-
-    if (!res.ok) {
-      const requestError = new Error('Request failed');
-      requestError.status = res.status;
-
-      if (payload && typeof payload === 'object') {
-        requestError.payload = payload;
-
-        if (payload.reason_key) {
-          requestError.code = payload.reason_key;
-        } else if (payload.code) {
-          requestError.code = payload.code;
-        }
-      }
-
-      throw requestError;
-    }
-
-    return payload || {};
-  };
+  global.G3DWIZARD.getJSON = global.G3DWIZARD.getJSON || getJSON;
+  global.G3DWIZARD.getJson = global.G3DWIZARD.getJson || getJSON;
 
   if (global.console && typeof global.console.log === 'function') {
     global.console.log(global.G3DWIZARD.api);
@@ -253,7 +200,9 @@
     var verifyButton = overlay.querySelector('[data-g3d-wizard-modal-verify]');
     var message = overlay.querySelector('.g3d-wizard-modal__msg');
     var summaryContainer = overlay.querySelector('.g3d-wizard-modal__summary');
-    var rulesContainer = modal ? modal.querySelector('.g3d-wizard-modal__rules') : null;
+    var rulesContainer = modal
+      ? modal.querySelector('[data-g3d-wizard-rules]')
+      : null;
     var tablist = root.querySelector('[role="tablist"]');
     const tabs = tablist ? tablist.querySelectorAll('[role="tab"]') : [];
     const panels = root.querySelectorAll('[role="tabpanel"]');
@@ -264,6 +213,7 @@
     var statusMessage = '';
     var rulesSummaryMessage = '';
     var lastRules = null;
+    var rulesSelection = {};
     let currentAbort = null;
 
     function startAbortableRequest() {
@@ -328,12 +278,72 @@
 
     function setRulesSummaryMessage(value) {
       rulesSummaryMessage = value || '';
+      updateLiveMessage();
+    }
 
-      if (rulesContainer) {
-        setText(rulesContainer, rulesSummaryMessage);
+    function setRulesContainerText(value) {
+      if (!rulesContainer) {
+        return;
       }
 
-      updateLiveMessage();
+      rulesContainer.textContent = value || '';
+    }
+
+    function showRulesLoading() {
+      setRulesContainerText(__('Reglas: cargando…', TEXT_DOMAIN));
+    }
+
+    function showRulesError(messageText) {
+      setRulesContainerText(messageText || formatRulesError());
+    }
+
+    function showRulesNetworkError() {
+      showRulesError(formatRulesNetworkError());
+    }
+
+    function showRulesList(rules) {
+      if (!rulesContainer) {
+        return;
+      }
+
+      rulesContainer.textContent = '';
+
+      if (!Array.isArray(rules) || rules.length === 0) {
+        showRulesError();
+
+        return;
+      }
+
+      var list = document.createElement('ul');
+
+      rules.forEach(function (rule) {
+        var item = document.createElement('li');
+        var label = '';
+
+        if (rule && typeof rule === 'object') {
+          if (typeof rule.label === 'string' && rule.label) {
+            label = rule.label;
+          } else if (typeof rule.key === 'string' && rule.key) {
+            label = rule.key; // TODO(plugin-2-g3d-catalog-rules.md §payload): confirmar etiqueta visible.
+          }
+        } else if (typeof rule === 'string' && rule) {
+          label = rule;
+        }
+
+        if (!label) {
+          label = 'rule.key'; // TODO(plugin-2-g3d-catalog-rules.md §payload): definir fallback visible.
+        }
+
+        item.textContent = label;
+        list.appendChild(item);
+      });
+
+      rulesContainer.appendChild(list);
+    }
+
+    function resetRulesSelection() {
+      rulesSelection = {};
+      // TODO(plugin-2-g3d-catalog-rules.md §payload state): mapear selección de reglas cuando se documente.
     }
 
     function setButtonEnabledState(button, shouldEnable) {
@@ -419,26 +429,6 @@
       }
 
       return '/wp-json/g3d/v1/catalog/rules';
-    }
-
-    function fetchRules(params, options) {
-      var url = getRulesEndpoint();
-
-      if (!url) {
-        throw new Error('Missing catalog rules endpoint');
-      }
-
-      var query =
-        params && Object.keys(params).length
-          ? '?' + new URLSearchParams(params).toString()
-          : '';
-      var init = { method: 'GET' };
-
-      if (options && options.signal) {
-        init.signal = options.signal;
-      }
-
-      return fetch(url + query, init);
     }
 
     function audit(action, extras) {
@@ -684,6 +674,10 @@
         state: state,
       };
 
+      if (rulesSelection && Object.keys(rulesSelection).length) {
+        // TODO(plugin-4-gafas3d-wizard-modal.md §4 estado): incluir selección de reglas en payload cuando se documente.
+      }
+
       if (snapshotId) {
         payload.snapshot_id = snapshotId;
       }
@@ -924,6 +918,8 @@
         setBusy(rulesContainer, true);
       }
 
+      resetRulesSelection();
+
       var missing = [];
 
       if (!productoId) {
@@ -939,11 +935,12 @@
       }
 
       if (missing.length) {
-        lastRules = null;
-        setRulesSummaryMessage(
+        var missingMessage =
           'TODO(docs/plugin-2-g3d-catalog-rules.md §6 APIs / Contratos (lectura)): falta ' +
-            missing.join(', ')
-        );
+          missing.join(', ');
+        lastRules = null;
+        setRulesSummaryMessage(missingMessage);
+        showRulesError(missingMessage);
         setBusy(message, false);
 
         if (rulesContainer) {
@@ -976,38 +973,38 @@
       }
 
       setRulesSummaryMessage(__('Reglas: cargando…', TEXT_DOMAIN));
+      showRulesLoading();
 
       const controller = startAbortableRequest();
       var signal = controller ? controller.signal : undefined;
 
       try {
-        var response = await fetchRules(params, {
-          signal: signal,
-        });
+        var endpoint = getRulesEndpoint();
 
-        if (response && response.ok) {
-          var data = null;
-
-          try {
-            data = await response.json();
-          } catch (jsonError) {
-            data = null;
-          }
-
-          var parsed = data && typeof data === 'object' ? data : {};
-          lastRules = parsed;
-          setRulesSummaryMessage(formatRulesSummary(parsed, snapshotId));
-        } else {
-          lastRules = null;
-          setRulesSummaryMessage(formatRulesError());
+        if (!endpoint) {
+          throw new Error('Missing catalog rules endpoint');
         }
+
+        var data = await getJSON(endpoint, params, { signal: signal });
+        var parsed = data && typeof data === 'object' ? data : {};
+
+        lastRules = parsed;
+        showRulesList(parsed.rules || []);
+        setRulesSummaryMessage(formatRulesSummary(parsed, snapshotId));
       } catch (error) {
         if (error && error.name === 'AbortError') {
           return;
         }
 
         lastRules = null;
-        setRulesSummaryMessage(formatRulesNetworkError());
+
+        if (error && typeof error.status === 'number') {
+          showRulesError(formatRulesError());
+          setRulesSummaryMessage(formatRulesError());
+        } else {
+          showRulesNetworkError();
+          setRulesSummaryMessage(formatRulesNetworkError());
+        }
       } finally {
         disableBtn(cta, false);
 
@@ -1026,9 +1023,11 @@
         }
 
         clearAbort(controller);
+
         if (modal) {
           modal.setAttribute('data-ready', '1');
         }
+
         gateCtasByRules(lastRules);
       }
     }
@@ -1091,7 +1090,10 @@
 
       if (rulesContainer) {
         setBusy(rulesContainer, false);
+        setRulesContainerText('');
       }
+
+      resetRulesSelection();
     }
 
     var openButtons = document.querySelectorAll('[' + OPEN_ATTR + ']');
